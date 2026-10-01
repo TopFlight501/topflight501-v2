@@ -1,8 +1,8 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=10';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=10';
-import { sfx, setSoundEnabled } from './sound.js?v=10';
-import * as L from './leagues.js?v=10';
-import { privacyHtml, termsHtml } from './legal.js?v=10';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=11';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=11';
+import { sfx, setSoundEnabled } from './sound.js?v=11';
+import * as L from './leagues.js?v=11';
+import { privacyHtml, termsHtml } from './legal.js?v=11';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -106,13 +106,24 @@ function bestsList() {
   return out;
 }
 
+// Light or Dark. Until someone picks, the site follows the phone's own setting.
+function effectiveTheme() {
+  if (settings.theme === 'light' || settings.theme === 'dark') return settings.theme;
+  return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function themeSeg() {
+  const t = effectiveTheme();
+  return `<div class="seg">${[['light', '☀️ Light'], ['dark', '🌙 Dark']].map(([v, label]) =>
+    `<button class="seg-btn ${t === v ? 'on' : ''}" data-act="set" data-k="theme" data-v="${v}">${label}</button>`).join('')}</div>`;
+}
+
 function settingsHtml() {
   const seg = (key, opts) => `<div class="seg ${opts.length === 3 ? 'three' : ''}">${opts.map(([v, label]) =>
     `<button class="seg-btn ${String(settings[key]) === String(v) ? 'on' : ''}" data-act="set" data-k="${key}" data-v="${v}">${label}</button>`).join('')}</div>`;
   const bests = bestsList();
   return `
   <h2>Settings</h2>
-  <div class="field"><span class="label">Theme</span>${seg('theme', [['system', 'System'], ['light', '☀️ Light'], ['dark', '🌙 Dark']])}</div>
+  <div class="field"><span class="label">Theme</span>${themeSeg()}</div>
   <div class="field"><span class="label">Sound effects</span>${seg('sound', [[true, '🔊 On'], [false, '🔇 Off']])}</div>
   ${canVibrate ? `<div class="field"><span class="label">Vibration</span>${seg('vibrate', [[true, '📳 On'], [false, 'Off']])}</div>` : ''}
   <div class="field">
