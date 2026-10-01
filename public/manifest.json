@@ -1,0 +1,14 @@
+{
+  "name": "Top Flight 501",
+  "short_name": "Top Flight 501",
+  "description": "Premier League trivia played like darts. Start on 501 and answer your way to zero.",
+  "icons": [
+    { "src": "/img/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/img/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ],
+  "start_url": "/",
+  "background_color": "#F6F8F7",
+  "theme_color": "#1E4B57",
+  "display": "standalone",
+  "orientation": "portrait"
+}

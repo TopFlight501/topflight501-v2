@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Top Flight 501 | Premier League trivia darts</title>
+  <meta name="description" content="Premier League trivia scored like darts. Start on 501, name scorers, assists, lineups and bookings from real matches, and race to zero.">
+  <meta name="theme-color" content="#1E4B57">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="img/icon-192.png">
+  <link rel="apple-touch-icon" href="img/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <button class="brand" data-act="home" aria-label="Top Flight 501 home">
+      <img src="img/mark.png" alt="" width="30" height="49">
+      <span>
+        <span class="brand-name">Top Flight 501</span>
+        <span class="brand-tag">Football · Darts · Trivia</span>
+      </span>
+    </button>
+    <button class="icon-btn" data-act="rules" aria-label="How to play">?</button>
+  </header>
+
+  <main id="app" aria-live="polite"><p class="loading">Loading…</p></main>
+  <div id="modal" hidden></div>
+
+  <footer class="foot">
+    <p>Match data: official Premier League / FPL records, 2016/17 to 2025/26.</p>
+    <p><a href="https://buymeacoffee.com/TopFlight501" target="_blank" rel="noopener">☕ Buy me a coffee</a> · Feedback: <a href="mailto:topflight501@outlook.com">topflight501@outlook.com</a></p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
