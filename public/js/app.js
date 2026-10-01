@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=20';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=20';
-import { sfx, setSoundEnabled } from './sound.js?v=20';
-import * as L from './leagues.js?v=20';
-import { initAnalytics, track } from './analytics.js?v=20';
-import { privacyHtml, termsHtml } from './legal.js?v=20';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=21';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=21';
+import { sfx, setSoundEnabled } from './sound.js?v=21';
+import * as L from './leagues.js?v=21';
+import { initAnalytics, track } from './analytics.js?v=21';
+import { privacyHtml, termsHtml } from './legal.js?v=21';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -399,6 +399,8 @@ function prevLine(prev) {
   return '';
 }
 
+const REROLL = `<button type="button" class="reroll" data-act="reroll" title="Played this one before? Get a different match">🔄 New match</button>`;
+
 function renderHandover() {
   const p = current();
   const prev = S.lastVisits[S.lastVisits.length - 1];
@@ -410,6 +412,7 @@ function renderHandover() {
     <h2>${esc(p.name)}, step up</h2>
     <p class="hint">${handoverHint(p)}</p>
     ${matchCard()}
+    ${S.turnIdx === 0 ? `<div class="reroll-row">${REROLL}</div>` : ''}
     <button class="btn primary big" data-act="go">Throw darts</button>
   </section>`;
 }
@@ -493,6 +496,7 @@ function renderPlay() {
   ${scoreboard()}
   <section class="card play">
     ${matchCard()}
+    ${S.turnIdx === 0 && !S.visit.length && !done ? `<div class="reroll-row">${REROLL}</div>` : ''}
     <div class="turn-head"><h3>${esc(p.name)}</h3><span class="hint">${turnHeadRight(p)}</span></div>
     ${dartSlots()}
     ${last ? `<p class="result ${last.res.correct ? 'ok' : 'bad'}">${last.res.correct ? '🎯 ' : ''}${esc(last.res.message)}${last.res.correct ? resultPts(last.res) : ''}${last.extra ? `<span class="extra">${esc(last.extra)}</span>` : ''}</p>` : ''}
@@ -564,6 +568,7 @@ function renderSentOff() {
   ${scoreboard()}
   <section class="card play sentoff">
     ${matchCard()}
+    ${so.solved === null && !so.guesses.length ? `<div class="reroll-row">${REROLL}</div>` : ''}
     <div class="so-board ${so.solved !== null ? 'solved' : ''}">
       <div class="so-team"><span class="so-name">${esc(m.home)}</span><span class="so-digit">${digit(0)}</span><span class="so-range">${so.solved !== null ? '' : rangeText(0)}</span></div>
       <span class="so-dash">–</span>
@@ -1289,6 +1294,12 @@ document.addEventListener('click', async e => {
       break;
     case 'close': closeModal(); break;
     case 'go': S.screen = 'play'; render(); break;
+    case 'reroll':
+      if (S.busy || S.legOver || S.pending || (S.screen === 'sentoff' ? S.so.guesses.length : (S.turnIdx !== 0 || S.visit.length))) break;
+      track('Match rerolled', gameInfo());
+      S.round -= 1; S.matchesThisLeg -= 1;
+      await newRound();
+      break;
     case 'so-next': S.legStarter = (S.legStarter + 1) % S.players.length; await newRound(); break;
     case 'cat': e.preventDefault(); S.cat = v; S.error = null; renderPlay(); break;
     case 'victim': hitVictim(Number(v)); break;

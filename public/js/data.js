@@ -5,7 +5,10 @@
 
 const cache = new Map();
 let seasonList = null;
-const used = new Set();
+// Matches already shown on this device, remembered between visits so the same game doesn't keep coming back.
+const SEEN_KEY = 'tf501:seen', SEEN_MAX = 600;
+const used = new Set((() => { try { return JSON.parse(localStorage.getItem(SEEN_KEY)) || []; } catch { return []; } })());
+function saveSeen() { try { localStorage.setItem(SEEN_KEY, JSON.stringify([...used].slice(-SEEN_MAX))); } catch { /* ignore */ } }
 
 export async function getSeasons() {
   if (!seasonList) {
@@ -78,11 +81,11 @@ export async function randomMatch(seasons, clubs = [], opts = {}, retried = fals
     const fresh = D.matches.filter(m => wanted(m) && !used.has(m.id));
     if (!fresh.length) continue;
     const raw = fresh[Math.floor(Math.random() * fresh.length)];
-    used.add(raw.id);
+    used.delete(raw.id); used.add(raw.id); saveSeen();
     return expand(raw, D);
   }
   if (retried) throw new Error('No matches found.');
-  used.clear();
+  [...used].slice(0, Math.ceil(used.size / 2)).forEach(id => used.delete(id)); saveSeen();
   return randomMatch(seasons, clubs, opts, true);
 }
 
