@@ -19,7 +19,7 @@ Premier League trivia played like darts. Every match, scorer, assist, card, play
 - **Matches, scorers, assists, cards, who played**: official Fantasy Premier League records, archived at github.com/vaastav/Fantasy-Premier-League. Every match is checked so the goals add up to the final score and both teams have at least 11 players, or it's left out.
 - **Managers (including caretakers)**: Wikipedia's *List of Premier League managers*, matched to each game by date (`tools/managers_wikipedia.tsv`).
 
-"Lineup Player" accepts anyone who played (starters and subs). Assists follow the official FPL record.
+"Lineup Player" accepts anyone who played (starters and subs). Own goals are stored and count as goals, listed under the team that benefited. A player can be picked once for each goal or assist they got. Assists follow the official FPL record.
 
 ## Run it on your own computer
 
