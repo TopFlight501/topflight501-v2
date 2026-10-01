@@ -231,3 +231,7 @@ main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px
 
 .foot { text-align: center; color: var(--muted); font-size: .8rem; padding: 10px 16px 22px; }
 .foot p { margin: .2rem 0; }
+
+.clubs { display: grid; gap: 8px; }
+.clubs select { width: 100%; padding: 11px 10px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); }
+.opt { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--muted); }

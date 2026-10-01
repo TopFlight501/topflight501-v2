@@ -22,3 +22,10 @@ for fn in sorted(glob.glob(os.path.join(HERE, '..', 'public', 'data', '2*.json')
             if not x: miss[(D['season'],t)]+=1
     json.dump(D, open(fn,'w',encoding='utf-8'), ensure_ascii=False, separators=(',',':'))
 print('missing:', dict(miss))
+
+# clubs per season, used by the club picker on the start screen
+clubs = {}
+for fn in sorted(glob.glob(os.path.join(HERE, '..', 'public', 'data', '2*.json'))):
+    D = json.load(open(fn, encoding='utf-8'))
+    clubs[D['season']] = sorted({m['h'] for m in D['matches']} | {m['a'] for m in D['matches']})
+json.dump(clubs, open(os.path.join(HERE, '..', 'public', 'data', 'clubs.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))

@@ -1,5 +1,5 @@
-import { getSeasons, randomMatch, seasonLabel } from './data.js?v=2';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=2';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=3';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=3';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -18,6 +18,8 @@ const S = {
   seasonFrom: null,
   seasonTo: null,
   allSeasons: [],
+  clubs: ['', ''],        // preferred clubs ('' = none)
+  clubOptions: [],
   players: [],            // { name, score, legs, darts, visits }
   legStarter: 0,
   turnOrder: [],
@@ -108,10 +110,44 @@ function renderSetup() {
       </div>
     </div>
 
+    <div class="field">
+      <span class="label">Preferred club <span class="opt">optional</span></span>
+      <div class="clubs">
+        <select data-club="0" aria-label="Preferred club">
+          <option value="">Any club</option>
+          ${S.clubOptions.map(c => `<option value="${esc(c)}" ${c === S.clubs[0] ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+        </select>
+        ${S.clubs[0] ? `
+        <select data-club="1" aria-label="Second club">
+          <option value="">No second club</option>
+          ${S.clubOptions.filter(c => c !== S.clubs[0]).map(c => `<option value="${esc(c)}" ${c === S.clubs[1] ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+        </select>` : ''}
+      </div>
+      <p class="hint">${clubHint()}</p>
+    </div>
+
     ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
     <button class="btn primary big" data-act="begin" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Loading…' : 'Game on'}</button>
     <button class="btn link" data-act="rules">How to play</button>
   </section>`;
+}
+
+function activeClubs() {
+  return S.clubs.filter(Boolean);
+}
+
+function clubHint() {
+  const c = activeClubs();
+  if (!c.length) return 'Matches from every club in the seasons you picked.';
+  if (c.length === 1) return `Only ${esc(c[0])} matches.`;
+  return `Only matches involving ${esc(c[0])} or ${esc(c[1])}, including when they play each other.`;
+}
+
+async function refreshClubOptions() {
+  try { S.clubOptions = await clubsIn(selectedSeasons()); } catch { S.clubOptions = []; }
+  // drop a club that wasn't in the Premier League in the chosen seasons
+  S.clubs = S.clubs.map(c => (S.clubOptions.includes(c) ? c : ''));
+  if (!S.clubs[0] && S.clubs[1]) S.clubs = [S.clubs[1], ''];
 }
 
 function scoreboard() {
@@ -231,7 +267,7 @@ function rulesHtml() {
   return `
   <h2>How to play</h2>
   <ol class="rules">
-    <li><b>Step to the oche.</b> Go for a quick checkout in a Solo Run, or play Head-to-Head as Managers or Teams. Everyone starts on 501, 301 or 101.</li>
+    <li><b>Step to the oche.</b> Go for a quick checkout in a Solo Run, or play Head-to-Head as Managers or Teams. Everyone starts on 501, 301 or 101. Pick one or two preferred clubs to get only their matches.</li>
     <li><b>The trivia engine.</b> Each round pulls a genuine Premier League match from 2016/17 to 2025/26. Every answer comes from official match data.</li>
     <li><b>Hotseat and three darts.</b> Everyone throws at the same match, three darts each. Then a new match comes up for the next round.</li>
     <li><b>Deduction tiers.</b> Pick any category for each dart. Hit all three and you unlock the Manager Bonus.
@@ -286,7 +322,7 @@ async function begin() {
   const fallback = S.mode === 'solo' ? ['Player'] : (S.unit === 'managers' ? ['Manager One', 'Manager Two'] : ['Team One', 'Team Two']);
   S.players = names.map((n, i) => ({ name: n.trim() || fallback[i], score: S.start, legs: 0, darts: 0 }));
   S.legStarter = 0;
-  store.set('setup', { mode: S.mode, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo });
+  store.set('setup', { mode: S.mode, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs });
   await startLeg();
 }
 
@@ -301,10 +337,10 @@ async function startLeg() {
 async function newRound() {
   S.busy = true; S.error = null;
   try {
-    S.match = await randomMatch(selectedSeasons());
+    S.match = await randomMatch(selectedSeasons(), activeClubs());
   } catch (e) {
     S.busy = false;
-    S.error = 'Couldn’t load a match. Check your connection and try again.';
+    S.error = e && /clubs|No matches/.test(e.message) ? e.message : 'Couldn’t load a match. Check your connection and try again.';
     S.screen = 'setup';
     render();
     return;
@@ -498,10 +534,19 @@ document.addEventListener('input', e => {
   const t = e.target;
   if (t.dataset.name !== undefined) S.names[Number(t.dataset.name)] = t.value;
 });
-document.addEventListener('change', e => {
+document.addEventListener('change', async e => {
   const t = e.target;
-  if (t.dataset.season === 'from') S.seasonFrom = t.value;
-  if (t.dataset.season === 'to') S.seasonTo = t.value;
+  if (t.dataset.season) {
+    if (t.dataset.season === 'from') S.seasonFrom = t.value;
+    if (t.dataset.season === 'to') S.seasonTo = t.value;
+    await refreshClubOptions();
+    renderSetup();
+  }
+  if (t.dataset.club !== undefined) {
+    S.clubs[Number(t.dataset.club)] = t.value;
+    if (t.dataset.club === '0' && (!t.value || t.value === S.clubs[1])) S.clubs[1] = '';
+    renderSetup();
+  }
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !modalRoot.hidden && modalRoot._dismissable) closeModal();
@@ -519,5 +564,7 @@ document.addEventListener('keydown', e => {
   }
   S.seasonFrom = saved && S.allSeasons.includes(saved.from) ? saved.from : S.allSeasons[0];
   S.seasonTo = saved && S.allSeasons.includes(saved.to) ? saved.to : S.allSeasons[S.allSeasons.length - 1];
+  if (saved && Array.isArray(saved.clubs)) S.clubs = [saved.clubs[0] || '', saved.clubs[1] || ''];
+  await refreshClubOptions();
   render();
 })();

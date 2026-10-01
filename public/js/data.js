@@ -43,19 +43,45 @@ function expand(raw, D) {
   };
 }
 
-export async function randomMatch(seasons) {
-  const pool = seasons && seasons.length ? seasons : await getSeasons();
-  for (let attempt = 0; attempt < 30; attempt++) {
+let clubMap = null;
+export async function getClubs() {
+  if (!clubMap) {
+    const res = await fetch('data/clubs.json');
+    if (!res.ok) throw new Error('Could not load the club list');
+    clubMap = await res.json();
+  }
+  return clubMap;
+}
+
+// Clubs that played in at least one of the given seasons, A-Z.
+export async function clubsIn(seasons) {
+  const map = await getClubs();
+  const set = new Set();
+  for (const s of seasons) (map[s] || []).forEach(c => set.add(c));
+  return [...set].sort();
+}
+
+// clubs: optional list of club names; only matches involving one of them are picked.
+export async function randomMatch(seasons, clubs = [], retried = false) {
+  let pool = seasons && seasons.length ? seasons : await getSeasons();
+  if (clubs.length) {
+    const map = await getClubs();
+    pool = pool.filter(s => (map[s] || []).some(c => clubs.includes(c)));
+    if (!pool.length) throw new Error('None of those clubs played in the chosen seasons.');
+  }
+  const wanted = m => !clubs.length || clubs.includes(m.h) || clubs.includes(m.a);
+  for (let attempt = 0; attempt < 40; attempt++) {
     const season = pool[Math.floor(Math.random() * pool.length)];
     const D = await loadSeason(season);
-    const fresh = D.matches.filter(m => !used.has(m.id));
+    const fresh = D.matches.filter(m => wanted(m) && !used.has(m.id));
     if (!fresh.length) continue;
     const raw = fresh[Math.floor(Math.random() * fresh.length)];
     used.add(raw.id);
     return expand(raw, D);
   }
+  if (retried) throw new Error('No matches found.');
   used.clear();
-  return randomMatch(seasons);
+  return randomMatch(seasons, clubs, true);
 }
 
 export function seasonLabel(s) {
