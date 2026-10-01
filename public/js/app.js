@@ -1,5 +1,5 @@
-import { getSeasons, randomMatch, seasonLabel } from './data.js';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js';
+import { getSeasons, randomMatch, seasonLabel } from './data.js?v=2';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=2';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
