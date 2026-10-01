@@ -55,7 +55,7 @@
   .ring, .splash-mark, .splash-name, .splash-tag, .splash-line, .splash-dots, .splash-dots span { animation: none !important; }
 }
   </style>
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body>
   <div id="splash" role="status" aria-label="Loading Top Flight 501">
@@ -88,6 +88,7 @@
       window.__splashStart = Date.now();
     })();
   </script>
+  <div class="top-wrap" id="top-wrap">
   <header class="top">
     <button class="brand" data-act="home" aria-label="Top Flight 501 home">
       <img src="img/mark.png?v=9" alt="" width="30" height="49">
@@ -101,6 +102,7 @@
       <button class="icon-btn" data-act="rules" aria-label="How to play" title="How to play">?</button>
     </div>
   </header>
+  </div>
 
   <main id="app" aria-live="polite"></main>
   <div id="modal" hidden></div>
@@ -124,6 +126,6 @@
       caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
     }
   </script>
-  <script type="module" src="js/app.js?v=16"></script>
+  <script type="module" src="js/app.js?v=17"></script>
 </body>
 </html>

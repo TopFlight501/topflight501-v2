@@ -1,8 +1,8 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=16';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=16';
-import { sfx, setSoundEnabled } from './sound.js?v=16';
-import * as L from './leagues.js?v=16';
-import { privacyHtml, termsHtml } from './legal.js?v=16';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=17';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=17';
+import { sfx, setSoundEnabled } from './sound.js?v=17';
+import * as L from './leagues.js?v=17';
+import { privacyHtml, termsHtml } from './legal.js?v=17';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1364,6 +1364,12 @@ document.addEventListener('keydown', e => {
   render();
   hideSplash();
 })();
+
+// subtle line under the pinned header once the page is scrolled
+addEventListener('scroll', () => {
+  const t = document.getElementById('top-wrap');
+  if (t) t.classList.toggle('scrolled', scrollY > 4);
+}, { passive: true });
 
 function hideSplash() {
   const el = document.getElementById('splash');

@@ -84,9 +84,19 @@ h3 { margin: 0; font-size: 1.15rem; }
 h4 { margin: 0 0 .4rem; color: var(--teal); }
 
 /* header */
+/* pinned header: full-width bar that stays at the top while scrolling */
+.top-wrap {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  padding-top: env(safe-area-inset-top, 0px);
+  transition: box-shadow .2s, border-color .2s;
+  border-bottom: 1px solid transparent;
+}
+.top-wrap.scrolled { border-bottom-color: var(--line); box-shadow: 0 4px 14px rgba(20, 54, 64, .06); }
 .top {
   display: flex; align-items: center; justify-content: space-between;
-  max-width: 560px; width: 100%; margin: 0 auto; padding: 14px 16px 6px;
+  max-width: 560px; width: 100%; margin: 0 auto; padding: 10px 16px 8px;
 }
 .brand { display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
 .brand img { height: 42px; width: auto; filter: var(--mark-filter); }
