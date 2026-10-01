@@ -107,7 +107,8 @@ export function shortName(p) {
 
 /**
  * Check one dart.
- * claimed: Set of keys already used by this player on this match, e.g. "scorer:1234", "scoreline".
+ * claimed: Map of answer key -> times already claimed by this player on this match, e.g. "scorer:1234" -> 1.
+ * A player can be claimed as many times as they did it: two goals means two Scorer darts, two assists means two Assist darts.
  * Returns { correct, points, message, key }
  */
 export function checkDart(match, category, answer, claimed) {
@@ -128,7 +129,7 @@ export function checkDart(match, category, answer, claimed) {
   if (norm(guess).replace(/ /g, '').length < 3) return { correct: false, points: 0, message: 'Type at least 3 letters.', invalid: true };
 
   const pools = {
-    scorer: match.players.filter(p => p.goals > 0),
+    scorer: match.players.filter(p => p.goals > 0 || p.og > 0),
     assist: match.players.filter(p => p.assists > 0),
     lineup: match.players,
     booked: match.players.filter(p => p.card > 0),
@@ -138,18 +139,35 @@ export function checkDart(match, category, answer, claimed) {
     return { correct: false, points: 0, message: missMessage(category) };
   }
   const key = `${category}:${hit.id}`;
-  if (claimed.has(key)) {
-    return { correct: false, points: 0, invalid: true, message: `You've already claimed ${shortName(hit)} for that.` };
+  const allowed = timesAllowed(category, hit);
+  const used = claimed.get(key) || 0;
+  if (used >= allowed) {
+    const what = category === 'scorer' ? (allowed === 1 ? 'their goal' : `all ${allowed} of their goals`)
+      : category === 'assist' ? (allowed === 1 ? 'their assist' : `all ${allowed} of their assists`) : 'that';
+    return { correct: false, points: 0, invalid: true, message: `You've already claimed ${shortName(hit)} for ${what}.` };
   }
   let points = cat.points, extra = '';
   if (category === 'booked') {
     if (hit.card === 2) { points = cat.redPoints; extra = ' 🟥 Red card!'; }
     else extra = ' 🟨';
   }
-  if (category === 'scorer' && hit.goals > 1) extra = ` (scored ${hit.goals})`;
-  if (category === 'assist' && hit.assists > 1) extra = ` (${hit.assists} assists)`;
+  if (category === 'scorer') {
+    const n = used + 1;
+    // goals first, then own goals
+    const isOg = n > hit.goals;
+    if (allowed > 1) extra = ` (${isOg ? 'own goal' : 'goal'} ${n} of ${allowed})`;
+    else if (isOg) extra = ' (own goal)';
+  }
+  if (category === 'assist' && allowed > 1) extra = ` (assist ${used + 1} of ${allowed})`;
   if (category === 'lineup') extra = hit.started === false ? ' (off the bench)' : '';
   return { correct: true, points, key, player: hit, message: `${shortName(hit)}${extra}` };
+}
+
+// How many times this player can be claimed in this category
+export function timesAllowed(category, p) {
+  if (category === 'scorer') return (p.goals || 0) + (p.og || 0);
+  if (category === 'assist') return p.assists || 0;
+  return 1;
 }
 
 function missMessage(category) {
@@ -170,6 +188,9 @@ export function checkManager(match, guess) {
     for (const name of m.split(' / ')) {
       const p = { full: name, web: '' };
       if (nameDistance(guess, p) !== Infinity) return m;
+      // managers are often known by their first name (Pep, Nuno, Unai)
+      const first = norm(name).split(' ')[0];
+      if (first.length >= 3 && lev(g, first) <= tolerance(first.length)) return m;
     }
   }
   return null;

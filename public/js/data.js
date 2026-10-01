@@ -1,7 +1,7 @@
 // Loads the verified match database (one JSON file per season) and hands out random matches.
 // Each season file: { season, players: { id: [fullName, webName] }, matches: [...] }
 // Match: { id, d: 'YYYY-MM-DD', h: home, a: away, s: [homeGoals, awayGoals], m: [homeManager, awayManager],
-//          p: [[playerId, side(0 home / 1 away), goals, assists, card(0 none / 1 yellow / 2 red), started?]] }
+//          p: [[playerId, side(0 home / 1 away), goals, assists, card(0 none / 1 yellow / 2 red), started(1/0, -1 unknown), ownGoals?]] }
 
 const cache = new Map();
 let seasonList = null;
@@ -27,9 +27,9 @@ async function loadSeason(season) {
 
 // Turn the compact record into something the game can use directly.
 function expand(raw, D) {
-  const players = raw.p.map(([id, side, goals, assists, card, started]) => {
+  const players = raw.p.map(([id, side, goals, assists, card, started, og]) => {
     const [full, web] = D.players[id] || [String(id), ''];
-    return { id, full, web, side, goals, assists, card, started: started === undefined ? null : started === 1 };
+    return { id, full, web, side, goals, assists, card, og: og || 0, started: started === undefined || started === -1 ? null : started === 1 };
   });
   return {
     id: raw.id,

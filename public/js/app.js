@@ -1,8 +1,8 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=11';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=11';
-import { sfx, setSoundEnabled } from './sound.js?v=11';
-import * as L from './leagues.js?v=11';
-import { privacyHtml, termsHtml } from './legal.js?v=11';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=13';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=13';
+import { sfx, setSoundEnabled } from './sound.js?v=13';
+import * as L from './leagues.js?v=13';
+import { privacyHtml, termsHtml } from './legal.js?v=13';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -232,7 +232,7 @@ function renderSetup() {
         <button class="how-hide" data-act="toggle-rules" aria-label="Hide how it works">Hide ✕</button>
       </div>
       <ul class="how-list">${gameRules(S.game).replace(/<li>/g, '<li>')}</ul>
-      <p class="hint">Three darts per match, everyone on the same match. Surnames and small typos are fine.</p>
+      <p class="hint">Three darts per match, everyone on the same match. Surnames and small typos are fine. Own goals count as goals, and a player who scored twice can be picked twice.</p>
     </div>`}
 
     ${g.max > 1 ? `
@@ -453,7 +453,7 @@ function renderPlay() {
   const catBtns = cats.map(k => {
     const c = TARGET_INFO[k];
     return `
-    <button class="chip ${S.cat === k ? 'on' : ''}" data-act="cat" data-v="${k}">
+    <button type="button" class="chip ${S.cat === k ? 'on' : ''}" data-act="cat" data-v="${k}">
       <span class="chip-i">${c.icon}</span>
       <span class="chip-l">${c.short}</span>
       <span class="chip-p">${chipPoints(k, c)}</span>
@@ -668,7 +668,9 @@ function closeModal() {
 const COMMON_RULES = `
   <li><b>Real matches.</b> Each round pulls a genuine Premier League match from 2016/17 to 2025/26. Pick seasons and a preferred club on the setup screen.</li>
   <li><b>Hotseat, three darts.</b> Everyone answers on the same match, three darts each, then a new match comes up.</li>
-  <li><b>Spelling tolerance.</b> Surnames are fine and small typos are forgiven. Each answer only counts once per player per match.</li>
+  <li><b>Spelling tolerance.</b> Surnames are fine and small typos are forgiven.</li>
+  <li><b>Own goals count.</b> An own goal is a goal, so the player who scored it counts as a Scorer.</li>
+  <li><b>Every goal counts.</b> A player can be picked once for each goal or assist they got: two goals means two Scorer darts, two assists means two Assist darts. Lineup, Booked and the scoreline count once per player per match.</li>
   <li><b>Answer key forfeit.</b> Stuck? The answer key shows everything, but the game ends and has to be restarted.</li>`;
 
 const TIERS = `
@@ -686,14 +688,14 @@ function rulesHtml(game = S.screen === 'hub' ? null : S.game) {
     <h2>How to play</h2>
     <p>Every game uses real Premier League matches. You get three darts per match, and each dart is one answer: a scorer, an assist, the exact scoreline, a player in the lineup or someone who got booked.</p>
     ${Object.values(GAMES).map(g => `<p><b>${g.icon} ${g.title}.</b> ${g.blurb}</p>`).join('')}
-    <p class="hint">Lineup counts anyone who played, starters and subs. Assists follow the official Premier League/FPL record.</p>
+    <p class="hint">Lineup counts anyone who played, starters and subs. Own goals count as goals. Assists follow the official Premier League/FPL record.</p>
     <button class="btn primary big" data-act="close">Got it</button>`;
   }
   const specific = gameRules(game);
   return `
   <h2>${GAMES[game].icon} ${GAMES[game].title}</h2>
   <ol class="rules">${specific}${COMMON_RULES}</ol>
-  <p class="hint">Lineup counts anyone who played, starters and subs. Assists follow the official Premier League/FPL record.</p>
+  <p class="hint">Lineup counts anyone who played, starters and subs. Own goals count as goals. Assists follow the official Premier League/FPL record.</p>
   <button class="btn primary big" data-act="close">Got it</button>`;
 }
 
@@ -735,7 +737,10 @@ function answerKeyHtml() {
     <div class="key-col">
       <h4>${esc(i === 0 ? m.home : m.away)}</h4>
       <p><span class="k">Manager</span> ${esc(m.managers[i] || 'Unknown')}</p>
-      <p><span class="k">⚽ Scorers</span> ${list(ps.filter(p => p.goals), p => esc(shortName(p)) + (p.goals > 1 ? ` ×${p.goals}` : ''))}</p>
+      <p><span class="k">⚽ Scorers</span> ${list([
+        ...ps.filter(p => p.goals).map(p => esc(shortName(p)) + (p.goals > 1 ? ` ×${p.goals}` : '')),
+        ...m.players.filter(p => p.side !== i && p.og).map(p => esc(shortName(p)) + ` (OG${p.og > 1 ? ' ×' + p.og : ''})`),
+      ], x => x)}</p>
       <p><span class="k">🅰️ Assists</span> ${list(ps.filter(p => p.assists), p => esc(shortName(p)) + (p.assists > 1 ? ` ×${p.assists}` : ''))}</p>
       <p><span class="k">🟨🟥 Cards</span> ${list(ps.filter(p => p.card), p => esc(shortName(p)) + (p.card === 2 ? ' 🟥' : ' 🟨'))}</p>
       <p><span class="k">👕 ${known ? 'Started' : 'Played'}</span> ${list(known ? starters : ps, p => esc(displayName(p)))}</p>
@@ -796,7 +801,7 @@ async function newRound() {
   const n = S.players.length;
   S.turnOrder = Array.from({ length: n }, (_, i) => (S.legStarter + i) % n).filter(i => !S.players[i].out);
   S.turnIdx = 0;
-  S.claimed = S.players.map(() => new Set());
+  S.claimed = S.players.map(() => new Map());
   S.lastVisits = [];
   startTurn();
 }
@@ -828,7 +833,7 @@ function throwDart() {
   S.error = null;
   p.darts += 1;
   const dart = { cat: S.cat, answer, res, extra: '' };
-  if (res.correct) claimed.add(res.key);
+  if (res.correct) claimed.set(res.key, (claimed.get(res.key) || 0) + 1);
   S.visit.push(dart);
   S.cat = null;
 

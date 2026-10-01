@@ -63,8 +63,9 @@ for season in sorted(os.listdir(SRC)):
         for pid, p in sorted(P, key=lambda x: (x[1]['side'], -(x[1]['st'] or (1 if x[1]['min']>=45 else 0)), -x[1]['min'])):
             full, web = players.get(pid, (str(pid), ''))
             used[pid] = (full, web)
-            e = [pid, 0 if p['side']=='h' else 1, p['g'], p['a'], 2 if p['r'] else (1 if p['y'] else 0)]
-            if p['st'] is not None: e.append(p['st'])
+            # [id, side (0 home / 1 away), goals, assists, card (0/1 yellow/2 red), started (1/0, -1 unknown), own goals (only if any)]
+            e = [pid, 0 if p['side']=='h' else 1, p['g'], p['a'], 2 if p['r'] else (1 if p['y'] else 0), -1 if p['st'] is None else p['st']]
+            if p['og']: e.append(p['og'])
             rec['p'].append(e)
         out.append(rec)
     json.dump(dict(season=season, players={k: list(v) for k, v in used.items()}, matches=out), open(f'{OUT}/{season}.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
