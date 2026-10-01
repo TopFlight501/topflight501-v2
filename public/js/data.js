@@ -62,14 +62,16 @@ export async function clubsIn(seasons) {
 }
 
 // clubs: optional list of club names; only matches involving one of them are picked.
-export async function randomMatch(seasons, clubs = [], retried = false) {
+// opts.rich: only matches with at least one goal, one assist and one booking
+export async function randomMatch(seasons, clubs = [], opts = {}, retried = false) {
   let pool = seasons && seasons.length ? seasons : await getSeasons();
   if (clubs.length) {
     const map = await getClubs();
     pool = pool.filter(s => (map[s] || []).some(c => clubs.includes(c)));
     if (!pool.length) throw new Error('None of those clubs played in the chosen seasons.');
   }
-  const wanted = m => !clubs.length || clubs.includes(m.h) || clubs.includes(m.a);
+  const rich = m => m.s[0] + m.s[1] > 0 && m.p.some(x => x[3] > 0) && m.p.some(x => x[4] > 0);
+  const wanted = m => (!clubs.length || clubs.includes(m.h) || clubs.includes(m.a)) && (!opts.rich || rich(m));
   for (let attempt = 0; attempt < 40; attempt++) {
     const season = pool[Math.floor(Math.random() * pool.length)];
     const D = await loadSeason(season);
@@ -81,7 +83,7 @@ export async function randomMatch(seasons, clubs = [], retried = false) {
   }
   if (retried) throw new Error('No matches found.');
   used.clear();
-  return randomMatch(seasons, clubs, true);
+  return randomMatch(seasons, clubs, opts, true);
 }
 
 export function seasonLabel(s) {

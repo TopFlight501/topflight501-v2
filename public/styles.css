@@ -270,3 +270,57 @@ main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px
 @media (prefers-reduced-motion: reduce) {
   .splash-mark, .ring.r1, .splash-name, .splash-tag, .splash-line, .splash-dots span { animation: none !important; }
 }
+
+/* game picker */
+.hub h2 { margin-bottom: .8rem; }
+.games { display: grid; gap: 12px; }
+.game-card {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; text-align: left;
+  background: var(--card); border: 1.5px solid var(--line); border-radius: var(--radius); padding: 16px; cursor: pointer;
+  box-shadow: var(--shadow); transition: border-color .15s, transform .1s;
+}
+.game-card:hover { border-color: var(--green); }
+.game-card:active { transform: scale(.99); }
+.game-icon { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; font-size: 1.7rem; background: var(--soft); }
+.game-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.game-title { font-weight: 800; font-size: 1.15rem; color: var(--teal); }
+.game-blurb { font-size: .9rem; color: var(--muted); line-height: 1.35; }
+.game-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.game-tags span { font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--green-deep); background: color-mix(in srgb, var(--green) 13%, transparent); padding: 2px 8px; border-radius: 999px; }
+.game-go { font-size: 1.8rem; color: var(--muted); font-weight: 300; }
+.back { background: none; border: 0; color: var(--muted); font-weight: 600; padding: 0 0 8px; cursor: pointer; }
+.setup-blurb { margin: -.4rem 0 1rem; }
+.seg.count { grid-template-columns: repeat(4, 1fr); }
+.seg.count.c3 { grid-template-columns: repeat(3, 1fr); }
+.seg.count.c2 { grid-template-columns: repeat(2, 1fr); }
+.names.n1 { grid-template-columns: 1fr; }
+
+/* scoreboard extras */
+.board.many .pl-score { font-size: 2.3rem; }
+.pl.is-out { opacity: .35; }
+.pl-lives { font-size: 1.6rem; line-height: 1.6; letter-spacing: 2px; }
+.heart.lost { opacity: .5; }
+.out-tag { font-weight: 800; letter-spacing: .1em; font-size: 1.3rem; color: var(--red); }
+.pl-target { font-size: 1.15rem; font-weight: 800; margin: 6px 0 4px; }
+.track { display: flex; justify-content: center; gap: 5px; margin-bottom: 4px; }
+.track span { width: 16px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.18); }
+.track span.done { background: var(--green); }
+.track span.now { background: var(--yellow); }
+.chips.single { grid-template-columns: 1fr; }
+.chips.single .chip { flex-direction: row; justify-content: center; gap: 10px; padding: 12px; }
+.chips.single .chip-l { font-size: 1rem; }
+.result .extra { display: block; font-weight: 500; margin-top: 2px; }
+.victims { display: grid; gap: 10px; margin-top: 6px; }
+.victim { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--soft); cursor: pointer; font-weight: 700; font-size: 1.05rem; }
+.victim:hover { border-color: var(--red); }
+.big-hearts { font-size: 2.2rem; margin: 0; }
+
+/* how it works panel */
+.how { background: var(--soft); border-radius: 14px; padding: 12px 14px 8px; margin: 0 0 16px; }
+.how-head { display: flex; justify-content: space-between; align-items: center; }
+.how-head .label { margin: 0; }
+.how-hide { background: none; border: 0; color: var(--muted); font-weight: 700; font-size: .8rem; cursor: pointer; padding: 4px 0 4px 8px; }
+.how-list { margin: 8px 0 4px; padding-left: 1.1rem; font-size: .93rem; }
+.how-list li { margin-bottom: .45rem; }
+.how-list .tiers { font-size: .9rem; }
+.show-rules { margin: -6px 0 10px; text-align: left; padding-left: 0; width: auto; color: var(--green-deep); }
