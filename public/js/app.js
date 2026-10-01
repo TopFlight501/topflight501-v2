@@ -1,8 +1,8 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=17';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=17';
-import { sfx, setSoundEnabled } from './sound.js?v=17';
-import * as L from './leagues.js?v=17';
-import { privacyHtml, termsHtml } from './legal.js?v=17';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=18';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=18';
+import { sfx, setSoundEnabled } from './sound.js?v=18';
+import * as L from './leagues.js?v=18';
+import { privacyHtml, termsHtml } from './legal.js?v=18';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1377,9 +1377,9 @@ function hideSplash() {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const minShow = reduced ? 900 : 2200;
   const wait = Math.max(0, minShow - (Date.now() - (window.__splashStart || 0)));
-  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 500); }, wait);
+  setTimeout(() => { el.classList.add('out'); document.documentElement.classList.remove('booting'); setTimeout(() => el.remove(), 500); }, wait);
 }
 document.addEventListener('click', e => {
   const el = document.getElementById('splash');
-  if (el && el.contains(e.target) && S.allSeasons.length) { el.classList.add('out'); setTimeout(() => el.remove(), 500); }
+  if (el && el.contains(e.target) && S.allSeasons.length) { el.classList.add('out'); document.documentElement.classList.remove('booting'); setTimeout(() => el.remove(), 500); }
 }, true);

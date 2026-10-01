@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="booting">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#F3F6F5">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json?v=3">
   <link rel="icon" type="image/png" href="img/icon-192.png?v=2">
   <link rel="apple-touch-icon" href="img/icon-192.png?v=2">
   <link rel="preload" href="fonts/outfit-var.woff?v=8" as="font" type="font/woff" crossorigin>
@@ -25,8 +25,11 @@
     @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0C1719;--card:#132225;--teal:#7FC4D2;--muted:#94AAAE;--ink:#E8F1EF;--green:#2BD09E;--line:#24393D;--mark-filter:brightness(0) invert(.85) sepia(.3) hue-rotate(140deg); color-scheme: dark; } }
     :root[data-theme="dark"] { --bg:#0C1719;--card:#132225;--teal:#7FC4D2;--muted:#94AAAE;--ink:#E8F1EF;--green:#2BD09E;--line:#24393D;--mark-filter:brightness(0) invert(.85) sepia(.3) hue-rotate(140deg); color-scheme: dark; }
     html, body { margin: 0; background: var(--bg); }
+    html.booting, html.booting body { background: #F3F6F5; }
     body { font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif; }
-/* splash: the logo sits exactly where Android's own start screen puts it, so the two blend */
+/* splash: the logo sits exactly where Android's own start screen puts it, so the two blend.
+   Always light, because Android's start screen can only be light. */
+#splash { --bg:#F3F6F5;--card:#FFFFFF;--teal:#1E4B57;--muted:#5F7378;--ink:#15262B;--green:#12B886;--line:#DCE5E3;--mark-filter:none; color-scheme: light; }
 #splash {
   position: fixed; inset: 0; z-index: 100;
   background: var(--bg);
@@ -126,6 +129,6 @@
       caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
     }
   </script>
-  <script type="module" src="js/app.js?v=17"></script>
+  <script type="module" src="js/app.js?v=18"></script>
 </body>
 </html>
