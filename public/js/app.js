@@ -1,8 +1,8 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=14';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=14';
-import { sfx, setSoundEnabled } from './sound.js?v=14';
-import * as L from './leagues.js?v=14';
-import { privacyHtml, termsHtml } from './legal.js?v=14';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=16';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=16';
+import { sfx, setSoundEnabled } from './sound.js?v=16';
+import * as L from './leagues.js?v=16';
+import { privacyHtml, termsHtml } from './legal.js?v=16';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -41,6 +41,11 @@ const GAMES = {
     title: 'Sudden Death', icon: '⚡', min: 1, max: 1,
     blurb: 'Keep answering, match after match. Bigger categories score more. One wrong answer and it’s over.',
     tags: ['Solo', 'High score'],
+  },
+  sentoff: {
+    title: 'Sent Off', icon: '🟥', min: 2, max: 4,
+    blurb: 'Take turns guessing the final score. Every wrong guess is a foul and gives everyone a clue. Six fouls and you’re sent off.',
+    tags: ['2–4 players', 'Guess the score'],
   },
 };
 
@@ -172,6 +177,7 @@ function render() {
   if (S.screen === 'setup') return renderSetup();
   if (S.screen === 'handover') return renderHandover();
   if (S.screen === 'play') return renderPlay();
+  if (S.screen === 'sentoff') return renderSentOff();
 }
 
 function renderHub() {
@@ -351,6 +357,9 @@ function boardCell(p, i) {
     }
     case 'sudden':
       return `<div class="pl-score" data-score="${i}">${p.points}</div><div class="pl-sub">${p.streak} in a row</div>`;
+    case 'sentoff':
+      return `<div class="fouls" data-score="${i}">${foulMeter(p)}</div>
+        <div class="pl-sub">${p.out ? '🟥 Sent off' : `${p.fouls} of ${MAX_FOULS} fouls${p.wins ? ` · ${p.wins} ✓` : ''}`}</div>`;
     default:
       return `<div class="pl-score" data-score="${i}">${p.score}</div><div class="pl-sub">${p.darts} darts</div>`;
   }
@@ -505,8 +514,143 @@ function nextLabel() {
   return remaining.length ? 'Next player' : 'Next match';
 }
 
+// ---------- Sent Off (guess the score) ----------
+const MAX_FOULS = 6;
+
+function foulMeter(p) {
+  return Array.from({ length: MAX_FOULS }, (_, k) => {
+    const on = k < p.fouls;
+    const mark = k === 2 ? '🟨' : k === MAX_FOULS - 1 ? '🟥' : '✕';
+    return `<span class="foul ${on ? 'on' : ''} ${k === 2 ? 'yc' : ''} ${k === MAX_FOULS - 1 ? 'rc' : ''}">${on || k === 2 || k === MAX_FOULS - 1 ? mark : ''}</span>`;
+  }).join('');
+}
+
+function nextAlive(from) {
+  const n = S.players.length;
+  for (let k = 1; k <= n; k++) { const i = (from + k) % n; if (!S.players[i].out) return i; }
+  return from;
+}
+
+function startSentOffRound() {
+  let first = S.legStarter % S.players.length;
+  if (S.players[first].out) first = nextAlive(first);
+  S.so = { guesses: [], lo: [0, 0], hi: [null, null], turn: first, solved: null, error: null };
+  S.turnOrder = [first]; S.turnIdx = 0;
+  S.screen = 'sentoff';
+  render();
+}
+
+function rangeText(k) {
+  const lo = S.so.lo[k], hi = S.so.hi[k];
+  if (hi !== null && lo === hi) return `✓ ${lo}`;
+  if (hi === null) return lo === 0 ? 'Any' : `${lo} or more`;
+  if (lo === 0) return hi === 0 ? '0' : `${hi} or fewer`;
+  return `${lo} to ${hi}`;
+}
+
+function sideWord(c) { return c === 'ok' ? '✓' : c === 'high' ? 'too many' : 'too few'; }
+
+function renderSentOff() {
+  const so = S.so, m = S.match;
+  const p = S.players[so.turn];
+  const known = k => so.hi[k] !== null && so.lo[k] === so.hi[k];
+  const digit = k => so.solved !== null ? m.score[k] : known(k) ? so.lo[k] : '?';
+  app.innerHTML = `
+  ${scoreboard()}
+  <section class="card play sentoff">
+    ${matchCard()}
+    <div class="so-board ${so.solved !== null ? 'solved' : ''}">
+      <div class="so-team"><span class="so-name">${esc(m.home)}</span><span class="so-digit">${digit(0)}</span><span class="so-range">${so.solved !== null ? '' : rangeText(0)}</span></div>
+      <span class="so-dash">–</span>
+      <div class="so-team"><span class="so-name">${esc(m.away)}</span><span class="so-digit">${digit(1)}</span><span class="so-range">${so.solved !== null ? '' : rangeText(1)}</span></div>
+    </div>
+    ${so.solved !== null ? `
+      <p class="result ok">🎯 <b>${esc(S.players[so.solved].name)}</b> got it: ${m.score[0]}–${m.score[1]}.</p>
+      <button class="btn primary big" data-act="so-next">Next match</button>` : `
+      <form class="throw" data-form="guess" autocomplete="off">
+        <div class="turn-head"><h3>${esc(p.name)}, your guess</h3><span class="hint">${p.fouls} of ${MAX_FOULS} fouls</span></div>
+        <div class="scoreline">
+          <label><span>${esc(m.home)}</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="0" aria-label="Home goals"></label>
+          <span class="dash">–</span>
+          <label><span>${esc(m.away)}</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="1" aria-label="Away goals"></label>
+        </div>
+        ${so.error ? `<p class="error">${esc(so.error)}</p>` : ''}
+        <button class="btn primary big" type="submit">Guess the score</button>
+      </form>`}
+    ${so.guesses.length ? `<ul class="so-guesses">${so.guesses.slice().reverse().map(g => `
+      <li class="${g.exact ? 'ok' : ''}"><b>${esc(g.name)}</b> ${g.h}–${g.a}
+        <span>${g.exact ? '🎯 Correct' : `${esc(m.home)} ${sideWord(g.c[0])} · ${esc(m.away)} ${sideWord(g.c[1])}${g.note ? ` · ${g.note}` : ''}`}</span></li>`).join('')}</ul>` : ''}
+    <div class="play-foot">
+      <button class="btn ghost" data-act="key">📖 Answer key</button>
+      <button class="btn ghost" data-act="rules">❓ Rules</button>
+    </div>
+  </section>`;
+  const f = $('[data-sl="0"]');
+  if (f && !matchMedia('(hover: none)').matches) f.focus();
+}
+
+function submitGuess() {
+  const so = S.so;
+  if (!so || so.solved !== null || S.legOver) return;
+  const hv = $('[data-sl="0"]').value, av = $('[data-sl="1"]').value;
+  if (hv === '' || av === '') { so.error = 'Enter both scores.'; return renderSentOff(); }
+  const h = Number(hv), a = Number(av);
+  if (!Number.isInteger(h) || !Number.isInteger(a) || h < 0 || a < 0 || h > 15 || a > 15) { so.error = 'Scores need to be whole numbers from 0 to 15.'; return renderSentOff(); }
+  if (so.guesses.some(g => g.h === h && g.a === a)) { so.error = `${h}–${a} has already been guessed.`; return renderSentOff(); }
+  so.error = null;
+  const p = S.players[so.turn];
+  const real = S.match.score;
+  const cmp = (g, r) => (g === r ? 'ok' : g > r ? 'high' : 'low');
+  const c = [cmp(h, real[0]), cmp(a, real[1])];
+  const entry = { name: p.name, h, a, c, exact: c[0] === 'ok' && c[1] === 'ok', note: '' };
+  so.guesses.push(entry);
+  if (entry.exact) {
+    so.solved = so.turn;
+    p.wins += 1;
+    renderSentOff(); pulse(so.turn); sfx.hit(); buzz(40);
+    return;
+  }
+  // narrow the clues for everyone
+  [h, a].forEach((g, k) => {
+    if (c[k] === 'ok') { so.lo[k] = so.hi[k] = g; }
+    else if (c[k] === 'high') so.hi[k] = so.hi[k] === null ? g - 1 : Math.min(so.hi[k], g - 1);
+    else so.lo[k] = Math.max(so.lo[k], g + 1);
+  });
+  p.fouls += 1;
+  if (p.fouls === 3) entry.note = '🟨 Booked';
+  if (p.fouls >= MAX_FOULS) { p.out = true; entry.note = '🟥 Sent off'; }
+  sfx.miss(); buzz(p.out ? [80, 60, 160] : 30);
+  const alive = S.players.filter(x => !x.out);
+  if (alive.length === 1) {
+    S.legOver = true;
+    renderSentOff();
+    setTimeout(() => sentOffWon(alive[0]), 700);
+    return;
+  }
+  so.turn = nextAlive(so.turn);
+  S.turnOrder = [so.turn]; S.turnIdx = 0;
+  renderSentOff();
+}
+
+function sentOffWon(p) {
+  p.legs += 1;
+  L.recordGame({ game: 'sentoff', players: S.players.map(x => x.name), winner: p.name, solo: false, league: null, detail: `${p.fouls} ${p.fouls === 1 ? 'foul' : 'fouls'}` });
+  confetti(); sfx.win(); buzz([80, 60, 80, 60, 160]);
+  S.legStarter = (S.legStarter + 1) % S.players.length;
+  openModal(`
+    <p class="eyebrow">Last one on the pitch</p>
+    <h2>🟥 ${esc(p.name)} wins Sent Off</h2>
+    <p>${esc(p.name)} finished on <b>${p.fouls} ${p.fouls === 1 ? 'foul' : 'fouls'}</b> and guessed ${p.wins} ${p.wins === 1 ? 'score' : 'scores'} right.</p>
+    <p class="hint">The last match finished ${esc(S.match.home)} ${S.match.score[0]}–${S.match.score[1]} ${esc(S.match.away)}.</p>
+    <p class="legs-line">${S.players.map(x => `${esc(x.name)} <b>${x.legs}</b>`).join(' · ')}</p>
+    <div class="row">
+      <button class="btn ghost" data-act="newgame">Change game</button>
+      <button class="btn primary" data-act="nextleg">Play again</button>
+    </div>`, { dismissable: false });
+}
+
 // ---------- leagues & history ----------
-const GAME_ICON = { x01: '🎯', killer: '🔪', clock: '🏟️', sudden: '⚡' };
+const GAME_ICON = { x01: '🎯', killer: '🔪', clock: '🏟️', sudden: '⚡', sentoff: '🟥' };
 const shortDate = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 function resultRow(g) {
@@ -716,6 +860,12 @@ function gameRules(game) {
       <li><b>One target at a time.</b> Each correct dart moves you on to the next target, even within the same visit.</li>
       <li><b>Every target is possible.</b> Matches in this game always have at least one goal, one assist and one booking.</li>
       <li><b>First to finish wins.</b> Solo, try to get round in as few darts as you can.</li>`,
+    sentoff: `
+      <li><b>Guess the final score.</b> Everyone sees the same real match. Take turns guessing the exact scoreline, one guess each.</li>
+      <li><b>Every miss is a clue.</b> After a wrong guess, everyone is told whether each team scored <b>too many</b>, <b>too few</b> or <b>✓ right</b>. The board narrows down what the score can be.</li>
+      <li><b>Every miss is a foul.</b> Your 3rd foul is a 🟨 yellow card and your 6th is a 🟥 red: you’re sent off.</li>
+      <li><b>Get it right</b> and you win the match. A new match comes up, but fouls carry over.</li>
+      <li><b>Last one on the pitch wins.</b> Careful: every wrong guess helps your rivals too.</li>`,
     sudden: `
       <li><b>Solo survival.</b> Answer three darts per match, match after match.</li>
       <li><b>Score as you go.</b> Each correct answer adds its points. ${TIERS}</li>
@@ -772,7 +922,7 @@ async function begin() {
 }
 
 function resetPlayer(p) {
-  Object.assign(p, { score: S.start, darts: 0, lives: KILLER_LIVES, armed: false, out: false, prog: 0, points: 0, streak: 0 });
+  Object.assign(p, { score: S.start, darts: 0, lives: KILLER_LIVES, armed: false, out: false, prog: 0, points: 0, streak: 0, fouls: 0, wins: 0 });
 }
 
 async function startLeg() {
@@ -803,6 +953,7 @@ async function newRound() {
   S.turnIdx = 0;
   S.claimed = S.players.map(() => new Map());
   S.lastVisits = [];
+  if (S.game === 'sentoff') { startSentOffRound(); return; }
   startTurn();
 }
 
@@ -1116,6 +1267,7 @@ document.addEventListener('click', async e => {
       break;
     case 'close': closeModal(); break;
     case 'go': S.screen = 'play'; render(); break;
+    case 'so-next': S.legStarter = (S.legStarter + 1) % S.players.length; await newRound(); break;
     case 'cat': e.preventDefault(); S.cat = v; S.error = null; renderPlay(); break;
     case 'victim': hitVictim(Number(v)); break;
     case 'endvisit': endVisit(); break;
@@ -1140,6 +1292,7 @@ document.addEventListener('submit', e => {
   e.preventDefault();
   const f = e.target.dataset.form;
   if (f === 'throw' && S.cat) throwDart();
+  if (f === 'guess') submitGuess();
   if (f === 'bonus') resolveBonus($('[data-bonus]').value);
   if (f === 'new-league') {
     const name = ($('[data-new-league]') || {}).value || '';

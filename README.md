@@ -9,7 +9,7 @@ Premier League trivia played like darts. Every match, scorer, assist, card, play
 | `public/` | The website itself. This is all Render serves. |
 | `public/data/` | The match database: one file per season, 2016/17 to 2025/26 (3,799 matches). |
 | `public/js/answers.js` | Points values and spelling-tolerant answer checking. Change the points here. |
-| `public/js/app.js` | The games (501 Checkout, Killer, Round the Grounds, Sudden Death), setup, settings, answer key. |
+| `public/js/app.js` | The games (501 Checkout, Killer, Round the Grounds, Sudden Death, Sent Off), setup, settings, answer key. |
 | `public/js/sound.js` | Sound effects (generated in the browser, no audio files). |
 | `tools/` | Scripts that rebuild the database (only needed when adding a new season). |
 | `render.yaml` | Tells Render to host `public/` as a static site. |
