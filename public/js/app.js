@@ -1,8 +1,8 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=13';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=13';
-import { sfx, setSoundEnabled } from './sound.js?v=13';
-import * as L from './leagues.js?v=13';
-import { privacyHtml, termsHtml } from './legal.js?v=13';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=14';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=14';
+import { sfx, setSoundEnabled } from './sound.js?v=14';
+import * as L from './leagues.js?v=14';
+import { privacyHtml, termsHtml } from './legal.js?v=14';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');

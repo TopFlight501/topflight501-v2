@@ -125,7 +125,9 @@ export function checkDart(match, category, answer, claimed) {
       : { correct: false, points: 0, message: `Not the scoreline.` };
   }
 
-  const guess = String(answer || '').trim();
+  let guess = String(answer || '').trim();
+  // "Janmaat OG", "Janmaat (o.g.)" or "Janmaat own goal" all mean the same as "Janmaat"
+  if (category === 'scorer') guess = guess.replace(/[\s(\[-]*(o\.?\s?g\.?|own[\s-]?goal)[)\]]*\s*$/i, '').trim() || guess;
   if (norm(guess).replace(/ /g, '').length < 3) return { correct: false, points: 0, message: 'Type at least 3 letters.', invalid: true };
 
   const pools = {
