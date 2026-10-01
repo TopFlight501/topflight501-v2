@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Top Flight 501 | Premier League trivia darts</title>
   <meta name="description" content="Premier League trivia scored like darts. Start on 501, name scorers, assists, lineups and bookings from real matches, and race to zero.">
-  <meta name="theme-color" content="#1E4B57">
+  <meta name="theme-color" content="#F3F6F5">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="img/icon-192.png">
-  <link rel="apple-touch-icon" href="img/icon-192.png">
+  <link rel="icon" type="image/png" href="img/icon-192.png?v=2">
+  <link rel="apple-touch-icon" href="img/icon-192.png?v=2">
   <link rel="preload" href="fonts/outfit-var.woff?v=8" as="font" type="font/woff" crossorigin>
   <script>
     (function () {
@@ -26,46 +26,44 @@
     :root[data-theme="dark"] { --bg:#0C1719;--card:#132225;--teal:#7FC4D2;--muted:#94AAAE;--ink:#E8F1EF;--green:#2BD09E;--line:#24393D;--mark-filter:brightness(0) invert(.85) sepia(.3) hue-rotate(140deg); color-scheme: dark; }
     html, body { margin: 0; background: var(--bg); }
     body { font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif; }
-/* splash */
+/* splash: the logo sits exactly where Android's own start screen puts it, so the two blend */
 #splash {
-  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px 16px;
-  background: radial-gradient(120% 80% at 50% 30%, var(--card) 0%, var(--bg) 70%);
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--bg);
   transition: opacity .45s ease, visibility .45s;
 }
 #splash.out { opacity: 0; visibility: hidden; }
-.splash-inner { text-align: center; max-width: 340px; }
-.splash-board { position: relative; width: 190px; height: 190px; margin: 0 auto 18px; display: grid; place-items: center; }
-.ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--line); }
-.ring.r2 { inset: 28px; border-color: color-mix(in srgb, var(--green) 45%, var(--line)); }
-.ring.r3 { inset: 62px; background: color-mix(in srgb, var(--green) 14%, transparent); border-color: var(--green); }
-.splash-mark { position: relative; height: 128px; width: auto; filter: var(--mark-filter); animation: dart-in .7s cubic-bezier(.2,.9,.3,1.25) .15s both, wobble .5s ease-out .85s; transform-origin: 50% 95%; }
-@keyframes dart-in { from { transform: translate(120px, -140px) rotate(28deg) scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes wobble { 0% { transform: rotate(0); } 25% { transform: rotate(-5deg); } 50% { transform: rotate(3deg); } 75% { transform: rotate(-1.5deg); } 100% { transform: rotate(0); } }
-.ring.r1 { animation: ripple .6s ease-out .82s both; }
-@keyframes ripple { from { transform: scale(.85); opacity: .2; } to { transform: scale(1); opacity: 1; } }
-.splash-name { margin: 0; font-size: 2.1rem; font-weight: 800; color: var(--teal); letter-spacing: -.02em; animation: rise .5s ease .9s both; }
-.splash-tag { margin: 2px 0 14px; font-size: .75rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); animation: rise .5s ease 1s both; }
-.splash-line { margin: 0 auto; font-size: 1.1rem; font-weight: 600; color: var(--ink); text-wrap: balance; min-height: 2.9em; animation: rise .5s ease 1.15s both; }
+.splash-board { position: absolute; left: 50%; top: 50%; width: 190px; height: 190px; transform: translate(-50%, -50%); display: grid; place-items: center; }
+.ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--line); animation: ring-in .6s ease-out both; }
+.ring.r1 { animation-delay: .35s; }
+.ring.r2 { inset: 28px; border-color: color-mix(in srgb, var(--green) 45%, var(--line)); animation-delay: .25s; }
+.ring.r3 { inset: 62px; background: color-mix(in srgb, var(--green) 14%, transparent); border-color: var(--green); animation-delay: .15s; }
+@keyframes ring-in { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.splash-mark { position: relative; height: 116px; width: auto; filter: var(--mark-filter); animation: thunk .55s ease-out .45s both; transform-origin: 50% 95%; }
+@keyframes thunk { 0% { transform: none; } 30% { transform: rotate(-5deg) scale(1.04); } 60% { transform: rotate(3deg); } 100% { transform: none; } }
+.splash-text { position: absolute; left: 16px; right: 16px; top: calc(50% + 112px); text-align: center; max-width: 360px; margin: 0 auto; }
+.splash-name { margin: 0; font-size: 2.1rem; font-weight: 800; color: var(--teal); letter-spacing: -.02em; animation: rise .5s ease .55s both; }
+.splash-tag { margin: 2px 0 12px; font-size: .75rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); animation: rise .5s ease .65s both; }
+.splash-line { margin: 0 auto; font-size: 1.1rem; font-weight: 600; color: var(--ink); text-wrap: balance; min-height: 2.9em; animation: rise .5s ease .8s both; }
 @keyframes rise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
-.splash-dots { display: flex; justify-content: center; gap: 7px; margin-top: 16px; }
+.splash-dots { display: flex; justify-content: center; gap: 7px; margin-top: 12px; animation: rise .4s ease .9s both; }
 .splash-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: dot 1s ease-in-out infinite; }
 .splash-dots span:nth-child(2) { animation-delay: .15s; }
 .splash-dots span:nth-child(3) { animation-delay: .3s; }
 @keyframes dot { 0%, 100% { transform: scale(.6); opacity: .4; } 50% { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .splash-mark, .ring.r1, .splash-name, .splash-tag, .splash-line, .splash-dots span { animation: none !important; }
+  .ring, .splash-mark, .splash-name, .splash-tag, .splash-line, .splash-dots, .splash-dots span { animation: none !important; }
 }
-
   </style>
   <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
   <div id="splash" role="status" aria-label="Loading Top Flight 501">
-    <div class="splash-inner">
-      <div class="splash-board" aria-hidden="true">
-        <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
-        <img class="splash-mark" src="img/mark.png?v=8" alt="" width="98" height="160">
-      </div>
+    <div class="splash-board" aria-hidden="true">
+      <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
+      <img class="splash-mark" src="img/mark.png?v=9" alt="" width="71" height="116">
+    </div>
+    <div class="splash-text">
       <h1 class="splash-name">Top Flight 501</h1>
       <p class="splash-tag">Football · Darts · Trivia</p>
       <p class="splash-line" id="splash-line">From 501 to zero, one answer at a time.</p>
@@ -92,7 +90,7 @@
   </script>
   <header class="top">
     <button class="brand" data-act="home" aria-label="Top Flight 501 home">
-      <img src="img/mark.png?v=8" alt="" width="30" height="49">
+      <img src="img/mark.png?v=9" alt="" width="30" height="49">
       <span>
         <span class="brand-name">Top Flight 501</span>
         <span class="brand-tag">Football · Darts · Trivia</span>
