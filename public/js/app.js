@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=19';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=19';
-import { sfx, setSoundEnabled } from './sound.js?v=19';
-import * as L from './leagues.js?v=19';
-import { initAnalytics, track } from './analytics.js?v=19';
-import { privacyHtml, termsHtml } from './legal.js?v=19';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=20';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=20';
+import { sfx, setSoundEnabled } from './sound.js?v=20';
+import * as L from './leagues.js?v=20';
+import { initAnalytics, track } from './analytics.js?v=20';
+import { privacyHtml, termsHtml } from './legal.js?v=20';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -369,7 +369,11 @@ function boardCell(p, i) {
 function scoreboard() {
   const idx = currentIdx();
   const n = S.players.length;
-  return `<div class="board ${n === 1 ? 'solo' : ''} ${n > 2 ? 'many' : ''}">
+  return `<div class="gamebar">
+    <button type="button" class="back quit" data-act="home" aria-label="Quit game and go back to all games">‹ Quit game</button>
+    <span class="gamebar-t">${G().icon} ${esc(G().title)}</span>
+  </div>
+  <div class="board ${n === 1 ? 'solo' : ''} ${n > 2 ? 'many' : ''}">
     ${S.players.map((p, i) => `
       <div class="pl ${i === idx ? 'active' : ''} ${p.out ? 'is-out' : ''}">
         <div class="pl-name">${esc(p.name)}${n > 1 ? `<span class="legs" title="Games won">${p.legs}</span>` : ''}</div>

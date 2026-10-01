@@ -277,6 +277,10 @@ main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px
 .game-tags span { font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--green-deep); background: color-mix(in srgb, var(--green) 13%, transparent); padding: 2px 8px; border-radius: 999px; }
 .game-go { font-size: 1.8rem; color: var(--muted); font-weight: 300; }
 .back { background: none; border: 0; color: var(--muted); font-weight: 600; padding: 0 0 8px; cursor: pointer; }
+.gamebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
+.gamebar .back { padding: 6px 0; font-size: .9rem; }
+.gamebar .back:hover { color: var(--teal); }
+.gamebar-t { font-size: .8rem; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .setup-blurb { margin: -.4rem 0 1rem; }
 .seg.count { grid-template-columns: repeat(4, 1fr); }
 .seg.count.c3 { grid-template-columns: repeat(3, 1fr); }
