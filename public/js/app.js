@@ -1,5 +1,6 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=4';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=4';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=5';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=5';
+import { sfx, setSoundEnabled } from './sound.js?v=5';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -38,6 +39,38 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem('tf501:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem('tf501:' + k, JSON.stringify(v)); } catch { /* ignore */ } },
 };
+
+// ---------- settings ----------
+const SETTINGS_DEFAULT = { theme: 'system', sound: true, vibrate: true };
+let settings = { ...SETTINGS_DEFAULT, ...store.get('settings', {}) };
+const canVibrate = typeof navigator !== 'undefined' && 'vibrate' in navigator;
+
+function applySettings() {
+  const root = document.documentElement;
+  if (settings.theme === 'system') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', settings.theme);
+  setSoundEnabled(settings.sound);
+}
+function saveSettings() { store.set('settings', settings); applySettings(); }
+function buzz(pattern) { if (settings.vibrate && canVibrate) { try { navigator.vibrate(pattern); } catch { /* ignore */ } } }
+applySettings();
+
+function settingsHtml() {
+  const seg = (key, opts) => `<div class="seg ${opts.length === 3 ? 'three' : ''}">${opts.map(([v, label]) =>
+    `<button class="seg-btn ${String(settings[key]) === String(v) ? 'on' : ''}" data-act="set" data-k="${key}" data-v="${v}">${label}</button>`).join('')}</div>`;
+  const bests = [501, 301, 101].map(n => [n, store.get('best:' + n, null)]).filter(([, b]) => b);
+  return `
+  <h2>Settings</h2>
+  <div class="field"><span class="label">Theme</span>${seg('theme', [['system', 'System'], ['light', '☀️ Light'], ['dark', '🌙 Dark']])}</div>
+  <div class="field"><span class="label">Sound effects</span>${seg('sound', [[true, '🔊 On'], [false, '🔇 Off']])}</div>
+  ${canVibrate ? `<div class="field"><span class="label">Vibration</span>${seg('vibrate', [[true, '📳 On'], [false, 'Off']])}</div>` : ''}
+  <div class="field">
+    <span class="label">Personal bests (Solo Run)</span>
+    ${bests.length ? `<p class="hint">${bests.map(([n, b]) => `${n}: <b>${b.darts} darts</b>`).join(' · ')}</p>
+      <button class="btn ghost" data-act="reset-bests">Reset personal bests</button>` : '<p class="hint">No personal bests yet.</p>'}
+  </div>
+  <button class="btn primary big" data-act="close">Done</button>`;
+}
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const current = () => S.players[S.turnOrder[S.turnIdx]];
@@ -374,7 +407,7 @@ function throwDart() {
   S.visit.push({ cat: S.cat, answer, res });
   S.cat = null;
   render();
-  if (res.correct) pulse(currentIdx());
+  if (res.correct) { pulse(currentIdx()); sfx.hit(); buzz(40); } else { sfx.miss(); }
   if (p.score <= 0) { S.legOver = true; return setTimeout(() => legWon(p), 650); }
   if (S.visit.length === 3 && S.visit.every(d => d.res.correct)) setTimeout(managerBonus, 500);
 }
@@ -399,7 +432,7 @@ function resolveBonus(guess) {
   const p = current();
   const hit = guess ? checkManager(S.match, guess) : null;
   S.visit.bonus = hit ? MANAGER_BONUS : 0;
-  if (hit) p.score -= MANAGER_BONUS;
+  if (hit) { p.score -= MANAGER_BONUS; sfx.bonus(); buzz([40, 60, 40]); } else { sfx.miss(); }
   openModal(`
     <h2>${hit ? '🔥 Bonus!' : 'No bonus'}</h2>
     <p>${hit ? `${esc(hit)}, correct. <b>−${MANAGER_BONUS}</b>` : `The managers were <b>${esc(S.match.managers[0])}</b> and <b>${esc(S.match.managers[1])}</b>.`}</p>
@@ -431,6 +464,7 @@ function legWon(p) {
     extra = `<p class="legs-line">${S.players.map(x => `${esc(x.name)} <b>${x.legs}</b>`).join(' · ')}</p>`;
   }
   confetti();
+  sfx.win(); buzz([80, 60, 80, 60, 160]);
   S.legStarter = (S.legStarter + 1) % S.players.length;
   openModal(`
     <p class="eyebrow">Game shot!</p>
@@ -497,6 +531,20 @@ document.addEventListener('click', async e => {
     case 'start': S.start = Number(v); renderSetup(); break;
     case 'begin': S.busy = true; renderSetup(); await begin(); break;
     case 'rules': openModal(rulesHtml()); break;
+    case 'settings': openModal(settingsHtml()); break;
+    case 'set': {
+      const k = b.dataset.k; settings[k] = k === 'theme' ? v : v === 'true';
+      saveSettings();
+      if (k === 'sound' && settings.sound) sfx.hit();
+      if (k === 'vibrate' && settings.vibrate) buzz(40);
+      openModal(settingsHtml());
+      break;
+    }
+    case 'reset-bests':
+      [501, 301, 101].forEach(n => store.set('best:' + n, null));
+      openModal(settingsHtml());
+      if (S.screen === 'setup') renderSetup();
+      break;
     case 'close': closeModal(); break;
     case 'go': S.screen = 'play'; render(); break;
     case 'cat': e.preventDefault(); S.cat = v; S.error = null; renderPlay(); break;

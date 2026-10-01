@@ -14,18 +14,21 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <header class="top">
     <button class="brand" data-act="home" aria-label="Top Flight 501 home">
-      <img src="img/mark.png?v=4" alt="" width="30" height="49">
+      <img src="img/mark.png?v=5" alt="" width="30" height="49">
       <span>
         <span class="brand-name">Top Flight 501</span>
         <span class="brand-tag">Football · Darts · Trivia</span>
       </span>
     </button>
-    <button class="icon-btn" data-act="rules" aria-label="How to play">?</button>
+    <div class="top-actions">
+      <button class="icon-btn" data-act="settings" aria-label="Settings" title="Settings">⚙️</button>
+      <button class="icon-btn" data-act="rules" aria-label="How to play" title="How to play">?</button>
+    </div>
   </header>
 
   <main id="app" aria-live="polite"><p class="loading">Loading…</p></main>
@@ -33,9 +36,13 @@
 
   <footer class="foot">
     <p>Match data: official Premier League / FPL records, 2016/17 to 2025/26.</p>
+    <p class="social">
+      <a href="https://x.com/topflight501_" target="_blank" rel="noopener">X @topflight501_</a>
+      <a href="https://www.instagram.com/topflight501_/" target="_blank" rel="noopener">Instagram @topflight501_</a>
+    </p>
     <p><a href="https://buymeacoffee.com/TopFlight501" target="_blank" rel="noopener">☕ Buy me a coffee</a> · Feedback: <a href="mailto:topflight501@outlook.com">topflight501@outlook.com</a></p>
   </footer>
 
-  <script type="module" src="js/app.js?v=4"></script>
+  <script type="module" src="js/app.js?v=5"></script>
 </body>
 </html>
