@@ -1,6 +1,8 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=7';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=7';
-import { sfx, setSoundEnabled } from './sound.js?v=7';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=9';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=9';
+import { sfx, setSoundEnabled } from './sound.js?v=9';
+import * as L from './leagues.js?v=9';
+import { privacyHtml, termsHtml } from './legal.js?v=9';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -67,6 +69,10 @@ const S = {
   error: null,
   legOver: false,
   pending: null,          // killer: waiting for the player to pick who loses a life
+  leagueId: '',           // league this game counts towards ('' = none)
+  creatingLeague: false,
+  openLeague: null,       // league shown on the leagues screen
+  h2h: ['', ''],
 };
 
 const store = {
@@ -112,6 +118,15 @@ function settingsHtml() {
     ${bests.length ? `<p class="hint">${bests.join('<br>')}</p>
       <button class="btn ghost" data-act="reset-bests">Reset personal bests</button>` : '<p class="hint">No personal bests yet.</p>'}
   </div>
+  <div class="field">
+    <span class="label">Your data</span>
+    <p class="hint">Everything is saved on this device only. Make a backup to move leagues and history to another phone.</p>
+    <div class="row wrap">
+      <button class="btn ghost" data-act="backup">⬇️ Backup</button>
+      <button class="btn ghost" data-act="restore">⬆️ Restore</button>
+      <button class="btn ghost danger-text" data-act="wipe">Delete all my data</button>
+    </div>
+  </div>
   <button class="btn primary big" data-act="close">Done</button>`;
 }
 
@@ -140,6 +155,7 @@ function clampPlayers() {
 // ---------- rendering ----------
 function render() {
   if (S.screen === 'hub') return renderHub();
+  if (S.screen === 'leagues') return renderLeagues();
   if (S.screen === 'setup') return renderSetup();
   if (S.screen === 'handover') return renderHandover();
   if (S.screen === 'play') return renderPlay();
@@ -162,6 +178,14 @@ function renderHub() {
           <span class="game-go" aria-hidden="true">›</span>
         </button>`).join('')}
     </div>
+    <button class="game-card league-card" data-act="leagues">
+      <span class="game-icon" aria-hidden="true">🏆</span>
+      <span class="game-body">
+        <span class="game-title">Leagues &amp; history</span>
+        <span class="game-blurb">League tables, results and head-to-head records for you and your mates. Saved on this device.</span>
+      </span>
+      <span class="game-go" aria-hidden="true">›</span>
+    </button>
     ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
   </section>`;
 }
@@ -215,10 +239,13 @@ function renderSetup() {
       </div>
     </div>` : ''}
 
+    ${multi ? leagueField() : ''}
+
+    <datalist id="known-names">${namesForList().map(n => `<option value="${esc(n)}"></option>`).join('')}</datalist>
     <div class="names n${S.nPlayers}">
       ${Array.from({ length: S.nPlayers }, (_, i) => `
         <label class="field"><span class="label">${multi ? `${word} ${ordinals[i]}` : 'Your name'}</span>
-        <input class="text" id="name-${i}" data-name="${i}" maxlength="20" placeholder="Enter name" value="${esc(S.names[i])}"></label>`).join('')}
+        <input class="text" id="name-${i}" data-name="${i}" maxlength="20" placeholder="Enter name" list="known-names" autocomplete="off" value="${esc(S.names[i])}"></label>`).join('')}
     </div>
     ${bestLine ? `<p class="hint">${bestLine}</p>` : ''}
 
@@ -254,6 +281,37 @@ function renderSetup() {
     <button class="btn primary big" data-act="begin" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Loading…' : 'Game on'}</button>
     <button class="btn link" data-act="rules">📖 Full rules</button>
   </section>`;
+}
+
+function namesForList() {
+  const lg = S.leagueId ? L.getLeague(S.leagueId) : null;
+  const first = lg ? lg.members : [];
+  const rest = L.knownNames().filter(n => !first.some(m => L.nameKey(m) === L.nameKey(n)));
+  return [...first, ...rest];
+}
+
+function leagueField() {
+  const leagues = L.getLeagues();
+  if (S.leagueId && !leagues.some(l => l.id === S.leagueId)) S.leagueId = '';
+  const lg = S.leagueId ? L.getLeague(S.leagueId) : null;
+  return `
+    <div class="field">
+      <span class="label">League <span class="opt">optional</span></span>
+      ${S.creatingLeague ? `
+      <form class="new-league" data-form="new-league" autocomplete="off">
+        <input class="text" id="new-league-name" data-new-league maxlength="40" placeholder="League name, e.g. Friday night lads">
+        <div class="row">
+          <button class="btn ghost" type="button" data-act="cancel-league">Cancel</button>
+          <button class="btn primary" type="submit">Create league</button>
+        </div>
+      </form>` : `
+      <select id="league" data-league aria-label="League">
+        <option value="">Just a friendly (no league)</option>
+        ${leagues.map(l => `<option value="${l.id}" ${l.id === S.leagueId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
+        <option value="__new">＋ Create a new league</option>
+      </select>
+      <p class="hint">${lg ? `The winner goes into the <b>${esc(lg.name)}</b> table.${lg.members.length ? ` Tap a name box to pick from ${lg.members.length} league ${lg.members.length === 1 ? 'player' : 'players'}.` : ''}` : 'Pick a league to keep a table of who wins.'}</p>`}
+    </div>`;
 }
 
 function activeClubs() { return S.clubs[0] ? [S.clubs[0]] : []; }
@@ -434,6 +492,150 @@ function nextLabel() {
   return remaining.length ? 'Next player' : 'Next match';
 }
 
+// ---------- leagues & history ----------
+const GAME_ICON = { x01: '🎯', killer: '🔪', clock: '🏟️', sudden: '⚡' };
+const shortDate = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+function resultRow(g) {
+  const title = GAMES[g.game] ? GAMES[g.game].title : g.game;
+  const who = g.solo ? esc(g.players[0]) : g.players.map(n => (g.winner && L.nameKey(n) === L.nameKey(g.winner) ? `<b>${esc(n)}</b>` : esc(n))).join(' v ');
+  return `<li class="res">
+    <span class="res-icon" aria-hidden="true">${GAME_ICON[g.game] || '🎯'}</span>
+    <span class="res-body"><span class="res-who">${who}</span><span class="res-meta">${esc(title)}${g.detail ? ' · ' + esc(g.detail) : ''} · ${shortDate(g.at)}</span></span>
+    ${g.solo ? '' : `<span class="res-win">🏆 ${esc(g.winner || '')}</span>`}
+  </li>`;
+}
+
+function h2hBlock(games, scope) {
+  const names = L.table(games).map(r => r.name);
+  if (names.length < 2) return '<p class="hint">Head-to-head records appear once two people have played each other.</p>';
+  const [a, b] = S.h2h;
+  const opt = sel => names.map(n => `<option value="${esc(n)}" ${L.nameKey(n) === L.nameKey(sel) ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  const A = names.find(n => L.nameKey(n) === L.nameKey(a)) || names[0];
+  const B = names.find(n => L.nameKey(n) === L.nameKey(b) && L.nameKey(n) !== L.nameKey(A)) || names.find(n => L.nameKey(n) !== L.nameKey(A));
+  const h = L.headToHead(games, A, B);
+  return `
+    <div class="h2h-pick">
+      <select id="h2h-a-${scope}" data-h2h="0" aria-label="First player">${opt(A)}</select>
+      <span>v</span>
+      <select id="h2h-b-${scope}" data-h2h="1" aria-label="Second player">${opt(B)}</select>
+    </div>
+    <div class="h2h-score">
+      <div><span class="h2h-n">${h.aw}</span><span class="h2h-l">${esc(A)}</span></div>
+      <div class="h2h-mid">${h.played} ${h.played === 1 ? 'game' : 'games'}<br>together</div>
+      <div><span class="h2h-n">${h.bw}</span><span class="h2h-l">${esc(B)}</span></div>
+    </div>`;
+}
+
+function renderLeagues() {
+  const lg = S.openLeague ? L.getLeague(S.openLeague) : null;
+  if (lg) return renderLeague(lg);
+  const leagues = L.getLeagues();
+  const history = L.getHistory();
+  const multi = history.filter(g => !g.solo);
+  app.innerHTML = `
+  <section class="card leagues">
+    <button class="back" data-act="hub">‹ All games</button>
+    <p class="eyebrow">🏆 Leagues &amp; history</p>
+    <h2>Your leagues</h2>
+    ${leagues.length ? `<ul class="league-list">${leagues.map(l => {
+      const t = L.table(L.leagueGames(l.id));
+      const n = L.leagueGames(l.id).length;
+      return `<li><button class="league-row" data-act="open-league" data-v="${l.id}">
+        <span class="lr-name">${esc(l.name)}</span>
+        <span class="lr-meta">${n} ${n === 1 ? 'game' : 'games'}${t[0] && t[0].w ? ` · Top: ${esc(t[0].name)} (${t[0].w})` : ''}</span>
+        <span class="game-go" aria-hidden="true">›</span>
+      </button></li>`;
+    }).join('')}</ul>` : '<p class="hint">No leagues yet. Create one, then pick it on the setup screen before a game.</p>'}
+    ${S.creatingLeague ? `
+    <form class="new-league" data-form="new-league" autocomplete="off">
+      <input class="text" id="new-league-name" data-new-league maxlength="40" placeholder="League name, e.g. Friday night lads">
+      <div class="row">
+        <button class="btn ghost" type="button" data-act="cancel-league">Cancel</button>
+        <button class="btn primary" type="submit">Create league</button>
+      </div>
+    </form>` : `<button class="btn ghost big" data-act="new-league">＋ Create a league</button>`}
+
+    <h3 class="sec">Head-to-head (all games)</h3>
+    ${h2hBlock(multi, 'all')}
+
+    <h3 class="sec">Recent games</h3>
+    ${history.length ? `<ul class="results">${history.slice(0, 25).map(resultRow).join('')}</ul>` : '<p class="hint">Finished games will show up here.</p>'}
+
+    <p class="hint small">Saved on this device only. Use Settings → Backup to keep a copy or move to another phone.</p>
+  </section>`;
+}
+
+function renderLeague(lg) {
+  const games = L.leagueGames(lg.id);
+  const t = L.table(games);
+  app.innerHTML = `
+  <section class="card leagues">
+    <button class="back" data-act="leagues-home">‹ All leagues</button>
+    <p class="eyebrow">🏆 League</p>
+    <h2>${esc(lg.name)}</h2>
+    ${t.length ? `
+    <div class="table-wrap">
+      <table class="ltable">
+        <thead><tr><th>#</th><th class="l">Player</th><th>P</th><th>W</th><th>%</th><th class="l">Form</th></tr></thead>
+        <tbody>${t.map((r, i) => `<tr>
+          <td>${i + 1}</td><td class="l"><b>${esc(r.name)}</b></td><td>${r.p}</td><td>${r.w}</td><td>${r.pct}</td>
+          <td class="l form">${r.form.map(f => `<span class="f ${f}">${f}</span>`).join('')}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : '<p class="hint">No games yet. Start a game with 2 or more players and pick this league on the setup screen.</p>'}
+
+    <button class="btn primary big" data-act="play-league" data-v="${lg.id}">Play a game in this league</button>
+
+    <h3 class="sec">Head-to-head</h3>
+    ${h2hBlock(games, lg.id)}
+
+    <h3 class="sec">Results</h3>
+    ${games.length ? `<ul class="results">${games.slice(0, 50).map(resultRow).join('')}</ul>` : '<p class="hint">Results will show up here.</p>'}
+
+    <div class="row wrap league-tools">
+      <button class="btn ghost" data-act="rename-league">Rename</button>
+      <button class="btn ghost danger-text" data-act="delete-league">Delete league</button>
+    </div>
+  </section>`;
+}
+
+function backup() {
+  const data = L.exportData();
+  const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `topflight501-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+function restore() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'application/json,.json';
+  input.onchange = async () => {
+    const f = input.files && input.files[0];
+    if (!f) return;
+    try {
+      const res = L.importData(JSON.parse(await f.text()));
+      openModal(`<h2>Backup restored</h2><p>Added ${res.addedLeagues} ${res.addedLeagues === 1 ? 'league' : 'leagues'} and ${res.addedGames} ${res.addedGames === 1 ? 'game' : 'games'}. Anything already here was kept.</p><button class="btn primary big" data-act="close">OK</button>`);
+      render();
+    } catch (err) {
+      openModal(`<h2>Couldn’t restore</h2><p>${esc(err.message && /backup/.test(err.message) ? err.message : 'That file couldn’t be read. Pick a backup file made by Top Flight 501.')}</p><button class="btn primary big" data-act="close">OK</button>`);
+    }
+  };
+  input.click();
+}
+
+function wipeAll() {
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith('tf501:')).forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
+  settings = { ...SETTINGS_DEFAULT };
+  applySettings();
+  S.leagueId = ''; S.openLeague = null; S.names = ['', '', '', ''];
+}
+
 // ---------- modals ----------
 function openModal(html, { onClose, dismissable = true } = {}) {
   modalRoot.innerHTML = `<div class="overlay"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
@@ -547,7 +749,7 @@ async function begin() {
     legs: 0,
   }));
   S.legStarter = 0;
-  store.set('setup', { game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs });
+  store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs });
   await startLeg();
 }
 
@@ -759,6 +961,10 @@ function legWon(p) {
     }
   }
   if (!solo) extra += `<p class="legs-line">${S.players.map(x => `${esc(x.name)} <b>${x.legs}</b>`).join(' · ')}</p>`;
+  const detail = S.game === 'x01' ? `${S.start}, ${p.darts} darts` : S.game === 'clock' ? `${p.darts} darts` : S.game === 'killer' ? `${p.lives} ${p.lives === 1 ? 'life' : 'lives'} left` : '';
+  L.recordGame({ game: S.game, players: S.players.map(x => x.name), winner: p.name, solo, league: solo ? null : (S.leagueId || null), detail });
+  const lg = !solo && S.leagueId ? L.getLeague(S.leagueId) : null;
+  if (lg) extra += `<p class="hint">Saved to <b>${esc(lg.name)}</b>. <button class="btn link inline" data-act="open-league" data-v="${lg.id}">See the table</button></p>`;
   confetti();
   sfx.win(); buzz([80, 60, 80, 60, 160]);
   S.legStarter = (S.legStarter + 1) % S.players.length;
@@ -779,6 +985,7 @@ function suddenOver() {
   const isBest = p.points > 0 && (!best || p.points > best.points);
   if (isBest) store.set('best:sudden', { points: p.points, streak: p.streak });
   const last = S.visit[S.visit.length - 1];
+  L.recordGame({ game: 'sudden', players: [p.name], winner: null, solo: true, league: null, detail: `${p.points} pts, ${p.streak} in a row` });
   if (isBest) { confetti(); sfx.win(); } else { sfx.miss(); }
   openModal(`
     <p class="eyebrow">⚡ Sudden death</p>
@@ -846,6 +1053,29 @@ document.addEventListener('click', async e => {
   switch (act) {
     case 'pick': S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
     case 'hub': goHub(); break;
+    case 'leagues': S.screen = 'leagues'; S.openLeague = null; S.creatingLeague = false; renderLeagues(); window.scrollTo(0, 0); break;
+    case 'leagues-home': S.openLeague = null; renderLeagues(); window.scrollTo(0, 0); break;
+    case 'open-league': modalRoot._onClose = null; closeModal(); S.screen = 'leagues'; S.openLeague = v; S.h2h = ['', '']; renderLeagues(); window.scrollTo(0, 0); break;
+    case 'new-league': S.creatingLeague = true; render(); setTimeout(() => { const i = $('[data-new-league]'); if (i) i.focus(); }, 0); break;
+    case 'cancel-league': S.creatingLeague = false; render(); break;
+    case 'play-league': S.leagueId = v; if (G().max < 2) S.game = 'killer'; if (S.nPlayers < 2) S.nPlayers = 2; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
+    case 'rename-league': {
+      const lg = L.getLeague(S.openLeague);
+      openModal(`<h2>Rename league</h2><form data-form="rename-league" autocomplete="off"><input class="text" id="rename-league" data-rename value="${esc(lg ? lg.name : '')}" maxlength="40"><div class="row"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save</button></div></form>`);
+      break;
+    }
+    case 'delete-league':
+      openModal(`<h2>Delete this league?</h2><p>The league table goes. The games stay in your overall history.</p><div class="row"><button class="btn ghost" data-act="close">Keep it</button><button class="btn danger" data-act="confirm-delete-league">Delete league</button></div>`);
+      break;
+    case 'confirm-delete-league': L.deleteLeague(S.openLeague); if (S.leagueId === S.openLeague) S.leagueId = ''; S.openLeague = null; closeModal(); renderLeagues(); break;
+    case 'backup': backup(); break;
+    case 'restore': closeModal(); restore(); break;
+    case 'wipe':
+      openModal(`<h2>Delete all your data?</h2><p>This removes your settings, names, personal bests, leagues and history from this device. It can’t be undone, so make a backup first if you want to keep anything.</p><div class="row"><button class="btn ghost" data-act="close">Cancel</button><button class="btn danger" data-act="confirm-wipe">Delete everything</button></div>`);
+      break;
+    case 'confirm-wipe': wipeAll(); openModal(`<h2>All deleted</h2><p>Everything Top Flight 501 had saved on this device has been removed.</p><button class="btn primary big" data-act="close">OK</button>`); goHub(); break;
+    case 'privacy': openModal(privacyHtml); break;
+    case 'terms': openModal(termsHtml); break;
     case 'count': S.nPlayers = Number(v); renderSetup(); break;
     case 'toggle-rules': store.set('hideRules:' + S.game, !store.get('hideRules:' + S.game, false)); renderSetup(); break;
     case 'unit': S.unit = v; renderSetup(); break;
@@ -880,7 +1110,7 @@ document.addEventListener('click', async e => {
     case 'newgame': modalRoot._onClose = null; closeModal(); goHub(); break;
     case 'home':
       if (S.screen === 'hub') break;
-      if (S.screen === 'setup') { goHub(); break; }
+      if (S.screen === 'setup' || S.screen === 'leagues') { goHub(); break; }
       openModal(`<h2>Leave this game?</h2><p>Scores for this game will be lost.</p>
         <div class="row"><button class="btn ghost" data-act="close">Keep playing</button><button class="btn danger" data-act="leave">Leave game</button></div>`);
       break;
@@ -893,6 +1123,18 @@ document.addEventListener('submit', e => {
   const f = e.target.dataset.form;
   if (f === 'throw' && S.cat) throwDart();
   if (f === 'bonus') resolveBonus($('[data-bonus]').value);
+  if (f === 'new-league') {
+    const name = ($('[data-new-league]') || {}).value || '';
+    if (!name.trim()) return;
+    const lg = L.createLeague(name);
+    S.creatingLeague = false;
+    if (S.screen === 'setup') { S.leagueId = lg.id; renderSetup(); }
+    else { S.openLeague = lg.id; renderLeagues(); }
+  }
+  if (f === 'rename-league') {
+    L.renameLeague(S.openLeague, ($('[data-rename]') || {}).value || '');
+    closeModal(); renderLeagues();
+  }
 });
 
 document.addEventListener('input', e => {
@@ -911,6 +1153,15 @@ document.addEventListener('change', async e => {
     S.clubs = [t.value, ''];
     renderSetup();
   }
+  if (t.dataset.league !== undefined) {
+    if (t.value === '__new') { S.creatingLeague = true; renderSetup(); setTimeout(() => { const i = $('[data-new-league]'); if (i) i.focus(); }, 0); }
+    else { S.leagueId = t.value; renderSetup(); }
+  }
+  if (t.dataset.h2h !== undefined) {
+    const sels = document.querySelectorAll('[data-h2h]');
+    S.h2h = [sels[0].value, sels[1].value];
+    renderLeagues();
+  }
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !modalRoot.hidden && modalRoot._dismissable) closeModal();
@@ -925,6 +1176,7 @@ document.addEventListener('keydown', e => {
       nPlayers: saved.nPlayers || (saved.mode === 'solo' ? 1 : 2),
       unit: saved.unit || S.unit,
       start: saved.start || S.start,
+      leagueId: saved.leagueId || '',
     });
     if (Array.isArray(saved.names)) S.names = [0, 1, 2, 3].map(i => saved.names[i] || '');
   }

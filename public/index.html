@@ -11,17 +11,60 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="img/icon-192.png">
   <link rel="apple-touch-icon" href="img/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="preload" href="fonts/outfit-var.woff?v=8" as="font" type="font/woff" crossorigin>
+  <script>
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem('tf501:settings') || '{}');
+        if (s.theme === 'light' || s.theme === 'dark') document.documentElement.setAttribute('data-theme', s.theme);
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    :root { --bg:#F3F6F5;--card:#FFFFFF;--teal:#1E4B57;--muted:#5F7378;--ink:#15262B;--green:#12B886;--line:#DCE5E3;--mark-filter:none; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0C1719;--card:#132225;--teal:#7FC4D2;--muted:#94AAAE;--ink:#E8F1EF;--green:#2BD09E;--line:#24393D;--mark-filter:brightness(0) invert(.85) sepia(.3) hue-rotate(140deg); color-scheme: dark; } }
+    :root[data-theme="dark"] { --bg:#0C1719;--card:#132225;--teal:#7FC4D2;--muted:#94AAAE;--ink:#E8F1EF;--green:#2BD09E;--line:#24393D;--mark-filter:brightness(0) invert(.85) sepia(.3) hue-rotate(140deg); color-scheme: dark; }
+    html, body { margin: 0; background: var(--bg); }
+    body { font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+/* splash */
+#splash {
+  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px 16px;
+  background: radial-gradient(120% 80% at 50% 30%, var(--card) 0%, var(--bg) 70%);
+  transition: opacity .45s ease, visibility .45s;
+}
+#splash.out { opacity: 0; visibility: hidden; }
+.splash-inner { text-align: center; max-width: 340px; }
+.splash-board { position: relative; width: 190px; height: 190px; margin: 0 auto 18px; display: grid; place-items: center; }
+.ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--line); }
+.ring.r2 { inset: 28px; border-color: color-mix(in srgb, var(--green) 45%, var(--line)); }
+.ring.r3 { inset: 62px; background: color-mix(in srgb, var(--green) 14%, transparent); border-color: var(--green); }
+.splash-mark { position: relative; height: 128px; width: auto; filter: var(--mark-filter); animation: dart-in .7s cubic-bezier(.2,.9,.3,1.25) .15s both, wobble .5s ease-out .85s; transform-origin: 50% 95%; }
+@keyframes dart-in { from { transform: translate(120px, -140px) rotate(28deg) scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes wobble { 0% { transform: rotate(0); } 25% { transform: rotate(-5deg); } 50% { transform: rotate(3deg); } 75% { transform: rotate(-1.5deg); } 100% { transform: rotate(0); } }
+.ring.r1 { animation: ripple .6s ease-out .82s both; }
+@keyframes ripple { from { transform: scale(.85); opacity: .2; } to { transform: scale(1); opacity: 1; } }
+.splash-name { margin: 0; font-size: 2.1rem; font-weight: 800; color: var(--teal); letter-spacing: -.02em; animation: rise .5s ease .9s both; }
+.splash-tag { margin: 2px 0 14px; font-size: .75rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); animation: rise .5s ease 1s both; }
+.splash-line { margin: 0 auto; font-size: 1.1rem; font-weight: 600; color: var(--ink); text-wrap: balance; min-height: 2.9em; animation: rise .5s ease 1.15s both; }
+@keyframes rise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.splash-dots { display: flex; justify-content: center; gap: 7px; margin-top: 16px; }
+.splash-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: dot 1s ease-in-out infinite; }
+.splash-dots span:nth-child(2) { animation-delay: .15s; }
+.splash-dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes dot { 0%, 100% { transform: scale(.6); opacity: .4; } 50% { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .splash-mark, .ring.r1, .splash-name, .splash-tag, .splash-line, .splash-dots span { animation: none !important; }
+}
+
+  </style>
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
   <div id="splash" role="status" aria-label="Loading Top Flight 501">
     <div class="splash-inner">
       <div class="splash-board" aria-hidden="true">
         <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
-        <img class="splash-mark" src="img/mark.png?v=7" alt="" width="98" height="160">
+        <img class="splash-mark" src="img/mark.png?v=8" alt="" width="98" height="160">
       </div>
       <h1 class="splash-name">Top Flight 501</h1>
       <p class="splash-tag">Football · Darts · Trivia</p>
@@ -49,7 +92,7 @@
   </script>
   <header class="top">
     <button class="brand" data-act="home" aria-label="Top Flight 501 home">
-      <img src="img/mark.png?v=7" alt="" width="30" height="49">
+      <img src="img/mark.png?v=8" alt="" width="30" height="49">
       <span>
         <span class="brand-name">Top Flight 501</span>
         <span class="brand-tag">Football · Darts · Trivia</span>
@@ -61,18 +104,28 @@
     </div>
   </header>
 
-  <main id="app" aria-live="polite"><p class="loading">Loading…</p></main>
+  <main id="app" aria-live="polite"></main>
   <div id="modal" hidden></div>
 
   <footer class="foot">
-    <p>Match data: official Premier League / FPL records, 2016/17 to 2025/26.</p>
+    <p>Match data from Fantasy Premier League records, 2016/17 to 2025/26.</p>
     <p class="social">
       <a href="https://x.com/topflight501_" target="_blank" rel="noopener">X @topflight501_</a>
       <a href="https://www.instagram.com/topflight501_/" target="_blank" rel="noopener">Instagram @topflight501_</a>
     </p>
     <p><a href="https://buymeacoffee.com/TopFlight501" target="_blank" rel="noopener">☕ Buy me a coffee</a> · Feedback: <a href="mailto:topflight501@outlook.com">topflight501@outlook.com</a></p>
+    <p class="legal-links"><button class="linkish" data-act="privacy">Privacy</button> · <button class="linkish" data-act="terms">Terms</button></p>
+    <p class="disclaimer">A free fan-made game. Not affiliated with or endorsed by the Premier League.</p>
   </footer>
 
-  <script type="module" src="js/app.js?v=7"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
+    }
+    if (window.caches && caches.keys) {
+      caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
+    }
+  </script>
+  <script type="module" src="js/app.js?v=9"></script>
 </body>
 </html>
