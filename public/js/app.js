@@ -1,6 +1,6 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=5';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=5';
-import { sfx, setSoundEnabled } from './sound.js?v=5';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=6';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=6';
+import { sfx, setSoundEnabled } from './sound.js?v=6';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -607,4 +607,18 @@ document.addEventListener('keydown', e => {
   if (saved && Array.isArray(saved.clubs)) S.clubs = [saved.clubs[0] || '', ''];
   await refreshClubOptions();
   render();
+  hideSplash();
 })();
+
+function hideSplash() {
+  const el = document.getElementById('splash');
+  if (!el || el.classList.contains('out')) return;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const minShow = reduced ? 900 : 2200;
+  const wait = Math.max(0, minShow - (Date.now() - (window.__splashStart || 0)));
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 500); }, wait);
+}
+document.addEventListener('click', e => {
+  const el = document.getElementById('splash');
+  if (el && el.contains(e.target) && S.allSeasons.length) { el.classList.add('out'); setTimeout(() => el.remove(), 500); }
+}, true);

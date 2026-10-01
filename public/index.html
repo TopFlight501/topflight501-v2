@@ -14,12 +14,42 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
+  <div id="splash" role="status" aria-label="Loading Top Flight 501">
+    <div class="splash-inner">
+      <div class="splash-board" aria-hidden="true">
+        <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
+        <img class="splash-mark" src="img/mark.png?v=6" alt="" width="98" height="160">
+      </div>
+      <h1 class="splash-name">Top Flight 501</h1>
+      <p class="splash-tag">Football · Darts · Trivia</p>
+      <p class="splash-line" id="splash-line">From 501 to zero, one answer at a time.</p>
+      <div class="splash-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var lines = [
+        "From 501 to zero, one answer at a time.",
+        "Name the scorer. Hit the board. Win the leg.",
+        "Football brains. Darts nerves.",
+        "Who set it up? Who got booked? Who\u2019s on the oche?",
+        "Every correct answer is a treble twenty.",
+        "Three darts. One match. Pure Premier League.",
+        "Know your Haaland from your Halland? Don\u2019t worry, we do.",
+        "Game on! Step up to the oche.",
+        "Real matches, real scorers, real bragging rights.",
+        "It\u2019s not a quiz. It\u2019s a checkout."
+      ];
+      document.getElementById('splash-line').textContent = lines[Math.floor(Math.random() * lines.length)];
+      window.__splashStart = Date.now();
+    })();
+  </script>
   <header class="top">
     <button class="brand" data-act="home" aria-label="Top Flight 501 home">
-      <img src="img/mark.png?v=5" alt="" width="30" height="49">
+      <img src="img/mark.png?v=6" alt="" width="30" height="49">
       <span>
         <span class="brand-name">Top Flight 501</span>
         <span class="brand-tag">Football · Darts · Trivia</span>
@@ -43,6 +73,6 @@
     <p><a href="https://buymeacoffee.com/TopFlight501" target="_blank" rel="noopener">☕ Buy me a coffee</a> · Feedback: <a href="mailto:topflight501@outlook.com">topflight501@outlook.com</a></p>
   </footer>
 
-  <script type="module" src="js/app.js?v=5"></script>
+  <script type="module" src="js/app.js?v=6"></script>
 </body>
 </html>
