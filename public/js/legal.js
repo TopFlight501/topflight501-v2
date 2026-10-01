@@ -6,20 +6,23 @@ export const privacyHtml = `
   <h2>Privacy</h2>
   <p class="hint">Last updated ${UPDATED}</p>
   <div class="legal">
-    <p><b>The short version:</b> Top Flight 501 doesn’t ask for, collect or store your personal information. There are no accounts, no tracking, no analytics and no adverts.</p>
+    <p><b>The short version:</b> Top Flight 501 doesn’t ask for, collect or store your personal information. There are no accounts, no cookies, no adverts and no tracking across other sites. We count visits anonymously so we know how the game is being used.</p>
     <h3>What stays on your device</h3>
     <p>To make the game work, your browser saves a few things on your own phone or computer: your settings (theme, sound, vibration), the player names you type, your game setup, your personal bests and a record of games you’ve finished. This is stored using your browser’s local storage. It never leaves your device and we can’t see it.</p>
     <p>You can delete it at any time with <b>Settings → Delete all my data</b>, or by clearing your browser’s site data. If you make a backup file, that file stays with you.</p>
+    <h3>Anonymous visit counting</h3>
+    <p>We use Umami (umami.is), a privacy-focused, cookie-free analytics service, to count visits and see which games are played. It records things like the page visited, the game started or finished, the type of device and browser, the country and region the visit came from, and the website that sent you here. It doesn’t use cookies, doesn’t store your IP address, doesn’t build a profile of you and can’t identify you. We only ever see totals, for example “300 games of Killer this week”.</p>
+    <p>If your browser has “Do Not Track” switched on, you aren’t counted at all. Our reason for counting is our legitimate interest in understanding how the game is used so we can improve it.</p>
     <h3>Hosting</h3>
     <p>The site is hosted by Render (render.com). Like any web host, Render’s servers handle technical information such as your IP address and browser type to deliver the pages and keep the service secure. We don’t use this information to identify you.</p>
     <h3>Fonts and images</h3>
-    <p>All fonts and images are served from this site. Nothing is loaded from Google or other third parties while you play.</p>
+    <p>All fonts and images are served from this site. Apart from the anonymous visit counter above, nothing is loaded from Google or other third parties while you play.</p>
     <h3>Links to other sites</h3>
     <p>Links to X, Instagram and Buy Me a Coffee take you to those services, which have their own privacy policies.</p>
     <h3>Contacting us</h3>
     <p>If you email us at <b>${CONTACT}</b> (for example to report a match), we use your email only to reply and don’t share it.</p>
     <h3>Your rights</h3>
-    <p>Because we don’t hold personal data about you, there’s normally nothing for us to access or delete. If you have a question, email <b>${CONTACT}</b>. You also have the right to complain to the Data Protection Commission in Ireland (dataprotection.ie).</p>
+    <p>Because we don’t hold personal data about you, there’s normally nothing for us to access or delete. Visit counts are anonymous totals and can’t be traced back to you. If you have a question, email <b>${CONTACT}</b>. You also have the right to complain to the Data Protection Commission in Ireland (dataprotection.ie).</p>
     <h3>Changes</h3>
     <p>If we ever add accounts or anything that collects personal data, we’ll update this notice and ask before anything is collected.</p>
   </div>

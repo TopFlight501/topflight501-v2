@@ -1,8 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=18';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=18';
-import { sfx, setSoundEnabled } from './sound.js?v=18';
-import * as L from './leagues.js?v=18';
-import { privacyHtml, termsHtml } from './legal.js?v=18';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=19';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=19';
+import { sfx, setSoundEnabled } from './sound.js?v=19';
+import * as L from './leagues.js?v=19';
+import { initAnalytics, track } from './analytics.js?v=19';
+import { privacyHtml, termsHtml } from './legal.js?v=19';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -634,6 +635,7 @@ function submitGuess() {
 
 function sentOffWon(p) {
   p.legs += 1;
+  track('Game finished', gameInfo({ result: 'Winner', rounds: S.round }));
   L.recordGame({ game: 'sentoff', players: S.players.map(x => x.name), winner: p.name, solo: false, league: null, detail: `${p.fouls} ${p.fouls === 1 ? 'foul' : 'fouls'}` });
   confetti(); sfx.win(); buzz([80, 60, 80, 60, 160]);
   S.legStarter = (S.legStarter + 1) % S.players.length;
@@ -921,12 +923,24 @@ async function begin() {
   await startLeg();
 }
 
+function gameInfo(extra = {}) {
+  return {
+    game: GAMES[S.game].title,
+    players: S.players.length || S.nPlayers,
+    club: S.clubs[0] || 'Any club',
+    seasons: `${seasonLabel(S.seasonFrom || '')} to ${seasonLabel(S.seasonTo || '')}`,
+    ...(S.game === 'x01' ? { start: S.start } : {}),
+    ...extra,
+  };
+}
+
 function resetPlayer(p) {
   Object.assign(p, { score: S.start, darts: 0, lives: KILLER_LIVES, armed: false, out: false, prog: 0, points: 0, streak: 0, fouls: 0, wins: 0 });
 }
 
 async function startLeg() {
   S.players.forEach(resetPlayer);
+  track('Game started', gameInfo());
   S.legOver = false;
   S.pending = null;
   S.round = 0;
@@ -1077,6 +1091,7 @@ function managerBonus() {
 function resolveBonus(guess) {
   const p = current();
   const hit = guess ? checkManager(S.match, guess) : null;
+  track('Manager bonus', { result: hit ? 'Correct' : guess ? 'Wrong' : 'Passed' });
   S.visit.bonus = hit ? MANAGER_BONUS : 0;
   if (hit) { p.score -= MANAGER_BONUS; sfx.bonus(); buzz([40, 60, 40]); } else { sfx.miss(); }
   openModal(`
@@ -1102,6 +1117,7 @@ function endVisit() {
 
 function legWon(p) {
   p.legs += 1;
+  track('Game finished', gameInfo({ result: S.players.length === 1 ? 'Solo finish' : 'Winner', rounds: S.round }));
   const solo = S.players.length === 1;
   let extra = '', big = '', eyebrow = 'Game shot!', title = `🎯 ${esc(p.name)} wins`;
   if (S.game === 'x01') {
@@ -1150,6 +1166,7 @@ function legWon(p) {
 
 function suddenOver() {
   const p = current();
+  track('Game finished', gameInfo({ result: 'Sudden death over', points: p.points, streak: p.streak }));
   const best = store.get('best:sudden', null);
   const isBest = p.points > 0 && (!best || p.points > best.points);
   if (isBest) store.set('best:sudden', { points: p.points, streak: p.streak });
@@ -1220,7 +1237,7 @@ document.addEventListener('click', async e => {
   }
   const act = b.dataset.act, v = b.dataset.v;
   switch (act) {
-    case 'pick': S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
+    case 'pick': track('Game picked', { game: GAMES[v] ? GAMES[v].title : v }); S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
     case 'hub': goHub(); break;
     case 'leagues': S.screen = 'leagues'; S.openLeague = null; S.creatingLeague = false; renderLeagues(); window.scrollTo(0, 0); break;
     case 'leagues-home': S.openLeague = null; renderLeagues(); window.scrollTo(0, 0); break;
@@ -1254,6 +1271,7 @@ document.addEventListener('click', async e => {
     case 'settings': openModal(settingsHtml()); break;
     case 'set': {
       const k = b.dataset.k; settings[k] = k === 'theme' ? v : v === 'true';
+      track('Setting changed', { setting: k, value: String(settings[k]) });
       saveSettings();
       if (k === 'sound' && settings.sound) sfx.hit();
       if (k === 'vibrate' && settings.vibrate) buzz(40);
@@ -1273,7 +1291,7 @@ document.addEventListener('click', async e => {
     case 'endvisit': endVisit(); break;
     case 'bonus-skip': resolveBonus(''); break;
     case 'key': answerKey(); break;
-    case 'forfeit': S.legOver = true; openModal(answerKeyHtml(), { dismissable: false }); break;
+    case 'forfeit': track('Answer key opened', gameInfo({ round: S.round })); S.legOver = true; openModal(answerKeyHtml(), { dismissable: false }); break;
     case 'show-key': openModal(answerKeyHtml(), { dismissable: false }); break;
     case 'forfeit-done': modalRoot._onClose = null; closeModal(); S.legStarter = (S.legStarter + 1) % S.players.length; await startLeg(); break;
     case 'nextleg': modalRoot._onClose = null; closeModal(); await startLeg(); break;
@@ -1340,6 +1358,7 @@ document.addEventListener('keydown', e => {
 
 // ---------- boot ----------
 (async function boot() {
+  initAnalytics();
   const saved = store.get('setup', null);
   if (saved) {
     Object.assign(S, {
