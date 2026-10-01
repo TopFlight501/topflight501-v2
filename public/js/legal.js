@@ -8,7 +8,7 @@ export const privacyHtml = `
   <div class="legal">
     <p><b>The short version:</b> Top Flight 501 doesn’t ask for, collect or store your personal information. There are no accounts, no tracking, no analytics and no adverts.</p>
     <h3>What stays on your device</h3>
-    <p>To make the game work, your browser saves a few things on your own phone or computer: your settings (theme, sound, vibration), the player names you type, your game setup, your personal bests, and any leagues and match history you create. This is stored using your browser’s local storage. It never leaves your device and we can’t see it.</p>
+    <p>To make the game work, your browser saves a few things on your own phone or computer: your settings (theme, sound, vibration), the player names you type, your game setup, your personal bests and a record of games you’ve finished. This is stored using your browser’s local storage. It never leaves your device and we can’t see it.</p>
     <p>You can delete it at any time with <b>Settings → Delete all my data</b>, or by clearing your browser’s site data. If you make a backup file, that file stays with you.</p>
     <h3>Hosting</h3>
     <p>The site is hosted by Render (render.com). Like any web host, Render’s servers handle technical information such as your IP address and browser type to deliver the pages and keep the service secure. We don’t use this information to identify you.</p>
@@ -37,7 +37,7 @@ export const termsHtml = `
     <h3>Fair use</h3>
     <p>Please don’t try to disrupt the site, copy it wholesale or use it for anything unlawful.</p>
     <h3>No guarantees</h3>
-    <p>The game is provided as it is, without warranties. We may change, pause or stop it at any time. Leagues and history are saved on your device, so keep a backup if they matter to you.</p>
+    <p>The game is provided as it is, without warranties. We may change, pause or stop it at any time. Your settings and personal bests are saved on your device, so keep a backup if they matter to you.</p>
     <h3>Liability</h3>
     <p>To the extent the law allows, we aren’t responsible for any loss arising from using the site. Nothing in these terms limits rights you have under Irish or EU consumer law.</p>
     <h3>Contact</h3>

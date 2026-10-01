@@ -1,14 +1,16 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=9';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=9';
-import { sfx, setSoundEnabled } from './sound.js?v=9';
-import * as L from './leagues.js?v=9';
-import { privacyHtml, termsHtml } from './legal.js?v=9';
+import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=10';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=10';
+import { sfx, setSoundEnabled } from './sound.js?v=10';
+import * as L from './leagues.js?v=10';
+import { privacyHtml, termsHtml } from './legal.js?v=10';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
 const modalRoot = $('#modal');
 
 const FEEDBACK_EMAIL = 'topflight501@outlook.com';
+// Leagues are paused until accounts exist. Set to true to bring them back.
+const LEAGUES_ENABLED = false;
 
 // ---------- games ----------
 const CLOCK_TARGETS = ['lineup', 'booked', 'assist', 'scorer', 'scoreline', 'manager'];
@@ -120,7 +122,7 @@ function settingsHtml() {
   </div>
   <div class="field">
     <span class="label">Your data</span>
-    <p class="hint">Everything is saved on this device only. Make a backup to move leagues and history to another phone.</p>
+    <p class="hint">Everything is saved on this device only. Make a backup to keep your personal bests or move them to another phone.</p>
     <div class="row wrap">
       <button class="btn ghost" data-act="backup">⬇️ Backup</button>
       <button class="btn ghost" data-act="restore">⬆️ Restore</button>
@@ -178,14 +180,14 @@ function renderHub() {
           <span class="game-go" aria-hidden="true">›</span>
         </button>`).join('')}
     </div>
-    <button class="game-card league-card" data-act="leagues">
+    ${LEAGUES_ENABLED ? `<button class="game-card league-card" data-act="leagues">
       <span class="game-icon" aria-hidden="true">🏆</span>
       <span class="game-body">
         <span class="game-title">Leagues &amp; history</span>
         <span class="game-blurb">League tables, results and head-to-head records for you and your mates. Saved on this device.</span>
       </span>
       <span class="game-go" aria-hidden="true">›</span>
-    </button>
+    </button>` : ''}
     ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
   </section>`;
 }
@@ -239,7 +241,7 @@ function renderSetup() {
       </div>
     </div>` : ''}
 
-    ${multi ? leagueField() : ''}
+    ${multi && LEAGUES_ENABLED ? leagueField() : ''}
 
     <datalist id="known-names">${namesForList().map(n => `<option value="${esc(n)}"></option>`).join('')}</datalist>
     <div class="names n${S.nPlayers}">
@@ -962,8 +964,8 @@ function legWon(p) {
   }
   if (!solo) extra += `<p class="legs-line">${S.players.map(x => `${esc(x.name)} <b>${x.legs}</b>`).join(' · ')}</p>`;
   const detail = S.game === 'x01' ? `${S.start}, ${p.darts} darts` : S.game === 'clock' ? `${p.darts} darts` : S.game === 'killer' ? `${p.lives} ${p.lives === 1 ? 'life' : 'lives'} left` : '';
-  L.recordGame({ game: S.game, players: S.players.map(x => x.name), winner: p.name, solo, league: solo ? null : (S.leagueId || null), detail });
-  const lg = !solo && S.leagueId ? L.getLeague(S.leagueId) : null;
+  L.recordGame({ game: S.game, players: S.players.map(x => x.name), winner: p.name, solo, league: solo || !LEAGUES_ENABLED ? null : (S.leagueId || null), detail });
+  const lg = LEAGUES_ENABLED && !solo && S.leagueId ? L.getLeague(S.leagueId) : null;
   if (lg) extra += `<p class="hint">Saved to <b>${esc(lg.name)}</b>. <button class="btn link inline" data-act="open-league" data-v="${lg.id}">See the table</button></p>`;
   confetti();
   sfx.win(); buzz([80, 60, 80, 60, 160]);
