@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=29';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=29';
-import { sfx, setSoundEnabled } from './sound.js?v=29';
-import * as L from './leagues.js?v=29';
-import { initAnalytics, track } from './analytics.js?v=29';
-import { privacyHtml, termsHtml } from './legal.js?v=29';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=30';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=30';
+import { sfx, setSoundEnabled } from './sound.js?v=30';
+import * as L from './leagues.js?v=30';
+import { initAnalytics, track } from './analytics.js?v=30';
+import { privacyHtml, termsHtml } from './legal.js?v=30';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -931,12 +931,83 @@ function showDailyResult() {
     <p class="big-score center">${saved.points}</p>
     <p class="daily-emoji">${dailyEmoji(saved.darts)}</p>
     <p class="hint center">${hits} of ${DAILY_DARTS} darts hit${streak > 1 ? ` · 🔥 ${streak}-day streak` : ''}${bestLine ? `<br>${bestLine}` : ''}<br>Next match in ${untilTomorrow()}</p>
-    <div class="row">
-      <button class="btn ghost" data-act="daily-key">See answers</button>
+    <div class="row three-up">
+      <button class="btn ghost" data-act="daily-key">Answers</button>
+      <button class="btn ghost story-btn" data-act="story">📸 Story</button>
       <button class="btn primary" data-act="share">↗ Share</button>
     </div>
     <button class="btn link" data-act="daily-close">Back to games</button>
     <p class="hint center small">Scores and streak are saved on this device. Playing elsewhere? Use Settings → Backup to move them.</p>`, { dismissable: false });
+}
+
+// ---------- Instagram story image of your Daily result ----------
+function loadImg(src) { return new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; }); }
+function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+async function makeStoryImage(saved) {
+  const W = 1080, H = 1920, F = 'Outfit, system-ui, sans-serif';
+  try { await Promise.all([document.fonts.load(`800 100px Outfit`), document.fonts.load(`600 40px Outfit`)]); } catch { /* fall back to system font */ }
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  // background
+  const g = x.createRadialGradient(W * .85, H * .12, 50, W * .6, H * .45, H * .95);
+  g.addColorStop(0, '#2a6170'); g.addColorStop(.4, '#1E4B57'); g.addColorStop(1, '#0d252c');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.strokeStyle = 'rgba(255,255,255,.06)'; x.lineWidth = 3;
+  [520, 380, 240].forEach(r => { x.beginPath(); x.arc(W * .5, H * .86, r, 0, Math.PI * 2); x.stroke(); });
+  // logo, turned white
+  try {
+    const m = await loadImg('img/mark.png');
+    const mh = 120, mw = m.width / m.height * mh;
+    const o = document.createElement('canvas'); o.width = mw; o.height = mh;
+    const ox = o.getContext('2d'); ox.drawImage(m, 0, 0, mw, mh); ox.globalCompositeOperation = 'source-in'; ox.fillStyle = '#fff'; ox.fillRect(0, 0, mw, mh);
+    x.drawImage(o, W / 2 - 230, 250);
+  } catch { /* no logo */ }
+  x.fillStyle = '#fff'; x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+  x.font = `800 64px ${F}`; x.fillText('Top Flight 501', W / 2 - 150, 318);
+  x.globalAlpha = .7; x.font = `600 22px ${F}`; x.fillText('F O O T B A L L  ·  D A R T S  ·  T R I V I A', W / 2 - 148, 356); x.globalAlpha = 1;
+  // pill
+  x.textAlign = 'center';
+  const pill = `⭐  DAILY MATCH #${saved.n}`;
+  x.font = `800 34px ${F}`; const pw = x.measureText(pill).width + 70;
+  roundRect(x, W / 2 - pw / 2, 500, pw, 76, 38); x.fillStyle = 'rgba(43,208,158,.14)'; x.fill(); x.strokeStyle = 'rgba(43,208,158,.5)'; x.lineWidth = 2; x.stroke();
+  x.fillStyle = '#2BD09E'; x.fillText(pill, W / 2, 551);
+  // score
+  x.fillStyle = '#fff'; x.font = `800 300px ${F}`; x.fillText(String(saved.points), W / 2, 900);
+  x.globalAlpha = .8; x.font = `600 44px ${F}`; x.fillText('points', W / 2, 970); x.globalAlpha = 1;
+  // six darts
+  const size = 120, gap = 22, total = DAILY_DARTS * size + (DAILY_DARTS - 1) * gap;
+  saved.darts.forEach((d, i) => {
+    const bx = W / 2 - total / 2 + i * (size + gap), by = 1050;
+    roundRect(x, bx, by, size, size, 26);
+    if (d.res.correct) {
+      x.fillStyle = '#12B886'; x.fill();
+      x.strokeStyle = '#fff'; x.lineWidth = 12; x.lineCap = 'round'; x.lineJoin = 'round';
+      x.beginPath(); x.moveTo(bx + 34, by + 62); x.lineTo(bx + 54, by + 82); x.lineTo(bx + 88, by + 42); x.stroke();
+    } else { x.fillStyle = 'rgba(255,255,255,.12)'; x.fill(); x.strokeStyle = 'rgba(255,255,255,.22)'; x.lineWidth = 3; x.stroke(); }
+  });
+  const hits = saved.darts.filter(d => d.res.correct).length, streak = dailyStreak();
+  x.fillStyle = 'rgba(255,255,255,.85)'; x.font = `600 42px ${F}`;
+  x.fillText(`${hits} of ${DAILY_DARTS} darts hit${streak > 1 ? `  ·  🔥 ${streak}-day streak` : ''}`, W / 2, 1260);
+  // challenge
+  x.fillStyle = '#fff'; x.font = `800 84px ${F}`; x.fillText('Can you beat me?', W / 2, 1440);
+  x.font = `800 46px ${F}`; const cta = 'topflight501.com'; const cw = x.measureText(cta).width + 100;
+  roundRect(x, W / 2 - cw / 2, 1500, cw, 100, 50); x.fillStyle = '#12B886'; x.fill();
+  x.fillStyle = '#062019'; x.fillText(cta, W / 2, 1566);
+  return new Promise(ok => c.toBlob(ok, 'image/png'));
+}
+async function shareStory() {
+  const saved = dailySaved(); if (!saved) return;
+  track('Story image', { day: saved.n });
+  const blob = await makeStoryImage(saved);
+  if (!blob) { toast('Couldn’t make the image, sorry'); return; }
+  const file = new File([blob], `topflight501-daily-${saved.n}.png`, { type: 'image/png' });
+  if (isTouch() && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  toast('Image saved. Add it to your story 📸');
 }
 
 // ---------- add to home screen ----------
@@ -1589,6 +1660,7 @@ document.addEventListener('click', async e => {
     case 'daily-result': showDailyResult(); break;
     case 'daily-close': modalRoot._onClose = null; closeModal(); goHub(); break;
     case 'share': shareResult(b); break;
+    case 'story': shareStory(); break;
     case 'daily-invite': inviteDaily(b); break;
     case 'easy': S.easy = !S.easy; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
     case 'choose': throwDart(v); break;
