@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=25';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=25';
-import { sfx, setSoundEnabled } from './sound.js?v=25';
-import * as L from './leagues.js?v=25';
-import { initAnalytics, track } from './analytics.js?v=25';
-import { privacyHtml, termsHtml } from './legal.js?v=25';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=26';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=26';
+import { sfx, setSoundEnabled } from './sound.js?v=26';
+import * as L from './leagues.js?v=26';
+import { initAnalytics, track } from './analytics.js?v=26';
+import { privacyHtml, termsHtml } from './legal.js?v=26';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -197,8 +197,8 @@ function renderHub() {
   <section class="hub">
     <p class="eyebrow">Premier League trivia, darts style</p>
     <h2>Pick your game</h2>
-    ${dailyBanner()}
     <div class="games">
+      ${dailyBanner()}
       ${Object.entries(GAMES).filter(([, g]) => !g.hidden).map(([k, g]) => `
         <button class="game-card" data-act="pick" data-v="${k}">
           <span class="game-icon" aria-hidden="true">${g.icon}</span>
@@ -829,7 +829,7 @@ function dailyBanner() {
   return `<div class="daily ${done ? 'done' : ''}">
     <button class="daily-main" data-act="daily">
       <span class="daily-i" aria-hidden="true">⭐</span>
-      <span class="daily-body"><span class="daily-t">Daily Match #${n}${streak > 1 ? ` <span class="daily-streak">🔥 ${streak}</span>` : ''}</span><span class="daily-s">${sub}</span></span>
+      <span class="daily-body"><span class="daily-t">Daily Match #${n}${streak > 1 ? ` <span class="daily-streak">🔥 ${streak}</span>` : ''}</span><span class="daily-s">${sub}</span><span class="daily-blurb">One real match, the same for everyone. Six darts, one go, then challenge your mates.</span></span>
       <span class="daily-go">${done ? 'Result' : saved ? 'Resume' : 'Play'}</span>
     </button>
     <button class="daily-invite" data-act="daily-invite" aria-label="Invite your mates to today's Daily Match" title="Invite your mates">${SHARE_ICON}</button>
