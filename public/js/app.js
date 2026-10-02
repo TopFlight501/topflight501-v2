@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=24';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=24';
-import { sfx, setSoundEnabled } from './sound.js?v=24';
-import * as L from './leagues.js?v=24';
-import { initAnalytics, track } from './analytics.js?v=24';
-import { privacyHtml, termsHtml } from './legal.js?v=24';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=25';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=25';
+import { sfx, setSoundEnabled } from './sound.js?v=25';
+import * as L from './leagues.js?v=25';
+import { initAnalytics, track } from './analytics.js?v=25';
+import { privacyHtml, termsHtml } from './legal.js?v=25';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -398,7 +398,7 @@ function scoreboard() {
   const n = S.players.length;
   return `<div class="gamebar">
     <button type="button" class="back quit" data-act="home" aria-label="Quit game and go back to all games">‹ Quit game</button>
-    <span class="gamebar-t">${G().icon} ${esc(G().title)}${S.game === 'daily' ? ` #${S.dailyN}` : easyOn() ? ' · Easy' : ''}</span>
+    ${S.game === 'daily' ? `<button type="button" class="back invite" data-act="daily-invite">${SHARE_ICON} Invite mates</button>` : `<span class="gamebar-t">${G().icon} ${esc(G().title)}${easyOn() ? ' · Easy' : ''}</span>`}
   </div>
   <div class="stage-side">
   <div class="board ${n === 1 ? 'solo' : ''} ${n > 2 ? 'many' : ''}">
@@ -764,6 +764,7 @@ function sentOffWon(p) {
 
 // ---------- sharing ----------
 const SITE = 'topflight501.com';
+const SHARE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>';
 const DAILY_LINK = 'https://topflight501.com/?daily';
 const SHARE_BTN = '<button class="btn link share-btn" data-act="share">↗ Share result</button>';
 function shareLine(p) {
@@ -779,9 +780,18 @@ function shareLine(p) {
     default: return 'Top Flight 501: Premier League trivia, darts style.';
   }
 }
+function inviteDaily() {
+  const n = dailyNumber(), saved = dailySaved();
+  const lead = saved && saved.done ? `I got ${saved.points} pts on today's Top Flight 501 Daily #${n}. Can you beat me?` : `⭐ Top Flight 501 Daily #${n}: same Premier League match for everyone today. Six darts. Fancy it?`;
+  track('Daily invite');
+  return shareText(`${lead} 👇\n${DAILY_LINK}`);
+}
 async function shareResult() {
   const text = `${S.shareText}\n${S.game === 'daily' ? DAILY_LINK : SITE}`;
   track('Result shared', { game: GAMES[S.game] ? GAMES[S.game].title : S.game });
+  return shareText(text);
+}
+async function shareText(text) {
   try {
     if (navigator.share) { await navigator.share({ text }); return; }
   } catch (e) { if (e && e.name === 'AbortError') return; }
@@ -815,12 +825,15 @@ function dailyBanner() {
   const streak = dailyStreak();
   const sub = done ? `You scored <b>${saved.points}</b> · new match in ${untilTomorrow()}`
     : saved ? `In progress: ${saved.darts.length} of ${DAILY_DARTS} darts thrown`
-    : 'Same match for everyone · 6 darts';
-  return `<button class="daily ${done ? 'done' : ''}" data-act="daily">
-    <span class="daily-i" aria-hidden="true">⭐</span>
-    <span class="daily-body"><span class="daily-t">Daily Match #${n}${streak > 1 ? ` <span class="daily-streak">🔥 ${streak}</span>` : ''}</span><span class="daily-s">${sub}</span></span>
-    <span class="daily-go">${done ? 'Share' : saved ? 'Resume' : 'Play'}</span>
-  </button>`;
+    : 'Same match for everyone today';
+  return `<div class="daily ${done ? 'done' : ''}">
+    <button class="daily-main" data-act="daily">
+      <span class="daily-i" aria-hidden="true">⭐</span>
+      <span class="daily-body"><span class="daily-t">Daily Match #${n}${streak > 1 ? ` <span class="daily-streak">🔥 ${streak}</span>` : ''}</span><span class="daily-s">${sub}</span></span>
+      <span class="daily-go">${done ? 'Result' : saved ? 'Resume' : 'Play'}</span>
+    </button>
+    <button class="daily-invite" data-act="daily-invite" aria-label="Invite your mates to today's Daily Match" title="Invite your mates">${SHARE_ICON}</button>
+  </div>`;
 }
 function untilTomorrow() {
   const now = new Date(), t = new Date(now); t.setHours(24, 0, 0, 0);
@@ -1533,6 +1546,7 @@ document.addEventListener('click', async e => {
     case 'daily-result': showDailyResult(); break;
     case 'daily-close': modalRoot._onClose = null; closeModal(); goHub(); break;
     case 'share': shareResult(); break;
+    case 'daily-invite': inviteDaily(); break;
     case 'easy': S.easy = !S.easy; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
     case 'choose': throwDart(v); break;
     case 'install': installApp(); break;
