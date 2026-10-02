@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=26';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=26';
-import { sfx, setSoundEnabled } from './sound.js?v=26';
-import * as L from './leagues.js?v=26';
-import { initAnalytics, track } from './analytics.js?v=26';
-import { privacyHtml, termsHtml } from './legal.js?v=26';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=27';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=27';
+import { sfx, setSoundEnabled } from './sound.js?v=27';
+import * as L from './leagues.js?v=27';
+import { initAnalytics, track } from './analytics.js?v=27';
+import { privacyHtml, termsHtml } from './legal.js?v=27';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -812,6 +812,12 @@ function dailySaved() {
   return d && d.key === dailyKey() ? d : null;
 }
 function dailyLog() { return store.get('dailyLog', {}); }
+// best Daily Match score on this device (optionally ignoring today)
+function dailyBest(skipToday = false) {
+  const log = dailyLog(), today = dailyKey();
+  const vals = Object.entries(log).filter(([k]) => !(skipToday && k === today)).map(([, v]) => v);
+  return vals.length ? Math.max(...vals) : null;
+}
 function dailyStreak() {
   const log = dailyLog(); let n = 0;
   const d = new Date();
@@ -823,8 +829,11 @@ function dailyBanner() {
   const n = dailyNumber(), saved = dailySaved();
   const done = saved && saved.done;
   const streak = dailyStreak();
-  const sub = done ? `You scored <b>${saved.points}</b> · new match in ${untilTomorrow()}`
+  const best = dailyBest();
+  const prev = dailyBest(true);
+  const sub = done ? `Today <b>${saved.points}</b>${best !== null && best > saved.points ? ` · Best <b>${best}</b>` : prev !== null && saved.points > prev ? ' · 🏆 New best' : ''} · New in ${untilTomorrow()}`
     : saved ? `In progress: ${saved.darts.length} of ${DAILY_DARTS} darts thrown`
+    : best !== null ? `Your best: <b>${best}</b> · can you beat it?`
     : 'Same match for everyone today';
   return `<div class="daily ${done ? 'done' : ''}">
     <button class="daily-main" data-act="daily">
@@ -883,13 +892,16 @@ function showDailyResult() {
   if (!saved) return;
   const hits = saved.darts.filter(d => d.res.correct).length;
   const streak = dailyStreak();
+  const prevBest = dailyBest(true);
+  const newBest = prevBest !== null && saved.points > prevBest;
+  const bestLine = newBest ? `🏆 Previous best: ${prevBest}` : prevBest !== null ? `🏆 Your best: <b>${Math.max(prevBest, saved.points)}</b>` : '';
   S.shareText = `⭐ Top Flight 501 Daily #${saved.n}\n${dailyEmoji(saved.darts)} ${saved.points} pts${streak > 1 ? ` · 🔥 ${streak} days` : ''}\nCan you beat me? Today's match 👇`;
   openModal(`
     <p class="eyebrow">⭐ Daily Match #${saved.n}</p>
-    <h2>${hits === DAILY_DARTS ? 'Perfect day! 🔥' : hits >= 4 ? 'Cracking effort' : hits >= 2 ? 'Not bad at all' : 'Tough one today'}</h2>
+    <h2>${newBest ? 'New personal best! 🏆' : hits === DAILY_DARTS ? 'Perfect day! 🔥' : hits >= 4 ? 'Cracking effort' : hits >= 2 ? 'Not bad at all' : 'Tough one today'}</h2>
     <p class="big-score center">${saved.points}</p>
     <p class="daily-emoji">${dailyEmoji(saved.darts)}</p>
-    <p class="hint center">${hits} of ${DAILY_DARTS} darts hit${streak > 1 ? ` · 🔥 ${streak}-day streak` : ''} · Next match in ${untilTomorrow()}</p>
+    <p class="hint center">${hits} of ${DAILY_DARTS} darts hit${streak > 1 ? ` · 🔥 ${streak}-day streak` : ''}${bestLine ? `<br>${bestLine}` : ''}<br>Next match in ${untilTomorrow()}</p>
     <div class="row">
       <button class="btn ghost" data-act="daily-key">See answers</button>
       <button class="btn primary" data-act="share">↗ Share</button>
