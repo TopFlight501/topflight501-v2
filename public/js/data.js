@@ -43,7 +43,55 @@ function expand(raw, D) {
     score: raw.s,
     managers: raw.m,
     players,
+    decoys: decoys(raw, D),
   };
+}
+
+// Wrong options for Easy mode: real players and managers from the same season who weren't in this match.
+function decoys(raw, D) {
+  const inMatch = new Set(raw.p.map(x => String(x[0])));
+  const ids = Object.keys(D.players).filter(id => !inMatch.has(id));
+  const names = shuffle(ids).slice(0, 12).map(id => { const [full, web] = D.players[id]; return { id, full, web }; });
+  const mine = new Set((raw.m || []).flatMap(m => String(m || '').split(' / ')));
+  const mgr = [...new Set(D.matches.flatMap(m => m.m || []).filter(Boolean))].filter(m => !m.split(' / ').some(n => mine.has(n)));
+  return { players: names, managers: shuffle(mgr).slice(0, 6) };
+}
+
+function shuffle(a, rnd = Math.random) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+// ---------- Daily Match: the same match for everyone on the same day ----------
+const DAILY_START = Date.UTC(2026, 9, 2);   // Daily #1 = 2 October 2026
+export function dailyNumber(d = new Date()) {
+  return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - DAILY_START) / 864e5) + 1;
+}
+export function dailyKey(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function seeded(n) {
+  let a = (n * 2654435761) >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const DAILY_SEASONS = ['2016-17', '2017-18', '2018-19', '2019-20', '2020-21', '2021-22', '2022-23', '2023-24', '2024-25', '2025-26'];  // fixed so past days never change
+export async function dailyMatch(n = dailyNumber()) {
+  const rnd = seeded(n + 501);
+  const all = await getSeasons();
+  const seasons = DAILY_SEASONS.filter(s => all.includes(s));
+  const season = seasons[Math.floor(rnd() * seasons.length)];
+  const D = await loadSeason(season);
+  // a match with something in every category, sorted so the pick is stable
+  const ok = D.matches.filter(m => m.s[0] + m.s[1] > 0 && m.p.some(x => x[3] > 0) && m.p.some(x => x[4] > 0)).sort((x, y) => (x.id < y.id ? -1 : 1));
+  const raw = ok[Math.floor(rnd() * ok.length)];
+  const m = expand(raw, D);
+  // decoys must be the same for everyone too
+  const r2 = seeded(n + 77);
+  const inMatch = new Set(raw.p.map(x => String(x[0])));
+  const ids = Object.keys(D.players).filter(id => !inMatch.has(id)).sort();
+  m.decoys.players = shuffle(ids, r2).slice(0, 12).map(id => { const [full, web] = D.players[id]; return { id, full, web }; });
+  return m;
 }
 
 let clubMap = null;

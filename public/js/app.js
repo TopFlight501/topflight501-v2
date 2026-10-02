@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn } from './data.js?v=21';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName } from './answers.js?v=21';
-import { sfx, setSoundEnabled } from './sound.js?v=21';
-import * as L from './leagues.js?v=21';
-import { initAnalytics, track } from './analytics.js?v=21';
-import { privacyHtml, termsHtml } from './legal.js?v=21';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=22';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=22';
+import { sfx, setSoundEnabled } from './sound.js?v=22';
+import * as L from './leagues.js?v=22';
+import { initAnalytics, track } from './analytics.js?v=22';
+import { privacyHtml, termsHtml } from './legal.js?v=22';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -48,7 +48,15 @@ const GAMES = {
     blurb: 'Take turns guessing the final score. Every wrong guess is a foul and gives everyone a clue. Six fouls and you’re sent off.',
     tags: ['2–4 players', 'Guess the score'],
   },
+  daily: {
+    title: 'Daily Match', icon: '⭐', min: 1, max: 1, hidden: true,
+    blurb: 'One match a day, the same for everyone. Six darts to score as many points as you can, then share your result.',
+    tags: ['Solo', 'Once a day'],
+  },
 };
+const DAILY_DARTS = 6;
+const NAME_CATS = ['scorer', 'assist', 'lineup', 'booked', 'manager'];
+const easyOn = () => S.easy && S.game !== 'daily' && S.game !== 'sentoff';
 
 // ---------- state ----------
 const S = {
@@ -81,6 +89,9 @@ const S = {
   creatingLeague: false,
   openLeague: null,       // league shown on the leagues screen
   h2h: ['', ''],
+  easy: false,            // Easy mode: pick from four names instead of typing
+  choices: null,          // the four options currently shown
+  shareText: '',
 };
 
 const store = {
@@ -186,8 +197,9 @@ function renderHub() {
   <section class="hub">
     <p class="eyebrow">Premier League trivia, darts style</p>
     <h2>Pick your game</h2>
+    ${dailyBanner()}
     <div class="games">
-      ${Object.entries(GAMES).map(([k, g]) => `
+      ${Object.entries(GAMES).filter(([, g]) => !g.hidden).map(([k, g]) => `
         <button class="game-card" data-act="pick" data-v="${k}">
           <span class="game-icon" aria-hidden="true">${g.icon}</span>
           <span class="game-body">
@@ -207,7 +219,8 @@ function renderHub() {
       <span class="game-go" aria-hidden="true">›</span>
     </button>` : ''}
     ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
-  </section>`;
+  </section>
+  ${installBar()}`;
 }
 
 function renderSetup() {
@@ -268,6 +281,12 @@ function renderSetup() {
         <input class="text" id="name-${i}" data-name="${i}" maxlength="20" placeholder="Enter name" list="known-names" autocomplete="off" value="${esc(S.names[i])}"></label>`).join('')}
     </div>
     ${bestLine ? `<p class="hint">${bestLine}</p>` : ''}
+
+    ${S.game !== 'sentoff' ? `
+    <button type="button" class="toggle-row" data-act="easy" aria-pressed="${S.easy}">
+      <span><b>Easy mode</b> <span class="hint">Pick from 4 names instead of typing</span></span>
+      <span class="switch ${S.easy ? 'on' : ''}" aria-hidden="true"></span>
+    </button>` : ''}
 
     ${S.game === 'x01' ? `
     <div class="field">
@@ -358,6 +377,8 @@ function boardCell(p, i) {
     }
     case 'sudden':
       return `<div class="pl-score" data-score="${i}">${p.points}</div><div class="pl-sub">${p.streak} in a row</div>`;
+    case 'daily':
+      return `<div class="pl-score" data-score="${i}">${p.points}</div><div class="pl-sub">${S.visit.length} of ${DAILY_DARTS} darts</div>`;
     case 'sentoff':
       return `<div class="fouls" data-score="${i}">${foulMeter(p)}</div>
         <div class="pl-sub">${p.out ? '🟥 Sent off' : `${p.fouls} of ${MAX_FOULS} fouls${p.wins ? ` · ${p.wins} ✓` : ''}`}</div>`;
@@ -371,7 +392,7 @@ function scoreboard() {
   const n = S.players.length;
   return `<div class="gamebar">
     <button type="button" class="back quit" data-act="home" aria-label="Quit game and go back to all games">‹ Quit game</button>
-    <span class="gamebar-t">${G().icon} ${esc(G().title)}</span>
+    <span class="gamebar-t">${G().icon} ${esc(G().title)}${S.game === 'daily' ? ` #${S.dailyN}` : easyOn() ? ' · Easy' : ''}</span>
   </div>
   <div class="board ${n === 1 ? 'solo' : ''} ${n > 2 ? 'many' : ''}">
     ${S.players.map((p, i) => `
@@ -426,16 +447,17 @@ function handoverHint(p) {
 function dartValue(d) {
   if (!d.res.correct) return '✗';
   if (S.game === 'x01') return '−' + d.res.points;
-  if (S.game === 'sudden') return '+' + d.res.points;
+  if (S.game === 'sudden' || S.game === 'daily') return '+' + d.res.points;
   return '✓';
 }
 
 function dartSlots() {
-  return `<div class="darts">${[0, 1, 2].map(i => {
+  const n = dartsPerVisit();
+  return `<div class="darts ${n > 3 ? 'six' : ''}">${Array.from({ length: n }, (_, i) => i).map(i => {
     const d = S.visit[i];
-    if (!d) return `<div class="dart ${i === S.visit.length ? 'next' : ''}"><span class="dart-n">Dart ${i + 1}</span></div>`;
+    if (!d) return `<div class="dart ${i === S.visit.length ? 'next' : ''}"><span class="dart-n">${n > 3 ? i + 1 : 'Dart ' + (i + 1)}</span></div>`;
     return `<div class="dart ${d.res.correct ? 'hit' : 'miss'}">
-      <span class="dart-n">${TARGET_INFO[d.cat].short}</span>
+      <span class="dart-n">${n > 3 ? TARGET_INFO[d.cat].icon : TARGET_INFO[d.cat].short}</span>
       <span class="dart-v">${dartValue(d)}</span>
     </div>`;
   }).join('')}</div>`;
@@ -448,7 +470,7 @@ function allowedCats(p) {
 
 function chipPoints(k, c) {
   if (S.game === 'x01') return `−${c.points}${c.redPoints ? '/' + c.redPoints : ''}`;
-  if (S.game === 'sudden') return `+${c.points}${c.redPoints ? '/' + c.redPoints : ''}`;
+  if (S.game === 'sudden' || S.game === 'daily') return `+${c.points}${c.redPoints ? '/' + c.redPoints : ''}`;
   if (S.game === 'killer') return ARMING.includes(k) ? (current().armed ? 'Kill' : 'Arms') : (current().armed ? 'Kill' : '—');
   return 'Target';
 }
@@ -457,20 +479,21 @@ function turnHeadRight(p) {
   if (S.game === 'x01') return `Needs ${p.score}`;
   if (S.game === 'killer') return p.armed ? '🔪 Killer' : 'Not armed yet';
   if (S.game === 'clock') return p.prog >= CLOCK_TARGETS.length ? '🏁 Finished' : `Target ${p.prog + 1} of ${CLOCK_TARGETS.length}`;
-  if (S.game === 'sudden') return `${p.points} pts`;
+  if (S.game === 'sudden' || S.game === 'daily') return `${p.points} pts`;
   return '';
 }
 
 function renderPlay() {
   const p = current();
-  const done = S.visit.length >= 3 || S.legOver || S.pending;
+  const done = S.visit.length >= dartsPerVisit() || S.legOver || S.pending;
   const last = S.visit[S.visit.length - 1];
   const cats = allowedCats(p);
   if (cats.length === 1 && !done) S.cat = cats[0];
   const catBtns = cats.map(k => {
     const c = TARGET_INFO[k];
+    const none = easyOn() && NAME_CATS.includes(k) && !remaining(k).length;
     return `
-    <button type="button" class="chip ${S.cat === k ? 'on' : ''}" data-act="cat" data-v="${k}">
+    <button type="button" class="chip ${S.cat === k ? 'on' : ''} ${none ? 'none' : ''}" data-act="cat" data-v="${k}" ${none ? 'disabled title="None left on this match"' : ''}>
       <span class="chip-i">${c.icon}</span>
       <span class="chip-l">${c.short}</span>
       <span class="chip-p">${chipPoints(k, c)}</span>
@@ -484,19 +507,22 @@ function renderPlay() {
       <span class="dash">–</span>
       <label><span>${esc(S.match.away)}</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="1" aria-label="Away goals"></label>
     </div>`;
+  } else if (S.cat && easyOn()) {
+    input = `<div class="choices">${getChoices(S.cat).map(o => `<button type="button" class="choice" data-act="choose" data-v="${esc(o.id)}">${esc(o.label)}</button>`).join('')}</div>`;
   } else if (S.cat) {
     const ph = { scorer: 'Who scored?', assist: 'Who set one up?', lineup: 'Name anyone who played', booked: 'Who went in the book?', manager: 'Name either manager' }[S.cat];
     input = `<input class="text answer" data-answer autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="${ph}">`;
   }
 
-  const label = cats.length === 1 ? `Dart ${S.visit.length + 1}: your target` : `Dart ${S.visit.length + 1}: pick a category`;
-  const resultPts = r => S.game === 'x01' ? ` <b>−${r.points}</b>` : S.game === 'sudden' ? ` <b>+${r.points}</b>` : '';
+  const dn = S.game === 'daily' ? `Dart ${S.visit.length + 1} of ${DAILY_DARTS}` : `Dart ${S.visit.length + 1}`;
+  const label = cats.length === 1 ? `${dn}: your target` : `${dn}: pick a category`;
+  const resultPts = r => S.game === 'x01' ? ` <b>−${r.points}</b>` : (S.game === 'sudden' || S.game === 'daily') ? ` <b>+${r.points}</b>` : '';
 
   app.innerHTML = `
   ${scoreboard()}
   <section class="card play">
     ${matchCard()}
-    ${S.turnIdx === 0 && !S.visit.length && !done ? `<div class="reroll-row">${REROLL}</div>` : ''}
+    ${S.game !== 'daily' && S.turnIdx === 0 && !S.visit.length && !done ? `<div class="reroll-row">${REROLL}</div>` : ''}
     <div class="turn-head"><h3>${esc(p.name)}</h3><span class="hint">${turnHeadRight(p)}</span></div>
     ${dartSlots()}
     ${last ? `<p class="result ${last.res.correct ? 'ok' : 'bad'}">${last.res.correct ? '🎯 ' : ''}${esc(last.res.message)}${last.res.correct ? resultPts(last.res) : ''}${last.extra ? `<span class="extra">${esc(last.extra)}</span>` : ''}</p>` : ''}
@@ -506,16 +532,75 @@ function renderPlay() {
         <div class="chips ${cats.length === 1 ? 'single' : ''}">${catBtns}</div>
         ${input}
         ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
-        <button class="btn primary big" type="submit" ${S.cat ? '' : 'disabled'}>Throw</button>
+        ${S.cat && easyOn() && NAME_CATS.includes(S.cat) ? '' : `<button class="btn primary big" type="submit" ${S.cat ? '' : 'disabled'}>Throw</button>`}
       </form>` : (S.legOver || S.pending) ? '' : `
       <button class="btn primary big" data-act="endvisit">${nextLabel()}</button>`}
     <div class="play-foot">
-      <button class="btn ghost" data-act="key">📖 Answer key</button>
+      ${S.game === 'daily' ? '' : '<button class="btn ghost" data-act="key">📖 Answer key</button>'}
       <button class="btn ghost" data-act="rules">❓ Rules</button>
     </div>
   </section>`;
   const f = $('[data-answer]') || $('[data-sl="0"]');
   if (f && (!matchMedia('(hover: none)').matches || S.cat)) f.focus();
+}
+
+function dartsPerVisit() { return S.game === 'daily' ? DAILY_DARTS : 3; }
+
+// ---------- Easy mode: four names to choose from ----------
+function categoryPool(cat) {
+  const ps = S.match.players;
+  return {
+    scorer: ps.filter(p => p.goals > 0 || p.og > 0),
+    assist: ps.filter(p => p.assists > 0),
+    lineup: ps,
+    booked: ps.filter(p => p.card > 0),
+  }[cat] || [];
+}
+// correct answers this player can still claim in this category
+function remaining(cat) {
+  const claimed = S.claimed[currentIdx()] || new Map();
+  if (cat === 'manager') return claimed.has('manager') ? [] : S.match.managers.filter(Boolean);
+  return categoryPool(cat).filter(p => (claimed.get(`${cat}:${p.id}`) || 0) < timesAllowed(cat, p));
+}
+function getChoices(cat) {
+  if (S.choices && S.choices.cat === cat) return S.choices.opts;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const mix = a => a.map(x => [Math.random(), x]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
+  const left = remaining(cat);
+  let opts = [];
+  if (cat === 'manager') {
+    const first = m => m.split(' / ')[0];
+    const right = first(pick(left));
+    const wrong = (S.match.decoys ? S.match.decoys.managers : []).map(first).filter(n => n !== right);
+    opts = [{ id: 'm:' + right, label: right }, ...mix(wrong).slice(0, 3).map(n => ({ id: 'm:' + n, label: n }))];
+  } else {
+    const right = pick(left);
+    const pool = new Set(categoryPool(cat).map(p => p.id));
+    const fromMatch = cat === 'lineup' ? [] : S.match.players.filter(p => !pool.has(p.id));
+    const outside = S.match.decoys ? S.match.decoys.players : [];
+    const seen = new Set([shortName(right)]);
+    const wrong = [];
+    for (const p of [...mix(fromMatch), ...mix(outside)]) {
+      const n = shortName(p);
+      if (seen.has(n)) continue;
+      seen.add(n); wrong.push({ id: 'x:' + p.id, label: n });
+      if (wrong.length === 3) break;
+    }
+    opts = [{ id: 'p:' + right.id, label: shortName(right) }, ...wrong];
+  }
+  S.choices = { cat, opts: mix(opts) };
+  return S.choices.opts;
+}
+function easyDart(cat, id, claimed) {
+  const miss = { scorer: 'Not a scorer in this match.', assist: 'No assist from them in this match.', lineup: 'Didn’t play in this match.', booked: 'Not booked in this match.' };
+  if (cat === 'manager') {
+    const name = id.slice(2);
+    const hit = S.match.managers.find(m => m && m.split(' / ').includes(name));
+    return hit ? { correct: true, points: 0, key: 'manager', message: hit } : { correct: false, points: 0, message: 'Not either manager.' };
+  }
+  const p = id.startsWith('p:') ? categoryPool(cat).find(x => String(x.id) === id.slice(2)) : null;
+  if (!p) return { correct: false, points: 0, message: miss[cat] };
+  return checkDart(S.match, cat, p.full, claimed);
 }
 
 function nextLabel() {
@@ -648,6 +733,7 @@ function sentOffWon(p) {
   L.recordGame({ game: 'sentoff', players: S.players.map(x => x.name), winner: p.name, solo: false, league: null, detail: `${p.fouls} ${p.fouls === 1 ? 'foul' : 'fouls'}` });
   confetti(); sfx.win(); buzz([80, 60, 80, 60, 160]);
   S.legStarter = (S.legStarter + 1) % S.players.length;
+  S.shareText = shareLine(p);
   openModal(`
     <p class="eyebrow">Last one on the pitch</p>
     <h2>🟥 ${esc(p.name)} wins Sent Off</h2>
@@ -657,11 +743,163 @@ function sentOffWon(p) {
     <div class="row">
       <button class="btn ghost" data-act="newgame">Change game</button>
       <button class="btn primary" data-act="nextleg">Play again</button>
-    </div>`, { dismissable: false });
+    </div>
+    ${SHARE_BTN}`, { dismissable: false });
+}
+
+// ---------- sharing ----------
+const SITE = 'topflight501.com';
+const SHARE_BTN = '<button class="btn link share-btn" data-act="share">↗ Share result</button>';
+function shareLine(p) {
+  const solo = S.players.length === 1;
+  const vs = () => S.players.filter(x => x !== p).map(x => x.name).join(', ');
+  const easy = easyOn() ? ' (easy mode)' : '';
+  switch (S.game) {
+    case 'x01': return solo ? `🎯 Checked out from ${S.start} in ${p.darts} darts on Top Flight 501${easy}. Beat that 👇` : `🎯 ${p.name} beat ${vs()} at ${S.start} on Top Flight 501${easy}.`;
+    case 'clock': return solo ? `🏟️ Round the Grounds in ${p.darts} darts on Top Flight 501${easy}. Beat that 👇` : `🏟️ ${p.name} beat ${vs()} round the grounds on Top Flight 501${easy}.`;
+    case 'sudden': return `⚡ ${p.points} points, ${p.streak} in a row in Sudden Death on Top Flight 501${easy}. Beat that 👇`;
+    case 'killer': return `🔪 ${p.name} won Killer against ${vs()} on Top Flight 501${easy}.`;
+    case 'sentoff': return `🟥 ${p.name} was last one on the pitch in Sent Off on Top Flight 501.`;
+    default: return 'Top Flight 501: Premier League trivia, darts style.';
+  }
+}
+async function shareResult() {
+  const text = `${S.shareText}\n${SITE}`;
+  track('Result shared', { game: GAMES[S.game] ? GAMES[S.game].title : S.game });
+  try {
+    if (navigator.share) { await navigator.share({ text }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(text); toast('Copied. Paste it anywhere 👍'); }
+  catch { toast('Couldn’t copy, sorry'); }
+}
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('out'), 1800);
+  setTimeout(() => t.remove(), 2300);
+}
+
+// ---------- Daily Match ----------
+function dailySaved() {
+  const d = store.get('daily', null);
+  return d && d.key === dailyKey() ? d : null;
+}
+function dailyLog() { return store.get('dailyLog', {}); }
+function dailyStreak() {
+  const log = dailyLog(); let n = 0;
+  const d = new Date();
+  if (!log[dailyKey(d)]) d.setDate(d.getDate() - 1);   // today not played yet: count up to yesterday
+  while (log[dailyKey(d)] !== undefined) { n += 1; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function dailyBanner() {
+  const n = dailyNumber(), saved = dailySaved();
+  const done = saved && saved.done;
+  const streak = dailyStreak();
+  const sub = done ? `You scored <b>${saved.points}</b> · new match in ${untilTomorrow()}`
+    : saved ? `In progress: ${saved.darts.length} of ${DAILY_DARTS} darts thrown`
+    : 'Same match for everyone · 6 darts';
+  return `<button class="daily ${done ? 'done' : ''}" data-act="daily">
+    <span class="daily-i" aria-hidden="true">⭐</span>
+    <span class="daily-body"><span class="daily-t">Daily Match #${n}${streak > 1 ? ` <span class="daily-streak">🔥 ${streak}</span>` : ''}</span><span class="daily-s">${sub}</span></span>
+    <span class="daily-go">${done ? 'Share' : saved ? 'Resume' : 'Play'}</span>
+  </button>`;
+}
+function untilTomorrow() {
+  const now = new Date(), t = new Date(now); t.setHours(24, 0, 0, 0);
+  const m = Math.max(1, Math.round((t - now) / 60000));
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+}
+async function startDaily() {
+  S.game = 'daily'; S.busy = true;
+  S.dailyN = dailyNumber();
+  try { S.match = await dailyMatch(S.dailyN); }
+  catch { S.busy = false; S.error = 'Couldn’t load today’s match. Check your connection and try again.'; goHub(); return; }
+  S.busy = false;
+  const saved = dailySaved();
+  S.players = [{ name: 'You', legs: 0 }];
+  resetPlayer(S.players[0]);
+  S.legOver = false; S.pending = null; S.round = 1; S.matchesThisLeg = 1;
+  S.turnOrder = [0]; S.turnIdx = 0; S.lastVisits = [];
+  S.claimed = [new Map(saved ? saved.claimed : [])];
+  S.visit = []; S.cat = null; S.choices = null; S.error = null;
+  if (saved) {
+    S.visit = saved.darts;
+    S.players[0].points = saved.points;
+    S.players[0].darts = saved.darts.length;
+  } else track('Game started', { game: 'Daily Match', day: S.dailyN });
+  S.screen = 'play';
+  render(); window.scrollTo(0, 0);
+}
+function saveDaily() {
+  const p = S.players[0];
+  store.set('daily', {
+    key: dailyKey(), n: S.dailyN, points: p.points, done: S.visit.length >= DAILY_DARTS,
+    claimed: [...S.claimed[0]],
+    darts: S.visit.map(d => ({ cat: d.cat, answer: d.answer, extra: '', res: { correct: d.res.correct, points: d.res.points || 0, message: d.res.message } })),
+  });
+}
+function dailyEmoji(darts) { return darts.map(d => (d.res.correct ? '🎯' : '⬜')).join(''); }
+function dailyOver() {
+  const saved = dailySaved();
+  const log = dailyLog(); log[saved.key] = saved.points; store.set('dailyLog', log);
+  track('Game finished', { game: 'Daily Match', day: saved.n, points: saved.points, hits: saved.darts.filter(d => d.res.correct).length });
+  L.recordGame({ game: 'daily', players: ['You'], winner: null, solo: true, league: null, detail: `#${saved.n}, ${saved.points} pts` });
+  if (saved.points > 0) { confetti(); sfx.win(); } else sfx.miss();
+  showDailyResult();
+}
+function showDailyResult() {
+  const saved = dailySaved();
+  if (!saved) return;
+  const hits = saved.darts.filter(d => d.res.correct).length;
+  const streak = dailyStreak();
+  S.shareText = `⭐ Top Flight 501 Daily #${saved.n}\n${dailyEmoji(saved.darts)} ${saved.points} pts${streak > 1 ? ` · 🔥 ${streak} days` : ''}`;
+  openModal(`
+    <p class="eyebrow">⭐ Daily Match #${saved.n}</p>
+    <h2>${hits === DAILY_DARTS ? 'Perfect day! 🔥' : hits >= 4 ? 'Cracking effort' : hits >= 2 ? 'Not bad at all' : 'Tough one today'}</h2>
+    <p class="big-score center">${saved.points}</p>
+    <p class="daily-emoji">${dailyEmoji(saved.darts)}</p>
+    <p class="hint center">${hits} of ${DAILY_DARTS} darts hit${streak > 1 ? ` · 🔥 ${streak}-day streak` : ''} · Next match in ${untilTomorrow()}</p>
+    <div class="row">
+      <button class="btn ghost" data-act="daily-key">See answers</button>
+      <button class="btn primary" data-act="share">↗ Share</button>
+    </div>
+    <button class="btn link" data-act="daily-close">Back to games</button>`, { dismissable: false });
+}
+
+// ---------- add to home screen ----------
+let installEvent = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; if (S.screen === 'hub' && !modalRoot.innerHTML) renderHub(); });
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+function installBar() {
+  if (isStandalone() || store.get('installDone', false) || store.get('visits', 0) < 2) return '';
+  if (!installEvent && !matchMedia('(pointer: coarse)').matches) return '';
+  return `<div class="install" role="region" aria-label="Add to home screen">
+    <img src="img/icon-192.png" alt="" width="28" height="28">
+    <span>Add to your home screen</span>
+    <button class="install-add" data-act="install">Add</button>
+    <button class="install-x" data-act="install-x" aria-label="No thanks">✕</button>
+  </div>`;
+}
+async function installApp() {
+  track('Install prompt', { action: 'Add tapped' });
+  if (installEvent) {
+    installEvent.prompt();
+    try { const c = await installEvent.userChoice; track('Install prompt', { action: c.outcome }); } catch { /* ignore */ }
+    installEvent = null; store.set('installDone', true); renderHub(); return;
+  }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  openModal(`
+    <h2>📲 Add to home screen</h2>
+    ${ios ? `<ol class="steps"><li>Tap the <b>Share</b> button <span aria-hidden="true">⬆️</span> at the bottom of Safari.</li><li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>.</li></ol>`
+          : `<ol class="steps"><li>Tap the <b>⋮</b> menu at the top right of your browser.</li><li>Tap <b>Add to Home screen</b> or <b>Install app</b>.</li><li>Tap <b>Add</b>.</li></ol>`}
+    <p class="hint">It opens full screen, like an app.</p>
+    <button class="btn primary big" data-act="install-ok">Got it</button>`);
 }
 
 // ---------- leagues & history ----------
-const GAME_ICON = { x01: '🎯', killer: '🔪', clock: '🏟️', sudden: '⚡', sentoff: '🟥' };
+const GAME_ICON = { x01: '🎯', killer: '🔪', clock: '🏟️', sudden: '⚡', sentoff: '🟥', daily: '⭐' };
 const shortDate = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 function resultRow(g) {
@@ -877,6 +1115,11 @@ function gameRules(game) {
       <li><b>Every miss is a foul.</b> Your 3rd foul is a 🟨 yellow card and your 6th is a 🟥 red: you’re sent off.</li>
       <li><b>Get it right</b> and you win the match. A new match comes up, but fouls carry over.</li>
       <li><b>Last one on the pitch wins.</b> Careful: every wrong guess helps your rivals too.</li>`,
+    daily: `
+      <li><b>One match a day.</b> Everyone in the world gets the same match, and you get one go at it.</li>
+      <li><b>Six darts.</b> Pick any category for each dart. Correct answers add their points. ${TIERS}</li>
+      <li><b>Misses don’t end it.</b> Use all six darts, then share your score and see how your mates did.</li>
+      <li><b>Come back tomorrow</b> for a new match and keep your 🔥 streak going.</li>`,
     sudden: `
       <li><b>Solo survival.</b> Answer three darts per match, match after match.</li>
       <li><b>Score as you go.</b> Each correct answer adds its points. ${TIERS}</li>
@@ -914,7 +1157,7 @@ function answerKeyHtml() {
   <p class="hint center">${fmtDate(m.date)}</p>
   <div class="key-grid">${col(0)}${col(1)}</div>
   <p class="hint">Something wrong? <a href="mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('Match data report ' + m.id)}&body=${encodeURIComponent(`Match: ${m.home} ${m.score[0]}-${m.score[1]} ${m.away} (${m.date}, id ${m.id})\n\nWhat's wrong:\n`)}">Report this match</a></p>
-  <button class="btn primary big" data-act="forfeit-done">${S.game === 'sudden' ? 'Start again' : 'Restart game'}</button>`;
+  ${S.game === 'daily' ? '<button class="btn primary big" data-act="daily-result">Back</button>' : `<button class="btn primary big" data-act="forfeit-done">${S.game === 'sudden' ? 'Start again' : 'Restart game'}</button>`}`;
 }
 
 // ---------- game flow ----------
@@ -928,7 +1171,7 @@ async function begin() {
     legs: 0,
   }));
   S.legStarter = 0;
-  store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs });
+  store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy });
   await startLeg();
 }
 
@@ -939,6 +1182,7 @@ function gameInfo(extra = {}) {
     club: S.clubs[0] || 'Any club',
     seasons: `${seasonLabel(S.seasonFrom || '')} to ${seasonLabel(S.seasonTo || '')}`,
     ...(S.game === 'x01' ? { start: S.start } : {}),
+    ...(easyOn() ? { mode: 'Easy' } : {}),
     ...extra,
   };
 }
@@ -983,6 +1227,7 @@ async function newRound() {
 function startTurn() {
   S.visit = [];
   S.cat = null;
+  S.choices = null;
   S.error = null;
   S.screen = S.players.length > 1 ? 'handover' : 'play';
   render();
@@ -995,14 +1240,20 @@ function managerDart(guess, claimed) {
   return hit ? { correct: true, points: 0, key: 'manager', message: hit } : { correct: false, points: 0, message: 'Not either manager.' };
 }
 
-function throwDart() {
-  if (S.legOver || S.pending) return;
+function throwDart(choiceId) {
+  if (S.legOver || S.pending || S.visit.length >= dartsPerVisit()) return;
   const p = current();
   const claimed = S.claimed[currentIdx()];
-  let answer;
-  if (S.cat === 'scoreline') answer = [$('[data-sl="0"]').value, $('[data-sl="1"]').value];
-  else answer = ($('[data-answer]') || {}).value || '';
-  const res = S.cat === 'manager' ? managerDart(answer, claimed) : checkDart(S.match, S.cat, answer, claimed);
+  let answer, res;
+  if (choiceId) {
+    answer = (S.choices && S.choices.opts.find(o => o.id === choiceId) || {}).label || '';
+    res = easyDart(S.cat, choiceId, claimed);
+  } else {
+    if (S.cat === 'scoreline') answer = [$('[data-sl="0"]').value, $('[data-sl="1"]').value];
+    else answer = ($('[data-answer]') || {}).value || '';
+    res = S.cat === 'manager' ? managerDart(answer, claimed) : checkDart(S.match, S.cat, answer, claimed);
+  }
+  S.choices = null;
   if (res.invalid) { S.error = res.message; render(); return; }
   S.error = null;
   p.darts += 1;
@@ -1039,6 +1290,11 @@ function throwDart() {
       if (res.correct) { p.points += res.points; p.streak += 1; }
       else after.over = true;
       break;
+    case 'daily':
+      if (res.correct) p.points += res.points;
+      saveDaily();
+      if (S.visit.length >= DAILY_DARTS) after.daily = true;
+      break;
   }
 
   render();
@@ -1046,6 +1302,7 @@ function throwDart() {
 
   if (after.win) { S.legOver = true; setTimeout(() => legWon(p), 650); return; }
   if (after.over) { S.legOver = true; setTimeout(suddenOver, 700); return; }
+  if (after.daily) { S.legOver = true; setTimeout(dailyOver, 700); return; }
   if (after.pick) { setTimeout(pickVictim, 400); return; }
   if (S.game === 'x01' && S.visit.length === 3 && S.visit.every(d => d.res.correct)) setTimeout(managerBonus, 500);
 }
@@ -1134,9 +1391,9 @@ function legWon(p) {
     title = `🎯 ${esc(p.name)} wins the leg`;
     if (solo) {
       const best = store.get('best:' + S.start, null);
-      const isBest = !best || p.darts < best.darts;
+      const isBest = !easyOn() && (!best || p.darts < best.darts);
       if (isBest) store.set('best:' + S.start, { darts: p.darts, matches: S.matchesThisLeg });
-      extra = `<p>Checked out from ${S.start} in <b>${p.darts} darts</b> across ${S.matchesThisLeg} matches.${isBest ? ' <b>New personal best!</b>' : ` Best: ${best.darts} darts.`}</p>`;
+      extra = `<p>Checked out from ${S.start} in <b>${p.darts} darts</b> across ${S.matchesThisLeg} matches.${isBest ? ' <b>New personal best!</b>' : best ? ` Best: ${best.darts} darts.` : ''}</p>`;
     }
   } else if (S.game === 'killer') {
     eyebrow = 'Last one standing';
@@ -1147,9 +1404,9 @@ function legWon(p) {
     title = `🏟️ ${esc(p.name)} made it round`;
     if (solo) {
       const best = store.get('best:clock', null);
-      const isBest = !best || p.darts < best.darts;
+      const isBest = !easyOn() && (!best || p.darts < best.darts);
       if (isBest) store.set('best:clock', { darts: p.darts, matches: S.matchesThisLeg });
-      extra = `<p>All six targets in <b>${p.darts} darts</b> across ${S.matchesThisLeg} matches.${isBest ? ' <b>New personal best!</b>' : ` Best: ${best.darts} darts.`}</p>`;
+      extra = `<p>All six targets in <b>${p.darts} darts</b> across ${S.matchesThisLeg} matches.${isBest ? ' <b>New personal best!</b>' : best ? ` Best: ${best.darts} darts.` : ''}</p>`;
     } else {
       extra = `<p>Finished in <b>${p.darts} darts</b>.</p>`;
     }
@@ -1162,6 +1419,7 @@ function legWon(p) {
   confetti();
   sfx.win(); buzz([80, 60, 80, 60, 160]);
   S.legStarter = (S.legStarter + 1) % S.players.length;
+  S.shareText = shareLine(p);
   openModal(`
     <p class="eyebrow">${eyebrow}</p>
     <h2>${title}</h2>
@@ -1170,18 +1428,20 @@ function legWon(p) {
     <div class="row">
       <button class="btn ghost" data-act="newgame">Change game</button>
       <button class="btn primary" data-act="nextleg">${solo ? 'Go again' : 'Play again'}</button>
-    </div>`, { dismissable: false });
+    </div>
+    ${SHARE_BTN}`, { dismissable: false });
 }
 
 function suddenOver() {
   const p = current();
   track('Game finished', gameInfo({ result: 'Sudden death over', points: p.points, streak: p.streak }));
   const best = store.get('best:sudden', null);
-  const isBest = p.points > 0 && (!best || p.points > best.points);
+  const isBest = !easyOn() && p.points > 0 && (!best || p.points > best.points);
   if (isBest) store.set('best:sudden', { points: p.points, streak: p.streak });
   const last = S.visit[S.visit.length - 1];
   L.recordGame({ game: 'sudden', players: [p.name], winner: null, solo: true, league: null, detail: `${p.points} pts, ${p.streak} in a row` });
   if (isBest) { confetti(); sfx.win(); } else { sfx.miss(); }
+  S.shareText = shareLine(p);
   openModal(`
     <p class="eyebrow">⚡ Sudden death</p>
     <h2>${isBest ? 'New personal best!' : 'That’s the end of the road'}</h2>
@@ -1192,7 +1452,7 @@ function suddenOver() {
       <button class="btn ghost" data-act="show-key">See answers</button>
       <button class="btn primary" data-act="nextleg">Go again</button>
     </div>
-    <button class="btn link" data-act="newgame">Change game</button>`, { dismissable: false });
+    <div class="row slim"><button class="btn link" data-act="newgame">Change game</button>${SHARE_BTN}</div>`, { dismissable: false });
 }
 
 function answerKey() {
@@ -1248,6 +1508,20 @@ document.addEventListener('click', async e => {
   switch (act) {
     case 'pick': track('Game picked', { game: GAMES[v] ? GAMES[v].title : v }); S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
     case 'hub': goHub(); break;
+    case 'daily':
+      if (S.busy) break;
+      if (dailySaved() && dailySaved().done) { S.game = 'daily'; S.dailyN = dailyNumber(); showDailyResult(); }
+      else await startDaily();
+      break;
+    case 'daily-key': try { S.match = await dailyMatch(dailySaved().n); } catch { break; } openModal(answerKeyHtml(), { dismissable: false }); break;
+    case 'daily-result': showDailyResult(); break;
+    case 'daily-close': modalRoot._onClose = null; closeModal(); goHub(); break;
+    case 'share': shareResult(); break;
+    case 'easy': S.easy = !S.easy; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
+    case 'choose': throwDart(v); break;
+    case 'install': installApp(); break;
+    case 'install-x': store.set('installDone', true); track('Install prompt', { action: 'Dismissed' }); renderHub(); break;
+    case 'install-ok': store.set('installDone', true); closeModal(); renderHub(); break;
     case 'leagues': S.screen = 'leagues'; S.openLeague = null; S.creatingLeague = false; renderLeagues(); window.scrollTo(0, 0); break;
     case 'leagues-home': S.openLeague = null; renderLeagues(); window.scrollTo(0, 0); break;
     case 'open-league': modalRoot._onClose = null; closeModal(); S.screen = 'leagues'; S.openLeague = v; S.h2h = ['', '']; renderLeagues(); window.scrollTo(0, 0); break;
@@ -1301,7 +1575,7 @@ document.addEventListener('click', async e => {
       await newRound();
       break;
     case 'so-next': S.legStarter = (S.legStarter + 1) % S.players.length; await newRound(); break;
-    case 'cat': e.preventDefault(); S.cat = v; S.error = null; renderPlay(); break;
+    case 'cat': e.preventDefault(); if (S.cat !== v) S.choices = null; S.cat = v; S.error = null; renderPlay(); break;
     case 'victim': hitVictim(Number(v)); break;
     case 'endvisit': endVisit(); break;
     case 'bonus-skip': resolveBonus(''); break;
@@ -1313,7 +1587,7 @@ document.addEventListener('click', async e => {
     case 'newgame': modalRoot._onClose = null; closeModal(); goHub(); break;
     case 'home':
       if (S.screen === 'hub') break;
-      if (S.screen === 'setup' || S.screen === 'leagues') { goHub(); break; }
+      if (S.screen === 'setup' || S.screen === 'leagues' || S.game === 'daily') { goHub(); break; }
       openModal(`<h2>Leave this game?</h2><p>Scores for this game will be lost.</p>
         <div class="row"><button class="btn ghost" data-act="close">Keep playing</button><button class="btn danger" data-act="leave">Leave game</button></div>`);
       break;
@@ -1374,14 +1648,16 @@ document.addEventListener('keydown', e => {
 // ---------- boot ----------
 (async function boot() {
   initAnalytics();
+  store.set('visits', store.get('visits', 0) + 1);
   const saved = store.get('setup', null);
   if (saved) {
     Object.assign(S, {
-      game: GAMES[saved.game] ? saved.game : S.game,
+      game: GAMES[saved.game] && !GAMES[saved.game].hidden ? saved.game : S.game,
       nPlayers: saved.nPlayers || (saved.mode === 'solo' ? 1 : 2),
       unit: saved.unit || S.unit,
       start: saved.start || S.start,
       leagueId: saved.leagueId || '',
+      easy: !!saved.easy,
     });
     if (Array.isArray(saved.names)) S.names = [0, 1, 2, 3].map(i => saved.names[i] || '');
   }
