@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=22';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=22';
-import { sfx, setSoundEnabled } from './sound.js?v=22';
-import * as L from './leagues.js?v=22';
-import { initAnalytics, track } from './analytics.js?v=22';
-import { privacyHtml, termsHtml } from './legal.js?v=22';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=24';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=24';
+import { sfx, setSoundEnabled } from './sound.js?v=24';
+import * as L from './leagues.js?v=24';
+import { initAnalytics, track } from './analytics.js?v=24';
+import { privacyHtml, termsHtml } from './legal.js?v=24';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -243,6 +243,8 @@ function renderSetup() {
     <button class="back" data-act="hub">‹ All games</button>
     <p class="eyebrow">${g.icon} ${g.title}</p>
     <h2>Step to the oche</h2>
+    <div class="setup-cols">
+    <div class="setup-side">
     ${store.get('hideRules:' + S.game, false) ? `
     <p class="hint setup-blurb">${g.blurb}</p>
     <button class="btn link show-rules" data-act="toggle-rules">📋 Show how ${g.title} works</button>` : `
@@ -254,9 +256,11 @@ function renderSetup() {
       <ul class="how-list">${gameRules(S.game).replace(/<li>/g, '<li>')}</ul>
       <p class="hint">Three darts per match, everyone on the same match. Surnames and small typos are fine. Own goals count as goals, and a player who scored twice can be picked twice.</p>
     </div>`}
+    </div>
+    <div class="setup-main">
 
     ${g.max > 1 ? `
-    <div class="field">
+    <div class="field f-half">
       <span class="label">Players</span>
       <div class="seg count c${g.max - g.min + 1}">
         ${Array.from({ length: g.max - g.min + 1 }, (_, i) => g.min + i).map(n => `<button class="seg-btn num ${S.nPlayers === n ? 'on' : ''}" data-act="count" data-v="${n}">${n === 1 ? 'Solo' : n}</button>`).join('')}
@@ -264,7 +268,7 @@ function renderSetup() {
     </div>` : ''}
 
     ${S.game === 'x01' && multi ? `
-    <div class="field">
+    <div class="field f-half">
       <span class="label">Competing as</span>
       <div class="seg">
         <button class="seg-btn ${S.unit === 'managers' ? 'on' : ''}" data-act="unit" data-v="managers">🧑‍💼 Managers</button>
@@ -296,7 +300,7 @@ function renderSetup() {
       </div>
     </div>` : ''}
 
-    <div class="field">
+    <div class="field f-half">
       <span class="label">Seasons</span>
       <div class="season-range">
         <select id="season-from" data-season="from" aria-label="From season">${seasonOpts(S.seasonFrom)}</select>
@@ -305,7 +309,7 @@ function renderSetup() {
       </div>
     </div>
 
-    <div class="field">
+    <div class="field f-half">
       <span class="label">Preferred club <span class="opt">optional</span></span>
       <div class="clubs">
         <select id="club" data-club="0" aria-label="Preferred club">
@@ -319,6 +323,8 @@ function renderSetup() {
     ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
     <button class="btn primary big" data-act="begin" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Loading…' : 'Game on'}</button>
     <button class="btn link" data-act="rules">📖 Full rules</button>
+    </div>
+    </div>
   </section>`;
 }
 
@@ -394,18 +400,21 @@ function scoreboard() {
     <button type="button" class="back quit" data-act="home" aria-label="Quit game and go back to all games">‹ Quit game</button>
     <span class="gamebar-t">${G().icon} ${esc(G().title)}${S.game === 'daily' ? ` #${S.dailyN}` : easyOn() ? ' · Easy' : ''}</span>
   </div>
+  <div class="stage-side">
   <div class="board ${n === 1 ? 'solo' : ''} ${n > 2 ? 'many' : ''}">
     ${S.players.map((p, i) => `
       <div class="pl ${i === idx ? 'active' : ''} ${p.out ? 'is-out' : ''}">
         <div class="pl-name">${esc(p.name)}${n > 1 ? `<span class="legs" title="Games won">${p.legs}</span>` : ''}</div>
         ${boardCell(p, i)}
       </div>`).join('')}
+  </div>
+  ${S.match ? matchCard('match-side') : ''}
   </div>`;
 }
 
-function matchCard() {
+function matchCard(cls = '') {
   const m = S.match;
-  return `<div class="match">
+  return `<div class="match ${cls}">
     <div class="match-meta"><span>Premier League ${seasonLabel(m.season)}</span><span>Round ${S.round}</span></div>
     <div class="teams"><span class="team">${esc(m.home)}</span><span class="vs">v</span><span class="team">${esc(m.away)}</span></div>
     <div class="match-date">${fmtDate(m.date)}</div>
@@ -426,6 +435,7 @@ function renderHandover() {
   const p = current();
   const prev = S.lastVisits[S.lastVisits.length - 1];
   app.innerHTML = `
+  <div class="stage">
   ${scoreboard()}
   <section class="card handover">
     ${prev ? `<p class="prev">${prevLine(prev)}</p>` : ''}
@@ -435,7 +445,8 @@ function renderHandover() {
     ${matchCard()}
     ${S.turnIdx === 0 ? `<div class="reroll-row">${REROLL}</div>` : ''}
     <button class="btn primary big" data-act="go">Throw darts</button>
-  </section>`;
+  </section>
+  </div>`;
 }
 
 function handoverHint(p) {
@@ -519,6 +530,7 @@ function renderPlay() {
   const resultPts = r => S.game === 'x01' ? ` <b>−${r.points}</b>` : (S.game === 'sudden' || S.game === 'daily') ? ` <b>+${r.points}</b>` : '';
 
   app.innerHTML = `
+  <div class="stage">
   ${scoreboard()}
   <section class="card play">
     ${matchCard()}
@@ -539,7 +551,8 @@ function renderPlay() {
       ${S.game === 'daily' ? '' : '<button class="btn ghost" data-act="key">📖 Answer key</button>'}
       <button class="btn ghost" data-act="rules">❓ Rules</button>
     </div>
-  </section>`;
+  </section>
+  </div>`;
   const f = $('[data-answer]') || $('[data-sl="0"]');
   if (f && (!matchMedia('(hover: none)').matches || S.cat)) f.focus();
 }
@@ -650,6 +663,7 @@ function renderSentOff() {
   const known = k => so.hi[k] !== null && so.lo[k] === so.hi[k];
   const digit = k => so.solved !== null ? m.score[k] : known(k) ? so.lo[k] : '?';
   app.innerHTML = `
+  <div class="stage">
   ${scoreboard()}
   <section class="card play sentoff">
     ${matchCard()}
@@ -679,7 +693,8 @@ function renderSentOff() {
       <button class="btn ghost" data-act="key">📖 Answer key</button>
       <button class="btn ghost" data-act="rules">❓ Rules</button>
     </div>
-  </section>`;
+  </section>
+  </div>`;
   const f = $('[data-sl="0"]');
   if (f && !matchMedia('(hover: none)').matches) f.focus();
 }
@@ -749,6 +764,7 @@ function sentOffWon(p) {
 
 // ---------- sharing ----------
 const SITE = 'topflight501.com';
+const DAILY_LINK = 'https://topflight501.com/?daily';
 const SHARE_BTN = '<button class="btn link share-btn" data-act="share">↗ Share result</button>';
 function shareLine(p) {
   const solo = S.players.length === 1;
@@ -764,7 +780,7 @@ function shareLine(p) {
   }
 }
 async function shareResult() {
-  const text = `${S.shareText}\n${SITE}`;
+  const text = `${S.shareText}\n${S.game === 'daily' ? DAILY_LINK : SITE}`;
   track('Result shared', { game: GAMES[S.game] ? GAMES[S.game].title : S.game });
   try {
     if (navigator.share) { await navigator.share({ text }); return; }
@@ -854,7 +870,7 @@ function showDailyResult() {
   if (!saved) return;
   const hits = saved.darts.filter(d => d.res.correct).length;
   const streak = dailyStreak();
-  S.shareText = `⭐ Top Flight 501 Daily #${saved.n}\n${dailyEmoji(saved.darts)} ${saved.points} pts${streak > 1 ? ` · 🔥 ${streak} days` : ''}`;
+  S.shareText = `⭐ Top Flight 501 Daily #${saved.n}\n${dailyEmoji(saved.darts)} ${saved.points} pts${streak > 1 ? ` · 🔥 ${streak} days` : ''}\nCan you beat me? Today's match 👇`;
   openModal(`
     <p class="eyebrow">⭐ Daily Match #${saved.n}</p>
     <h2>${hits === DAILY_DARTS ? 'Perfect day! 🔥' : hits >= 4 ? 'Cracking effort' : hits >= 2 ? 'Not bad at all' : 'Tough one today'}</h2>
@@ -1673,6 +1689,13 @@ document.addEventListener('keydown', e => {
   await refreshClubOptions();
   render();
   hideSplash();
+  // a shared Daily Match link (topflight501.com/?daily) opens today's match straight away
+  if (new URLSearchParams(location.search).has('daily') && S.allSeasons.length) {
+    history.replaceState(null, '', location.pathname);
+    track('Opened shared Daily link');
+    if (dailySaved() && dailySaved().done) { S.game = 'daily'; S.dailyN = dailyNumber(); showDailyResult(); }
+    else await startDaily();
+  }
 })();
 
 // subtle line under the pinned header once the page is scrolled

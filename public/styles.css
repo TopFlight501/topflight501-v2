@@ -435,3 +435,38 @@ main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px
 .install-add { font: inherit; font-weight: 800; background: var(--green); color: var(--on-green); border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
 .install-x { font: inherit; background: none; border: 0; color: var(--muted); padding: 6px 8px; cursor: pointer; }
 .steps { padding-left: 1.2rem; line-height: 1.6; }
+
+/* ---------- wide screens (laptop, PC, iPad landscape). Phones never see this. ---------- */
+.match-side { display: none; }
+@media (min-width: 900px) {
+  .top { max-width: 1120px; padding-left: 32px; padding-right: 32px; }
+  main { max-width: 1120px; padding-left: 32px; padding-right: 32px; }
+
+  /* hub: games side by side */
+  .games { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .game-card { align-items: flex-start; }
+  .game-go { display: none; }
+
+  /* game screens: scores and match on the left, darts on the right */
+  .stage { display: grid; grid-template-columns: minmax(300px, 360px) 1fr; column-gap: 28px; align-items: start; }
+  .stage > .gamebar { grid-column: 1 / -1; }
+  .stage-side { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 14px; }
+  .stage-side .board { grid-template-columns: 1fr; margin: 0; }
+  .stage-side .board.many { grid-template-columns: 1fr 1fr; }
+  .match-side { display: block; margin: 0; background: var(--card); box-shadow: var(--shadow); padding: 18px 16px; }
+  .match-side .teams { font-size: 1.15rem; }
+  .stage > section .match:not(.match-side) { display: none; }
+  .stage > section { margin-top: 0; }
+  .choices { grid-template-columns: repeat(4, 1fr); }
+
+  /* setup: how it works on the left, the options on the right */
+  .setup-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; align-items: start; }
+  .setup-side { position: sticky; top: 88px; }
+  .setup-side .setup-blurb { margin-top: 0; }
+}
+@media (min-width: 900px) {
+  .setup-main { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; align-items: start; }
+  .setup-main > * { grid-column: 1 / -1; }
+  .setup-main > .f-half { grid-column: auto; }
+  .setup-main .season-range select { min-width: 0; }
+}
