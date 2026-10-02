@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=28';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=28';
-import { sfx, setSoundEnabled } from './sound.js?v=28';
-import * as L from './leagues.js?v=28';
-import { initAnalytics, track } from './analytics.js?v=28';
-import { privacyHtml, termsHtml } from './legal.js?v=28';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=29';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=29';
+import { sfx, setSoundEnabled } from './sound.js?v=29';
+import * as L from './leagues.js?v=29';
+import { initAnalytics, track } from './analytics.js?v=29';
+import { privacyHtml, termsHtml } from './legal.js?v=29';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -780,23 +780,52 @@ function shareLine(p) {
     default: return 'Top Flight 501: Premier League trivia, darts style.';
   }
 }
-function inviteDaily() {
+function inviteDaily(anchor) {
   const n = dailyNumber(), saved = dailySaved();
   const lead = saved && saved.done ? `I got ${saved.points} pts on today's Top Flight 501 Daily #${n}. Can you beat me?` : `⭐ Top Flight 501 Daily #${n}: same Premier League match for everyone today. Six darts. Fancy it?`;
   track('Daily invite');
-  return shareText(`${lead} 👇\n${DAILY_LINK}`);
+  return shareText(`${lead} 👇\n${DAILY_LINK}`, anchor);
 }
-async function shareResult() {
+async function shareResult(anchor) {
   const text = `${S.shareText}\n${S.game === 'daily' ? DAILY_LINK : SITE}`;
   track('Result shared', { game: GAMES[S.game] ? GAMES[S.game].title : S.game });
-  return shareText(text);
+  return shareText(text, anchor);
 }
-async function shareText(text) {
-  try {
-    if (navigator.share) { await navigator.share({ text }); return; }
-  } catch (e) { if (e && e.name === 'AbortError') return; }
+// Phones and tablets: the phone's own share menu. Laptops and PCs: simple WhatsApp / X / Copy buttons,
+// because the computer's share panel often has no WhatsApp and is easy to miss.
+const isTouch = () => matchMedia('(pointer: coarse)').matches;
+async function shareText(text, anchor) {
+  if (navigator.share && isTouch()) {
+    try { await navigator.share({ text }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  if (anchor) return showShareOptions(text, anchor);
+  copyText(text);
+}
+async function copyText(text) {
   try { await navigator.clipboard.writeText(text); toast('Copied. Paste it anywhere 👍'); }
-  catch { toast('Couldn’t copy, sorry'); }
+  catch {
+    // older browsers
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch { /* ignore */ }
+    ta.remove(); toast(ok ? 'Copied. Paste it anywhere 👍' : 'Couldn’t copy, sorry');
+  }
+}
+function showShareOptions(text, anchor) {
+  const host = anchor.closest('.sheet, .daily, .gamebar') || anchor.parentElement;
+  const old = document.querySelector('.share-opts');
+  if (old) { const same = old._text === text; old.remove(); if (same) return; }
+  const el = document.createElement('div');
+  el.className = 'share-opts'; el._text = text;
+  const enc = encodeURIComponent(text);
+  el.innerHTML = `<a class="so-btn wa" href="https://wa.me/?text=${enc}" target="_blank" rel="noopener">WhatsApp</a>
+    <a class="so-btn x" href="https://x.com/intent/post?text=${enc}" target="_blank" rel="noopener">X</a>
+    <button type="button" class="so-btn copy">Copy</button>`;
+  el.querySelector('.copy').addEventListener('click', () => { copyText(text); el.remove(); });
+  el.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { track('Share target', { target: a.textContent }); setTimeout(() => el.remove(), 300); }));
+  if (host.classList.contains('sheet')) anchor.closest('.row, .row.slim') ? anchor.closest('.row, .row.slim').after(el) : anchor.after(el);
+  else host.after(el);
 }
 function toast(msg) {
   const t = document.createElement('div');
@@ -1559,8 +1588,8 @@ document.addEventListener('click', async e => {
     case 'daily-key': try { S.match = await dailyMatch(dailySaved().n); } catch { break; } openModal(answerKeyHtml(), { dismissable: false }); break;
     case 'daily-result': showDailyResult(); break;
     case 'daily-close': modalRoot._onClose = null; closeModal(); goHub(); break;
-    case 'share': shareResult(); break;
-    case 'daily-invite': inviteDaily(); break;
+    case 'share': shareResult(b); break;
+    case 'daily-invite': inviteDaily(b); break;
     case 'easy': S.easy = !S.easy; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
     case 'choose': throwDart(v); break;
     case 'install': installApp(); break;
