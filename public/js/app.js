@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=30';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=30';
-import { sfx, setSoundEnabled } from './sound.js?v=30';
-import * as L from './leagues.js?v=30';
-import { initAnalytics, track } from './analytics.js?v=30';
-import { privacyHtml, termsHtml } from './legal.js?v=30';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=31';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=31';
+import { sfx, setSoundEnabled } from './sound.js?v=31';
+import * as L from './leagues.js?v=31';
+import { initAnalytics, track } from './analytics.js?v=31';
+import { privacyHtml, termsHtml } from './legal.js?v=31';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -998,16 +998,20 @@ async function makeStoryImage(saved) {
 async function shareStory() {
   const saved = dailySaved(); if (!saved) return;
   track('Story image', { day: saved.n });
+  // copy the link first, so it's ready to paste into Instagram's Link sticker
+  let copied = false;
+  try { await navigator.clipboard.writeText(DAILY_LINK); copied = true; } catch { /* ignore */ }
   const blob = await makeStoryImage(saved);
   if (!blob) { toast('Couldn’t make the image, sorry'); return; }
   const file = new File([blob], `topflight501-daily-${saved.n}.png`, { type: 'image/png' });
   if (isTouch() && navigator.canShare && navigator.canShare({ files: [file] })) {
+    if (copied) toast('Link copied: paste it into a Link sticker 🔗');
     try { await navigator.share({ files: [file] }); return; }
     catch (e) { if (e && e.name === 'AbortError') return; }
   }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-  toast('Image saved. Add it to your story 📸');
+  toast(copied ? 'Image saved and link copied for your Link sticker 🔗' : 'Image saved. Add it to your story 📸');
 }
 
 // ---------- add to home screen ----------
