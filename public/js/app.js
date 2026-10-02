@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=27';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=27';
-import { sfx, setSoundEnabled } from './sound.js?v=27';
-import * as L from './leagues.js?v=27';
-import { initAnalytics, track } from './analytics.js?v=27';
-import { privacyHtml, termsHtml } from './legal.js?v=27';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=28';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=28';
+import { sfx, setSoundEnabled } from './sound.js?v=28';
+import * as L from './leagues.js?v=28';
+import { initAnalytics, track } from './analytics.js?v=28';
+import { privacyHtml, termsHtml } from './legal.js?v=28';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -150,7 +150,7 @@ function settingsHtml() {
   </div>
   <div class="field">
     <span class="label">Your data</span>
-    <p class="hint">Everything is saved on this device only. Make a backup to keep your personal bests or move them to another phone.</p>
+    <p class="hint">Everything is saved on this device only. Make a backup to keep your personal bests, Daily Match scores and streak, or to move them to another phone or computer.</p>
     <div class="row wrap">
       <button class="btn ghost" data-act="backup">⬇️ Backup</button>
       <button class="btn ghost" data-act="restore">⬆️ Restore</button>
@@ -906,7 +906,8 @@ function showDailyResult() {
       <button class="btn ghost" data-act="daily-key">See answers</button>
       <button class="btn primary" data-act="share">↗ Share</button>
     </div>
-    <button class="btn link" data-act="daily-close">Back to games</button>`, { dismissable: false });
+    <button class="btn link" data-act="daily-close">Back to games</button>
+    <p class="hint center small">Scores and streak are saved on this device. Playing elsewhere? Use Settings → Backup to move them.</p>`, { dismissable: false });
 }
 
 // ---------- add to home screen ----------
@@ -1065,7 +1066,7 @@ function restore() {
     if (!f) return;
     try {
       const res = L.importData(JSON.parse(await f.text()));
-      openModal(`<h2>Backup restored</h2><p>Added ${res.addedLeagues} ${res.addedLeagues === 1 ? 'league' : 'leagues'} and ${res.addedGames} ${res.addedGames === 1 ? 'game' : 'games'}. Anything already here was kept.</p><button class="btn primary big" data-act="close">OK</button>`);
+      openModal(`<h2>Backup restored</h2><p>Added ${res.addedGames} ${res.addedGames === 1 ? 'game' : 'games'}${res.addedDays ? ` and ${res.addedDays} Daily Match ${res.addedDays === 1 ? 'score' : 'scores'}` : ''}${res.addedLeagues ? `, plus ${res.addedLeagues} ${res.addedLeagues === 1 ? 'league' : 'leagues'}` : ''}. Anything already here was kept.</p><button class="btn primary big" data-act="close">OK</button>`);
       render();
     } catch (err) {
       openModal(`<h2>Couldn’t restore</h2><p>${esc(err.message && /backup/.test(err.message) ? err.message : 'That file couldn’t be read. Pick a backup file made by Top Flight 501.')}</p><button class="btn primary big" data-act="close">OK</button>`);
@@ -1160,7 +1161,8 @@ function gameRules(game) {
       <li><b>One match a day.</b> Everyone in the world gets the same match, and you get one go at it.</li>
       <li><b>Six darts.</b> Pick any category for each dart. Correct answers add their points. ${TIERS}</li>
       <li><b>Misses don’t end it.</b> Use all six darts, then share your score and see how your mates did.</li>
-      <li><b>Come back tomorrow</b> for a new match and keep your 🔥 streak going.</li>`,
+      <li><b>Come back tomorrow</b> for a new match and keep your 🔥 streak going.</li>
+      <li><b>Saved on this device.</b> Your Daily scores, best and streak live on the phone or computer you play on. Use Settings → Backup to move them to another device.</li>`,
     sudden: `
       <li><b>Solo survival.</b> Answer three darts per match, match after match.</li>
       <li><b>Score as you go.</b> Each correct answer adds its points. ${TIERS}</li>

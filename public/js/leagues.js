@@ -117,7 +117,9 @@ export function exportData() {
   for (const k of ['best:501', 'best:301', 'best:101', 'best:clock', 'best:sudden']) {
     try { const v = localStorage.getItem('tf501:' + k); if (v) bests[k] = JSON.parse(v); } catch { /* ignore */ }
   }
-  return { app: 'topflight501', version: 1, exported: new Date().toISOString(), leagues: getLeagues(), history: getHistory(), bests };
+  let daily = {};
+  try { daily = { log: JSON.parse(localStorage.getItem('tf501:dailyLog') || '{}'), today: JSON.parse(localStorage.getItem('tf501:daily') || 'null') }; } catch { /* ignore */ }
+  return { app: 'topflight501', version: 1, exported: new Date().toISOString(), leagues: getLeagues(), history: getHistory(), bests, daily };
 }
 
 export function importData(data) {
@@ -143,6 +145,21 @@ export function importData(data) {
   history.sort((a, b) => String(b.at).localeCompare(String(a.at)));
   write(KEY_LEAGUES, leagues);
   write(KEY_HISTORY, history.slice(0, HISTORY_CAP));
+  // Daily Match scores: keep the higher score for each day, so streaks and bests carry over
+  let addedDays = 0;
+  try {
+    const inLog = data.daily && data.daily.log && typeof data.daily.log === 'object' ? data.daily.log : {};
+    const log = JSON.parse(localStorage.getItem('tf501:dailyLog') || '{}');
+    for (const [day, pts] of Object.entries(inLog)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || typeof pts !== 'number') continue;
+      if (log[day] === undefined) addedDays++;
+      if (log[day] === undefined || pts > log[day]) log[day] = pts;
+    }
+    localStorage.setItem('tf501:dailyLog', JSON.stringify(log));
+    // today's game: bring it over if this device hasn't finished today's match
+    const t = data.daily && data.daily.today, cur = JSON.parse(localStorage.getItem('tf501:daily') || 'null');
+    if (t && t.done && t.key && (!cur || cur.key !== t.key || !cur.done)) localStorage.setItem('tf501:daily', JSON.stringify(t));
+  } catch { /* ignore */ }
   for (const [k, v] of Object.entries(data.bests || {})) {
     if (!/^best:(501|301|101|clock|sudden)$/.test(k) || !v) continue;
     try {
@@ -151,5 +168,5 @@ export function importData(data) {
       if (better) localStorage.setItem('tf501:' + k, JSON.stringify(v));
     } catch { /* ignore */ }
   }
-  return { addedLeagues, addedGames };
+  return { addedLeagues, addedGames, addedDays };
 }
