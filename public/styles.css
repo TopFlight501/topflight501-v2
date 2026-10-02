@@ -501,3 +501,8 @@ main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px
 .row.three-up .btn.primary { flex: 1.2; }
 .btn.story-btn { background: linear-gradient(45deg, #f9a03f, #e1306c 55%, #8a3ab9); color: #fff; border: 0; }
 .btn.story-btn:hover { filter: brightness(1.05); }
+
+/* back links: same size as before, just easier to spot */
+.back { color: var(--green-deep); font-weight: 700; }
+.back:hover { color: var(--teal); }
+.gamebar .back:hover { color: var(--teal); }
