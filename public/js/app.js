@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=32';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=32';
-import { sfx, setSoundEnabled } from './sound.js?v=32';
-import * as L from './leagues.js?v=32';
-import { initAnalytics, track } from './analytics.js?v=32';
-import { privacyHtml, termsHtml } from './legal.js?v=32';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=33';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=33';
+import { sfx, setSoundEnabled } from './sound.js?v=33';
+import * as L from './leagues.js?v=33';
+import { initAnalytics, track } from './analytics.js?v=33';
+import { privacyHtml, termsHtml } from './legal.js?v=33';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1833,6 +1833,32 @@ document.addEventListener('keydown', e => {
     else await startDaily();
   }
 })();
+
+// Keep the box you're typing in visible when the phone keyboard opens:
+// scroll it to the middle of the space that's left above the keyboard.
+function keepInView(el) {
+  if (!el || !el.matches || !el.matches('input, textarea, select')) return;
+  const vv = window.visualViewport;
+  const r = el.getBoundingClientRect();
+  const visibleTop = 70, visibleBottom = vv ? vv.height + vv.offsetTop : innerHeight;   // 70px clears the pinned header
+  if (r.top < visibleTop || r.bottom > visibleBottom - 12) {
+    const target = scrollY + r.top - visibleTop - Math.max(0, (visibleBottom - visibleTop - r.height) / 3);
+    window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+  }
+}
+document.addEventListener('focusin', e => { setTimeout(() => keepInView(e.target), 300); });
+if (window.visualViewport) {
+  // pop-up sheets follow the visible area, so they sit just above the keyboard instead of behind it
+  const syncVV = () => {
+    const r = document.documentElement.style;
+    r.setProperty('--vvh', visualViewport.height + 'px');
+    r.setProperty('--vvt', visualViewport.offsetTop + 'px');
+  };
+  syncVV();
+  let t;
+  visualViewport.addEventListener('resize', () => { syncVV(); clearTimeout(t); t = setTimeout(() => keepInView(document.activeElement), 80); });
+  visualViewport.addEventListener('scroll', syncVV);
+}
 
 // subtle line under the pinned header once the page is scrolled
 addEventListener('scroll', () => {
