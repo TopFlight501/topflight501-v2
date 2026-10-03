@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=34';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=34';
-import { sfx, setSoundEnabled } from './sound.js?v=34';
-import * as L from './leagues.js?v=34';
-import { initAnalytics, track } from './analytics.js?v=34';
-import { privacyHtml, termsHtml } from './legal.js?v=34';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=35';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=35';
+import { sfx, setSoundEnabled } from './sound.js?v=35';
+import * as L from './leagues.js?v=35';
+import { initAnalytics, track } from './analytics.js?v=35';
+import { privacyHtml, termsHtml } from './legal.js?v=35';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -55,6 +55,7 @@ const GAMES = {
   },
 };
 const DAILY_DARTS = 6;
+const MIN_TEAM = 2, MAX_TEAM = 8;
 const OLD_LINEUP_UNTIL = 2;   // Daily #1 and #2 used Lineup = 30; from #3 it's 20 like every other game
 const lineupOld = () => S.game === 'daily' && S.dailyN <= OLD_LINEUP_UNTIL;
 const NAME_CATS = ['scorer', 'assist', 'lineup', 'booked', 'manager'];
@@ -91,8 +92,7 @@ const S = {
   creatingLeague: false,
   openLeague: null,       // league shown on the leagues screen
   h2h: ['', ''],
-  teamSize: 2,            // Teams mode: players per team
-  members: [['', '', '', ''], ['', '', '', ''], ['', '', '', ''], ['', '', '', '']],
+  members: [['', ''], ['', ''], ['', ''], ['', '']],   // Teams mode: each team's players (2 to 8 each)
   teamGame: false,
   easy: false,            // Easy mode: pick from four names instead of typing
   choices: null,          // the four options currently shown
@@ -287,20 +287,18 @@ function renderSetup() {
 
     <datalist id="known-names">${namesForList().map(n => `<option value="${esc(n)}"></option>`).join('')}</datalist>
     ${S.game === 'x01' && multi && S.unit === 'teams' ? `
-    <div class="field">
-      <span class="label">Players per team</span>
-      <div class="seg three">
-        ${[2, 3, 4].map(n => `<button class="seg-btn num ${S.teamSize === n ? 'on' : ''}" data-act="teamsize" data-v="${n}">${n}</button>`).join('')}
-      </div>
-    </div>
     <div class="teams-setup">
       ${Array.from({ length: S.nPlayers }, (_, i) => `
         <div class="team-block">
           <label class="field"><span class="label">Team ${ordinals[i]}</span>
           <input class="text" id="name-${i}" data-name="${i}" maxlength="20" placeholder="Team name" autocomplete="off" value="${esc(S.names[i])}"></label>
-          <div class="members">${Array.from({ length: S.teamSize }, (_, j) => `
-            <input class="text small" id="member-${i}-${j}" data-member="${i}-${j}" maxlength="20" placeholder="Player ${j + 1}" list="known-names" autocomplete="off" aria-label="Team ${ordinals[i]} player ${j + 1}" value="${esc(S.members[i][j])}">`).join('')}
+          <div class="members">${S.members[i].map((m, j) => `
+            <div class="member-row">
+              <input class="text small" id="member-${i}-${j}" data-member="${i}-${j}" maxlength="20" placeholder="Player ${j + 1}" list="known-names" autocomplete="off" aria-label="Team ${ordinals[i]} player ${j + 1}" value="${esc(m)}">
+              ${S.members[i].length > MIN_TEAM ? `<button type="button" class="member-x" data-act="remove-member" data-v="${i}-${j}" aria-label="Remove player ${j + 1}">✕</button>` : ''}
+            </div>`).join('')}
           </div>
+          ${S.members[i].length < MAX_TEAM ? `<button type="button" class="add-member" data-act="add-member" data-v="${i}">+ Add player</button>` : ''}
         </div>`).join('')}
     </div>
     <p class="hint">Teammates take turns: one player from each team throws per visit, in order.</p>` : `
@@ -1267,7 +1265,7 @@ function rulesHtml(game = S.screen === 'hub' ? null : S.game) {
 function gameRules(game) {
   return {
     x01: `
-      <li><b>Start on 501, 301 or 101.</b> Play solo for your fastest checkout, or 2–4 head-to-head. <b>Managers</b>: one person each, three darts a visit. <b>Teams</b>: 2–4 people per team take turns, one teammate throwing each visit.</li>
+      <li><b>Start on 501, 301 or 101.</b> Play solo for your fastest checkout, or 2–4 head-to-head. <b>Managers</b>: one person each, three darts a visit. <b>Teams</b>: 2–8 people per team take turns, one teammate throwing each visit. Teams can be different sizes.</li>
       <li><b>Deduction tiers.</b> Pick any category for each dart. Correct answers come off your score. ${TIERS}</li>
       <li><b>🔥 Manager bonus.</b> Hit all three darts and you get a bonus guess: name either manager for another −${MANAGER_BONUS}.</li>
       <li><b>Checkout.</b> You don’t need exactly 0. The first player to reach 0 or below wins the leg.</li>`,
@@ -1343,10 +1341,10 @@ async function begin() {
   S.players = Array.from({ length: S.nPlayers }, (_, i) => ({
     name: (S.names[i] || '').trim() || (multi ? `${base} ${ordinals[i]}` : 'Player'),
     legs: 0,
-    ...(S.teamGame ? { members: Array.from({ length: S.teamSize }, (_, j) => (S.members[i][j] || '').trim() || `Player ${j + 1}`), mIdx: 0 } : {}),
+    ...(S.teamGame ? { members: S.members[i].map((m, j) => (m || '').trim() || `Player ${j + 1}`), mIdx: 0 } : {}),
   }));
   S.legStarter = 0;
-  store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, teamSize: S.teamSize, members: S.members });
+  store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, members: S.members });
   await startLeg();
 }
 
@@ -1727,7 +1725,16 @@ document.addEventListener('click', async e => {
     case 'privacy': openModal(privacyHtml); break;
     case 'terms': openModal(termsHtml); break;
     case 'count': S.nPlayers = Number(v); renderSetup(); break;
-    case 'teamsize': S.teamSize = Number(v); renderSetup(); break;
+    case 'add-member': {
+      const i = Number(v);
+      if (S.members[i].length < MAX_TEAM) { S.members[i].push(''); renderSetup(); const el = $(`#member-${i}-${S.members[i].length - 1}`); if (el) el.focus(); }
+      break;
+    }
+    case 'remove-member': {
+      const [i, j] = v.split('-').map(Number);
+      if (S.members[i].length > MIN_TEAM) { S.members[i].splice(j, 1); renderSetup(); }
+      break;
+    }
     case 'toggle-rules': store.set('hideRules:' + S.game, !store.get('hideRules:' + S.game, false)); renderSetup(); break;
     case 'unit': S.unit = v; renderSetup(); break;
     case 'start': S.start = Number(v); renderSetup(); break;
@@ -1843,8 +1850,12 @@ document.addEventListener('keydown', e => {
       easy: !!saved.easy,
     });
     if (Array.isArray(saved.names)) S.names = [0, 1, 2, 3].map(i => saved.names[i] || '');
-    if ([2, 3, 4].includes(saved.teamSize)) S.teamSize = saved.teamSize;
-    if (Array.isArray(saved.members)) S.members = [0, 1, 2, 3].map(i => [0, 1, 2, 3].map(j => (saved.members[i] && saved.members[i][j]) || ''));
+    if (Array.isArray(saved.members)) S.members = [0, 1, 2, 3].map(i => {
+      const arr = Array.isArray(saved.members[i]) ? saved.members[i].map(x => String(x || '')).slice(0, MAX_TEAM) : [];
+      while (arr.length > MIN_TEAM && arr[arr.length - 1] === '') arr.pop();   // drop empty slots left over from older versions
+      while (arr.length < MIN_TEAM) arr.push('');
+      return arr;
+    });
   }
   try {
     S.allSeasons = await getSeasons();
