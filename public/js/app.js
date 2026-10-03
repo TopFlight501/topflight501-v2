@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=33';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=33';
-import { sfx, setSoundEnabled } from './sound.js?v=33';
-import * as L from './leagues.js?v=33';
-import { initAnalytics, track } from './analytics.js?v=33';
-import { privacyHtml, termsHtml } from './legal.js?v=33';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=34';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=34';
+import { sfx, setSoundEnabled } from './sound.js?v=34';
+import * as L from './leagues.js?v=34';
+import { initAnalytics, track } from './analytics.js?v=34';
+import { privacyHtml, termsHtml } from './legal.js?v=34';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -91,6 +91,9 @@ const S = {
   creatingLeague: false,
   openLeague: null,       // league shown on the leagues screen
   h2h: ['', ''],
+  teamSize: 2,            // Teams mode: players per team
+  members: [['', '', '', ''], ['', '', '', ''], ['', '', '', ''], ['', '', '', '']],
+  teamGame: false,
   easy: false,            // Easy mode: pick from four names instead of typing
   choices: null,          // the four options currently shown
   shareText: '',
@@ -165,6 +168,8 @@ function settingsHtml() {
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const current = () => S.players[S.turnOrder[S.turnIdx]];
 const currentIdx = () => S.turnOrder[S.turnIdx];
+// in Teams mode, the teammate whose turn it is; otherwise the player
+const thrower = p => (S.teamGame && p.members ? p.members[p.mIdx % p.members.length] : p.name);
 const G = () => GAMES[S.game];
 
 function fmtDate(iso) {
@@ -281,11 +286,29 @@ function renderSetup() {
     ${multi && LEAGUES_ENABLED ? leagueField() : ''}
 
     <datalist id="known-names">${namesForList().map(n => `<option value="${esc(n)}"></option>`).join('')}</datalist>
+    ${S.game === 'x01' && multi && S.unit === 'teams' ? `
+    <div class="field">
+      <span class="label">Players per team</span>
+      <div class="seg three">
+        ${[2, 3, 4].map(n => `<button class="seg-btn num ${S.teamSize === n ? 'on' : ''}" data-act="teamsize" data-v="${n}">${n}</button>`).join('')}
+      </div>
+    </div>
+    <div class="teams-setup">
+      ${Array.from({ length: S.nPlayers }, (_, i) => `
+        <div class="team-block">
+          <label class="field"><span class="label">Team ${ordinals[i]}</span>
+          <input class="text" id="name-${i}" data-name="${i}" maxlength="20" placeholder="Team name" autocomplete="off" value="${esc(S.names[i])}"></label>
+          <div class="members">${Array.from({ length: S.teamSize }, (_, j) => `
+            <input class="text small" id="member-${i}-${j}" data-member="${i}-${j}" maxlength="20" placeholder="Player ${j + 1}" list="known-names" autocomplete="off" aria-label="Team ${ordinals[i]} player ${j + 1}" value="${esc(S.members[i][j])}">`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>
+    <p class="hint">Teammates take turns: one player from each team throws per visit, in order.</p>` : `
     <div class="names n${S.nPlayers}">
       ${Array.from({ length: S.nPlayers }, (_, i) => `
         <label class="field"><span class="label">${multi ? `${word} ${ordinals[i]}` : 'Your name'}</span>
         <input class="text" id="name-${i}" data-name="${i}" maxlength="20" placeholder="Enter name" list="known-names" autocomplete="off" value="${esc(S.names[i])}"></label>`).join('')}
-    </div>
+    </div>`}
     ${bestLine ? `<p class="hint">${bestLine}</p>` : ''}
 
     ${S.game !== 'sentoff' ? `
@@ -391,7 +414,7 @@ function boardCell(p, i) {
       return `<div class="fouls" data-score="${i}">${foulMeter(p)}</div>
         <div class="pl-sub">${p.out ? '🟥 Sent off' : `${p.fouls} of ${MAX_FOULS} fouls${p.wins ? ` · ${p.wins} ✓` : ''}`}</div>`;
     default:
-      return `<div class="pl-score" data-score="${i}">${p.score}</div><div class="pl-sub">${p.darts} darts</div>`;
+      return `<div class="pl-score" data-score="${i}">${p.score}</div><div class="pl-sub">${S.teamGame && p.members ? `🎯 ${esc(thrower(p))} next · ${p.darts} darts` : `${p.darts} darts`}</div>`;
   }
 }
 
@@ -442,7 +465,8 @@ function renderHandover() {
   <section class="card handover">
     ${prev ? `<p class="prev">${prevLine(prev)}</p>` : ''}
     <p class="eyebrow">${S.turnIdx === 0 ? 'New match' : 'Same match, your turn'}</p>
-    <h2>${esc(p.name)}, step up</h2>
+    <h2>${esc(thrower(p))}, step up</h2>
+    ${S.teamGame ? `<p class="team-turn">Throwing for <b>${esc(p.name)}</b></p>` : ''}
     <p class="hint">${handoverHint(p)}</p>
     ${matchCard()}
     ${S.turnIdx === 0 ? `<div class="reroll-row">${REROLL}</div>` : ''}
@@ -537,7 +561,7 @@ function renderPlay() {
   <section class="card play">
     ${matchCard()}
     ${S.game !== 'daily' && S.turnIdx === 0 && !S.visit.length && !done ? `<div class="reroll-row">${REROLL}</div>` : ''}
-    <div class="turn-head"><h3>${esc(p.name)}</h3><span class="hint">${turnHeadRight(p)}</span></div>
+    <div class="turn-head"><h3>${esc(thrower(p))}${S.teamGame ? ` <span class="team-of">${esc(p.name)}</span>` : ''}</h3><span class="hint">${turnHeadRight(p)}</span></div>
     ${dartSlots()}
     ${last ? `<p class="result ${last.res.correct ? 'ok' : 'bad'}">${last.res.correct ? '🎯 ' : ''}${esc(last.res.message)}${last.res.correct ? resultPts(last.res) : ''}${last.extra ? `<span class="extra">${esc(last.extra)}</span>` : ''}</p>` : ''}
     ${!done ? `
@@ -1243,7 +1267,7 @@ function rulesHtml(game = S.screen === 'hub' ? null : S.game) {
 function gameRules(game) {
   return {
     x01: `
-      <li><b>Start on 501, 301 or 101.</b> Play solo for your fastest checkout, or 2–4 players head-to-head as Managers or Teams.</li>
+      <li><b>Start on 501, 301 or 101.</b> Play solo for your fastest checkout, or 2–4 head-to-head. <b>Managers</b>: one person each, three darts a visit. <b>Teams</b>: 2–4 people per team take turns, one teammate throwing each visit.</li>
       <li><b>Deduction tiers.</b> Pick any category for each dart. Correct answers come off your score. ${TIERS}</li>
       <li><b>🔥 Manager bonus.</b> Hit all three darts and you get a bonus guess: name either manager for another −${MANAGER_BONUS}.</li>
       <li><b>Checkout.</b> You don’t need exactly 0. The first player to reach 0 or below wins the leg.</li>`,
@@ -1315,12 +1339,14 @@ async function begin() {
   const multi = S.nPlayers > 1;
   const ordinals = ['One', 'Two', 'Three', 'Four'];
   const base = S.game === 'x01' && multi ? (S.unit === 'managers' ? 'Manager' : 'Team') : 'Player';
+  S.teamGame = S.game === 'x01' && multi && S.unit === 'teams';
   S.players = Array.from({ length: S.nPlayers }, (_, i) => ({
     name: (S.names[i] || '').trim() || (multi ? `${base} ${ordinals[i]}` : 'Player'),
     legs: 0,
+    ...(S.teamGame ? { members: Array.from({ length: S.teamSize }, (_, j) => (S.members[i][j] || '').trim() || `Player ${j + 1}`), mIdx: 0 } : {}),
   }));
   S.legStarter = 0;
-  store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy });
+  store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, teamSize: S.teamSize, members: S.members });
   await startLeg();
 }
 
@@ -1337,6 +1363,7 @@ function gameInfo(extra = {}) {
 }
 
 function resetPlayer(p) {
+  if (p.members) p.mIdx = 0;
   Object.assign(p, { score: S.start, darts: 0, lives: KILLER_LIVES, armed: false, out: false, prog: 0, points: 0, streak: 0, fouls: 0, wins: 0 });
 }
 
@@ -1380,6 +1407,7 @@ function startTurn() {
   S.error = null;
   S.screen = S.players.length > 1 ? 'handover' : 'play';
   render();
+  if (S.screen === 'handover') window.scrollTo(0, 0);
 }
 
 function managerDart(guess, claimed) {
@@ -1524,7 +1552,8 @@ function endVisit() {
   const hits = S.visit.filter(d => d.res.correct).length;
   const pts = S.visit.reduce((t, d) => t + (d.res.correct ? d.res.points : 0), 0) + (S.visit.bonus || 0);
   const notes = S.visit.map(d => d.extra).filter(x => /knocked out|loses a life|Killer!/.test(x)).map(x => x.trim());
-  S.lastVisits.push({ name: p.name, points: pts, bonus: !!S.visit.bonus, hits, note: notes.join(' ') });
+  S.lastVisits.push({ name: S.teamGame ? `${thrower(p)} (${p.name})` : p.name, points: pts, bonus: !!S.visit.bonus, hits, note: notes.join(' ') });
+  if (S.teamGame && p.members) p.mIdx += 1;   // next teammate throws this team's next visit
   // move to the next player who is still in
   do { S.turnIdx += 1; } while (S.turnIdx < S.turnOrder.length && S.players[S.turnOrder[S.turnIdx]].out);
   if (S.turnIdx < S.turnOrder.length) startTurn();
@@ -1698,6 +1727,7 @@ document.addEventListener('click', async e => {
     case 'privacy': openModal(privacyHtml); break;
     case 'terms': openModal(termsHtml); break;
     case 'count': S.nPlayers = Number(v); renderSetup(); break;
+    case 'teamsize': S.teamSize = Number(v); renderSetup(); break;
     case 'toggle-rules': store.set('hideRules:' + S.game, !store.get('hideRules:' + S.game, false)); renderSetup(); break;
     case 'unit': S.unit = v; renderSetup(); break;
     case 'start': S.start = Number(v); renderSetup(); break;
@@ -1770,6 +1800,7 @@ document.addEventListener('submit', e => {
 document.addEventListener('input', e => {
   const t = e.target;
   if (t.dataset.name !== undefined) S.names[Number(t.dataset.name)] = t.value;
+  if (t.dataset.member !== undefined) { const [i, j] = t.dataset.member.split('-').map(Number); S.members[i][j] = t.value; }
 });
 document.addEventListener('change', async e => {
   const t = e.target;
@@ -1812,6 +1843,8 @@ document.addEventListener('keydown', e => {
       easy: !!saved.easy,
     });
     if (Array.isArray(saved.names)) S.names = [0, 1, 2, 3].map(i => saved.names[i] || '');
+    if ([2, 3, 4].includes(saved.teamSize)) S.teamSize = saved.teamSize;
+    if (Array.isArray(saved.members)) S.members = [0, 1, 2, 3].map(i => [0, 1, 2, 3].map(j => (saved.members[i] && saved.members[i][j]) || ''));
   }
   try {
     S.allSeasons = await getSeasons();
