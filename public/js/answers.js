@@ -4,7 +4,7 @@ export const CATEGORIES = {
   scorer:    { label: 'Scorer',          short: 'Scorer',    points: 60, icon: '⚽' },
   scoreline: { label: 'Exact Scoreline', short: 'Scoreline', points: 50, icon: '🔢' },
   assist:    { label: 'Assist Provider', short: 'Assist',    points: 40, icon: '🅰️' },
-  lineup:    { label: 'Lineup Player',   short: 'Lineup',    points: 30, icon: '👕' },
+  lineup:    { label: 'Lineup Player',   short: 'Lineup',    points: 20, icon: '👕' },
   booked:    { label: 'Booked Player',   short: 'Booked',    points: 25, redPoints: 50, icon: '🟨' },
 };
 export const MANAGER_BONUS = 20;

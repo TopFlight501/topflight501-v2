@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=31';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=31';
-import { sfx, setSoundEnabled } from './sound.js?v=31';
-import * as L from './leagues.js?v=31';
-import { initAnalytics, track } from './analytics.js?v=31';
-import { privacyHtml, termsHtml } from './legal.js?v=31';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=32';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=32';
+import { sfx, setSoundEnabled } from './sound.js?v=32';
+import * as L from './leagues.js?v=32';
+import { initAnalytics, track } from './analytics.js?v=32';
+import { privacyHtml, termsHtml } from './legal.js?v=32';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -55,6 +55,8 @@ const GAMES = {
   },
 };
 const DAILY_DARTS = 6;
+const OLD_LINEUP_UNTIL = 2;   // Daily #1 and #2 used Lineup = 30; from #3 it's 20 like every other game
+const lineupOld = () => S.game === 'daily' && S.dailyN <= OLD_LINEUP_UNTIL;
 const NAME_CATS = ['scorer', 'assist', 'lineup', 'booked', 'manager'];
 const easyOn = () => S.easy && S.game !== 'daily' && S.game !== 'sentoff';
 
@@ -481,7 +483,7 @@ function allowedCats(p) {
 
 function chipPoints(k, c) {
   if (S.game === 'x01') return `−${c.points}${c.redPoints ? '/' + c.redPoints : ''}`;
-  if (S.game === 'sudden' || S.game === 'daily') return `+${c.points}${c.redPoints ? '/' + c.redPoints : ''}`;
+  if (S.game === 'sudden' || S.game === 'daily') return `+${k === 'lineup' && lineupOld() ? 30 : c.points}${c.redPoints ? '/' + c.redPoints : ''}`;
   if (S.game === 'killer') return ARMING.includes(k) ? (current().armed ? 'Kill' : 'Arms') : (current().armed ? 'Kill' : '—');
   return 'Target';
 }
@@ -1217,7 +1219,7 @@ const TIERS = `
     <tr><td>⚽ Scorer</td><td>60</td></tr>
     <tr><td>🔢 Exact scoreline</td><td>50</td></tr>
     <tr><td>🅰️ Assist provider</td><td>40</td></tr>
-    <tr><td>👕 Lineup player</td><td>30</td></tr>
+    <tr><td>👕 Lineup player</td><td>20</td></tr>
     <tr><td>🟨 Booked player</td><td>25 (🟥 red 50)</td></tr>
   </table>`;
 
@@ -1270,7 +1272,7 @@ function gameRules(game) {
     sudden: `
       <li><b>Solo survival.</b> Answer three darts per match, match after match.</li>
       <li><b>Score as you go.</b> Each correct answer adds its points. ${TIERS}</li>
-      <li><b>Risk it?</b> A scorer is worth twice a lineup player, but it’s harder to get right.</li>
+      <li><b>Risk it?</b> A scorer is worth three times a lineup player, but it’s harder to get right.</li>
       <li><b>One miss and it’s over.</b> Beat your highest score.</li>`,
   }[game];
 }
@@ -1438,6 +1440,7 @@ function throwDart(choiceId) {
       else after.over = true;
       break;
     case 'daily':
+      if (res.correct && dart.cat === 'lineup' && lineupOld()) res.points = 30;
       if (res.correct) p.points += res.points;
       saveDaily();
       if (S.visit.length >= DAILY_DARTS) after.daily = true;
