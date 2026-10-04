@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=35';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=35';
-import { sfx, setSoundEnabled } from './sound.js?v=35';
-import * as L from './leagues.js?v=35';
-import { initAnalytics, track } from './analytics.js?v=35';
-import { privacyHtml, termsHtml } from './legal.js?v=35';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=36';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=36';
+import { sfx, setSoundEnabled } from './sound.js?v=36';
+import * as L from './leagues.js?v=36';
+import { initAnalytics, track } from './analytics.js?v=36';
+import { privacyHtml, termsHtml } from './legal.js?v=36';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -561,6 +561,7 @@ function renderPlay() {
     ${S.game !== 'daily' && S.turnIdx === 0 && !S.visit.length && !done ? `<div class="reroll-row">${REROLL}</div>` : ''}
     <div class="turn-head"><h3>${esc(thrower(p))}${S.teamGame ? ` <span class="team-of">${esc(p.name)}</span>` : ''}</h3><span class="hint">${turnHeadRight(p)}</span></div>
     ${dartSlots()}
+    ${S.game === 'clock' ? routeStrip(p) : ''}
     ${last ? `<p class="result ${last.res.correct ? 'ok' : 'bad'}">${last.res.correct ? '🎯 ' : ''}${esc(last.res.message)}${last.res.correct ? resultPts(last.res) : ''}${last.extra ? `<span class="extra">${esc(last.extra)}</span>` : ''}</p>` : ''}
     ${!done ? `
       <form class="throw" data-form="throw" autocomplete="off">
@@ -579,6 +580,15 @@ function renderPlay() {
   </div>`;
   const f = $('[data-answer]') || $('[data-sl="0"]');
   if (f && (!matchMedia('(hover: none)').matches || S.cat)) f.focus();
+}
+
+// Round the Grounds: show the whole route so it's clear it's a race, not points
+function routeStrip(p) {
+  const short = { lineup: 'Lineup', booked: 'Booked', assist: 'Assist', scorer: 'Scorer', scoreline: 'Score', manager: 'Manager' };
+  return `<div class="route" aria-label="Your route: target ${Math.min(p.prog + 1, CLOCK_TARGETS.length)} of ${CLOCK_TARGETS.length}">
+    ${CLOCK_TARGETS.map((t, k) => `<span class="stop ${k < p.prog ? 'done' : k === p.prog ? 'now' : ''}"><span class="si">${k < p.prog ? '✓' : TARGET_INFO[t].icon}</span><span class="sl">${short[t]}</span></span>`).join('<span class="arrow" aria-hidden="true">›</span>')}
+  </div>
+  <p class="hint route-hint">No points in this game. Hit your target to move on, even mid-visit. First to the Manager wins.</p>`;
 }
 
 function dartsPerVisit() { return S.game === 'daily' ? DAILY_DARTS : 3; }

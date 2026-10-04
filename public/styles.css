@@ -525,3 +525,14 @@ main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px
 .member-x { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-size: .8rem; }
 .add-member { margin-top: 8px; background: none; border: 1.5px dashed var(--line); color: var(--green-deep); font: inherit; font-weight: 700; font-size: .9rem; border-radius: 10px; padding: 8px; width: 100%; cursor: pointer; }
 .add-member:hover { border-color: var(--green); }
+
+/* Round the Grounds route */
+.route { display: flex; align-items: center; justify-content: space-between; gap: 2px; margin: 4px 0 6px; }
+.route .stop { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; min-width: 0; }
+.route .si { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 1rem; background: var(--soft); border: 1.5px solid var(--line); opacity: .55; }
+.route .sl { font-size: .62rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+.route .stop.done .si { background: var(--green); border-color: var(--green); color: #fff; opacity: 1; font-weight: 900; }
+.route .stop.now .si { background: var(--card); border-color: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 25%, transparent); opacity: 1; }
+.route .stop.now .sl { color: var(--teal); }
+.route .arrow { color: var(--muted); opacity: .5; font-size: .9rem; margin-top: -16px; }
+.route-hint { margin: 0 0 10px; font-size: .8rem; text-align: center; }
