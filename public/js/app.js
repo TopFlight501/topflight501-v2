@@ -2012,15 +2012,12 @@ document.addEventListener('click', async e => {
     case 'wipe': {
       const days = Object.keys(dailyLog()).length, nb = bestsList().length, na = Object.keys(store.get('ach', {})).length, nl = L.getLeagues().length;
       const li = (n, t) => n ? `<li>${t}</li>` : '';
-      openModal(`<h2>Delete everything?</h2>
+      openModal(`<h2>Are you sure you want to delete everything?</h2>
         <p>This permanently deletes <b>all</b> of this from this device:</p>
         <ul class="wipe-list">${li(days, `🗓️ Daily Match scores and streak (${days} ${days === 1 ? 'day' : 'days'})`)}${li(nb, `🏆 Personal bests (${nb})`)}${li(na, `🎖️ Achievements (${na} of 12)`)}${li(nl, `👥 Leagues and match history (${nl})`)}<li>✏️ Saved names, club and settings</li></ul>
         <p class="hint">It can’t be undone. Only want to forget names and club? Use <b>Clear names &amp; club</b> instead.</p>
-        <div class="stack"><button class="btn primary big" data-act="close">Keep my data</button><button class="btn ghost" data-act="backup">⬇️ Back up first</button><button class="btn ghost danger-text" data-act="wipe-2">Continue to delete…</button></div>`);
+        <div class="stack"><button class="btn primary big" data-act="close">Keep my data</button><button class="btn ghost" data-act="backup">⬇️ Back up first</button><button class="btn ghost danger-text" data-act="confirm-wipe">Yes, delete everything</button></div>`);
       break; }
-    case 'wipe-2':
-      openModal(`<h2>Are you sure?</h2><p>Last chance: everything listed will be gone for good.</p><div class="stack"><button class="btn primary big" data-act="close">No, keep it</button><button class="btn ghost danger-text" data-act="confirm-wipe">Yes, delete everything</button></div>`);
-      break;
     case 'clear-names':
       S.names = ['', '', '', '']; S.clubs = ['', '']; saveSetup(); toast('Names and club cleared'); if (S.screen === 'hub') renderHub(); break;
     case 'confirm-wipe': wipeAll(); openModal(`<h2>All deleted</h2><p>Everything Top Flight 501 had saved on this device has been removed.</p><button class="btn primary big" data-act="close">OK</button>`); goHub(); break;
