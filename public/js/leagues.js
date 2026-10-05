@@ -119,7 +119,9 @@ export function exportData() {
   }
   let daily = {};
   try { daily = { log: JSON.parse(localStorage.getItem('tf501:dailyLog') || '{}'), today: JSON.parse(localStorage.getItem('tf501:daily') || 'null') }; } catch { /* ignore */ }
-  return { app: 'topflight501', version: 1, exported: new Date().toISOString(), leagues: getLeagues(), history: getHistory(), bests, daily };
+  let ach = {};
+  try { ach = JSON.parse(localStorage.getItem('tf501:ach') || '{}'); } catch { /* ignore */ }
+  return { app: 'topflight501', version: 1, exported: new Date().toISOString(), leagues: getLeagues(), history: getHistory(), bests, daily, ach };
 }
 
 export function importData(data) {
@@ -168,5 +170,12 @@ export function importData(data) {
       if (better) localStorage.setItem('tf501:' + k, JSON.stringify(v));
     } catch { /* ignore */ }
   }
+  try {
+    if (data.ach && typeof data.ach === 'object') {
+      const cur = JSON.parse(localStorage.getItem('tf501:ach') || '{}');
+      for (const [k, v] of Object.entries(data.ach)) if (!cur[k] && typeof v === 'string') cur[k] = v;
+      localStorage.setItem('tf501:ach', JSON.stringify(cur));
+    }
+  } catch { /* ignore */ }
   return { addedLeagues, addedGames, addedDays };
 }

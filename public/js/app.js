@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=44';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=44';
-import { sfx, setSoundEnabled } from './sound.js?v=44';
-import * as L from './leagues.js?v=44';
-import { initAnalytics, track } from './analytics.js?v=44';
-import { privacyHtml, termsHtml } from './legal.js?v=44';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=46';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=46';
+import { sfx, setSoundEnabled } from './sound.js?v=46';
+import * as L from './leagues.js?v=46';
+import { initAnalytics, track } from './analytics.js?v=46';
+import { privacyHtml, termsHtml } from './legal.js?v=46';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -56,6 +56,7 @@ const GAMES = {
 };
 const DAILY_DARTS = 6;
 const MIN_TEAM = 2, MAX_TEAM = 8;
+const TUTORIALS = ['x01', 'killer', 'clock', 'sudden', 'sentoff'];   // short silent clips in /tutorials (loaded only when tapped)
 const OLD_LINEUP_UNTIL = 2;   // Daily #1 and #2 used Lineup = 30; from #3 it's 20 like every other game
 const lineupOld = () => S.game === 'daily' && S.dailyN <= OLD_LINEUP_UNTIL;
 const NAME_CATS = ['scorer', 'assist', 'lineup', 'booked', 'manager'];
@@ -153,6 +154,7 @@ function settingsHtml() {
     ${bests.length ? `<p class="hint">${bests.join('<br>')}</p>
       <button class="btn ghost" data-act="reset-bests">Reset personal bests</button>` : '<p class="hint">No personal bests yet.</p>'}
   </div>
+  <div class="field">${achievementsHtml()}</div>
   <div class="field">
     <span class="label">Daily Match reminder</span>
     <button class="btn ghost" data-act="reminder">⏰ Set a daily reminder</button>
@@ -229,6 +231,7 @@ function renderHub() {
       </span>
       <span class="game-go" aria-hidden="true">›</span>
     </button>` : ''}
+    ${clubLine()}
     ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
   </section>
   ${installBar()}`;
@@ -258,11 +261,11 @@ function renderSetup() {
     <div class="setup-side">
     ${store.get('hideRules:' + S.game, false) ? `
     <p class="hint setup-blurb">${g.blurb}</p>
-    <button class="btn link show-rules" data-act="toggle-rules">📋 Show how ${g.title} works</button>` : `
+    <div class="row slim"><button class="btn link show-rules" data-act="toggle-rules">📋 How it works</button>${TUTORIALS.includes(S.game) ? '<button class="btn link watch-link" data-act="tutorial">▶ Watch (15s)</button>' : ''}</div>` : `
     <div class="how">
       <div class="how-head">
         <span class="label">How it works</span>
-        <button class="how-hide" data-act="toggle-rules" aria-label="Hide how it works">Hide ✕</button>
+        <span class="how-actions">${TUTORIALS.includes(S.game) ? '<button class="how-watch" data-act="tutorial">▶ Watch</button>' : ''}<button class="how-hide" data-act="toggle-rules" aria-label="Hide how it works">Hide ✕</button></span>
       </div>
       <ul class="how-list">${gameRules(S.game).replace(/<li>/g, '<li>')}</ul>
       <p class="hint">Three darts per match, everyone on the same match. Surnames and small typos are fine. Own goals count as goals, and a player who scored twice can be picked twice.</p>
@@ -783,6 +786,7 @@ function submitGuess() {
 
 function sentOffWon(p) {
   p.legs += 1;
+  unlock('first'); unlock('sentoff');
   track('Game finished', gameInfo({ result: 'Winner', rounds: S.round }));
   L.recordGame({ game: 'sentoff', players: S.players.map(x => x.name), winner: p.name, solo: false, league: null, detail: `${p.fouls} ${p.fouls === 1 ? 'foul' : 'fouls'}` });
   confetti(); sfx.win(); buzz([80, 60, 80, 60, 160]);
@@ -799,7 +803,7 @@ function sentOffWon(p) {
       <button class="btn primary" data-act="nextleg">Play again</button>
     </div>
     ${SHARE_BTN}
-    ${dailyNudge()}`, { dismissable: false });
+    ${nextNudge('sentoff')}`, { dismissable: false });
 }
 
 // ---------- sharing ----------
@@ -952,6 +956,9 @@ function dailyEmoji(darts) { return darts.map(d => (d.res.correct ? '🎯' : '�
 function dailyOver() {
   const saved = dailySaved();
   const log = dailyLog(); log[saved.key] = saved.points; store.set('dailyLog', log);
+  unlock('first');
+  if (saved.darts.every(d => d.res.correct)) unlock('perfect');
+  const st = dailyStreak(); if (st >= 3) unlock('streak3'); if (st >= 7) unlock('streak7');
   track('Game finished', { game: 'Daily Match', day: saved.n, points: saved.points, hits: saved.darts.filter(d => d.res.correct).length });
   L.recordGame({ game: 'daily', players: ['You'], winner: null, solo: true, league: null, detail: `#${saved.n}, ${saved.points} pts` });
   if (saved.points > 0) { confetti(); sfx.win(); } else sfx.miss();
@@ -978,7 +985,7 @@ function showDailyResult() {
       <button class="btn primary" data-act="share">↗ Share</button>
     </div>
     <button class="btn link" data-act="daily-close">Back to games</button>
-    <button class="btn link remind-link" data-act="reminder">⏰ Remind me every day</button>
+    ${store.get('remindAdded', false) ? nextNudge('daily') : '<button class="btn link remind-link" data-act="reminder">⏰ Remind me every day</button>'}
     <p class="hint center small">Scores and streak are saved on this device. Playing elsewhere? Use Settings → Backup to move them.</p>`, { dismissable: false });
 }
 
@@ -1098,7 +1105,95 @@ function dailyNudge() {
   const saved = dailySaved();
   if (saved && saved.done) return '';
   const streak = dailyStreak();
-  return `<button class="btn link daily-nudge" data-act="daily">⭐ ${streak ? `Keep your 🔥 ${streak}-day streak: ` : ''}today's Daily Match is waiting</button>`;
+  return `<button class="btn link daily-nudge" data-act="daily">⭐ ${streak ? `Keep your 🔥 ${streak}-day streak: ` : ''}${streak ? 'today' : 'Today'}'s Daily Match is waiting</button>`;
+}
+
+// ---------- achievements (saved on this device only) ----------
+const ACHIEVEMENTS = [
+  { id: 'first', icon: '🎉', name: 'Off the mark', desc: 'Finish your first game' },
+  { id: 'checkout', icon: '🎯', name: 'Checked out', desc: 'Win a game of The Classic' },
+  { id: 'ton', icon: '💯', name: 'Ton up', desc: '100+ in one visit in The Classic' },
+  { id: 'three', icon: '🔥', name: 'Three from three', desc: 'Hit all three darts in a visit' },
+  { id: 'gaffer', icon: '🧑‍💼', name: 'Gaffer guru', desc: 'Land the manager bonus' },
+  { id: 'perfect', icon: '⭐', name: 'Perfect day', desc: '6 out of 6 in a Daily Match' },
+  { id: 'streak3', icon: '📅', name: 'Hat-trick', desc: 'A 3-day Daily Match streak' },
+  { id: 'streak7', icon: '🗓️', name: 'Week warrior', desc: 'A 7-day Daily Match streak' },
+  { id: 'nerves', icon: '⚡', name: 'Nerves of steel', desc: '10 in a row in Sudden Death' },
+  { id: 'killer', icon: '🔪', name: 'Serial killer', desc: 'Win a game of Killer' },
+  { id: 'grounds', icon: '🏟️', name: 'Groundhopper', desc: 'Make it round the grounds' },
+  { id: 'sentoff', icon: '🟥', name: 'Last one standing', desc: 'Win a game of Sent Off' },
+];
+function unlock(id) {
+  const got = store.get('ach', {});
+  if (got[id]) return;
+  const a = ACHIEVEMENTS.find(x => x.id === id); if (!a) return;
+  got[id] = new Date().toISOString().slice(0, 10); store.set('ach', got);
+  track('Achievement', { name: a.name });
+  achQueue.push(a); if (achQueue.length === 1) showNextAch();
+}
+const achQueue = [];
+function showNextAch() {
+  const a = achQueue[0]; if (!a) return;
+  const t = document.createElement('div');
+  t.className = 'ach-toast'; t.innerHTML = `<span class="ach-i">${a.icon}</span><span><small>Achievement unlocked</small><b>${esc(a.name)}</b></span>`;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('out'), 2600);
+  setTimeout(() => { t.remove(); achQueue.shift(); showNextAch(); }, 3100);
+}
+function achievementsHtml() {
+  const got = store.get('ach', {});
+  const n = ACHIEVEMENTS.filter(a => got[a.id]).length;
+  return `<span class="label">Achievements <span class="opt">${n} of ${ACHIEVEMENTS.length}</span></span>
+    <div class="ach-grid">${ACHIEVEMENTS.map(a => `<div class="ach ${got[a.id] ? 'got' : ''}" title="${esc(a.desc)}">
+      <span class="ach-i">${got[a.id] ? a.icon : '🔒'}</span><span class="ach-n">${esc(a.name)}</span><span class="ach-d">${esc(a.desc)}</span></div>`).join('')}</div>`;
+}
+
+// ---------- "what next?": one link at the end of a game ----------
+function nextNudge(game) {
+  const saved = dailySaved();
+  if (game !== 'daily' && !(saved && saved.done)) return dailyNudge();
+  const solo = S.players.length === 1;
+  const next = {
+    daily: ['sudden', '⚡ Warm up for tomorrow: try Sudden Death'],
+    x01: solo ? ['sudden', '⚡ Try Sudden Death next: one miss and you’re out'] : ['killer', '🔪 Fancy a change? Try Killer with your mates'],
+    killer: ['sentoff', '🟥 Try Sent Off next: guess the score, dodge the fouls'],
+    clock: ['x01', '🎯 Try The Classic next: race to zero from 501'],
+    sudden: ['clock', '🏟️ Try Round the Grounds next: six targets, one race'],
+    sentoff: ['killer', '🔪 Try Killer next: knock your mates out'],
+  }[game];
+  return next ? `<button class="btn link daily-nudge" data-act="pick" data-v="${next[0]}">${next[1]}</button>` : '';
+}
+
+// ---------- club colours (shown as an outline; no badges or crests) ----------
+const CLUB_COLOURS = {
+  'Arsenal': ['#EF0107', '#FFFFFF'], 'Aston Villa': ['#670E36', '#95BFE5'], 'Bournemouth': ['#DA291C', '#111111'], 'Brentford': ['#E30613', '#FFFFFF'],
+  'Brighton & Hove Albion': ['#0057B8', '#FFFFFF'], 'Burnley': ['#6C1D45', '#99D6EA'], 'Cardiff City': ['#0070B5', '#D11524'], 'Chelsea': ['#034694', '#FFFFFF'],
+  'Crystal Palace': ['#1B458F', '#C4122E'], 'Everton': ['#003399', '#FFFFFF'], 'Fulham': ['#111111', '#FFFFFF'], 'Huddersfield Town': ['#0E63AD', '#FFFFFF'],
+  'Hull City': ['#F5A12D', '#111111'], 'Ipswich Town': ['#3A64A3', '#FFFFFF'], 'Leeds United': ['#1D428A', '#FFCD00'], 'Leicester City': ['#003090', '#FDBE11'],
+  'Liverpool': ['#C8102E', '#F6EB61'], 'Luton Town': ['#F78F1E', '#002D62'], 'Manchester City': ['#6CABDD', '#1C2C5B'], 'Manchester United': ['#DA291C', '#FBE122'],
+  'Middlesbrough': ['#E11B22', '#FFFFFF'], 'Newcastle United': ['#241F20', '#FFFFFF'], 'Norwich City': ['#FFF200', '#00A650'], 'Nottingham Forest': ['#DD0000', '#FFFFFF'],
+  'Sheffield United': ['#EE2737', '#111111'], 'Southampton': ['#D71920', '#FFFFFF'], 'Stoke City': ['#E03A3E', '#FFFFFF'], 'Sunderland': ['#EB172B', '#FFFFFF'],
+  'Swansea City': ['#121212', '#FFFFFF'], 'Tottenham Hotspur': ['#132257', '#FFFFFF'], 'Watford': ['#FBEE23', '#ED2127'], 'West Bromwich Albion': ['#122F67', '#FFFFFF'],
+  'West Ham United': ['#7A263A', '#1BB1E7'], 'Wolverhampton Wanderers': ['#FDB913', '#231F20'],
+};
+const clubVars = c => { const k = CLUB_COLOURS[c]; return k ? `--c1:${k[0]};--c2:${k[1]}` : ''; };
+function clubLine() {
+  const c = S.clubs[0];
+  return `<button class="club-line ${c ? 'on' : ''}" data-act="club-pick" style="${clubVars(c)}">
+    <span>${c ? `🏟️ <b>${esc(c)}</b> matches only` : '🏟️ Got a club? Play only their matches'}</span><span class="club-go">${c ? 'Change' : 'Pick club'} ›</span></button>`;
+}
+function clubPickerHtml() {
+  const cur = S.clubs[0];
+  return `<h2>🏟️ Play your club</h2>
+    <p class="hint">Every game uses only your club’s real Premier League matches (from the seasons you’ve picked). The Daily Match stays the same for everyone.</p>
+    <div class="club-list">
+      <button class="club-opt ${!cur ? 'on' : ''}" data-act="club-set" data-v="">🌍 Any club</button>
+      ${S.clubOptions.map(c => `<button class="club-opt ${c === cur ? 'on' : ''}" data-act="club-set" data-v="${esc(c)}" style="${clubVars(c)}"><span class="club-sw" aria-hidden="true"></span>${esc(c)}</button>`).join('')}
+    </div>
+    <button class="btn link" data-act="close">Close</button>`;
+}
+function saveSetup() {
+  store.set('setup', { ...store.get('setup', {}), leagueId: S.leagueId, game: GAMES[S.game] && !GAMES[S.game].hidden ? S.game : 'x01', nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, members: S.members });
 }
 
 // ---------- add to home screen ----------
@@ -1426,6 +1521,18 @@ function gameInfo(extra = {}) {
   };
 }
 
+// how far a game got before someone quit (for the stats)
+function quitProgress() {
+  const ps = S.players;
+  if (!ps.length) return '';
+  if (S.game === 'x01') return `best ${Math.min(...ps.map(p => p.score))} left of ${S.start}`;
+  if (S.game === 'clock') return `best target ${Math.max(...ps.map(p => p.prog)) + 1} of ${CLOCK_TARGETS.length}`;
+  if (S.game === 'killer') return `${ps.filter(p => !p.out).length} of ${ps.length} still in`;
+  if (S.game === 'sentoff') return `${ps.filter(p => !p.out).length} of ${ps.length} still on`;
+  if (S.game === 'sudden') return `${ps[0].points} pts`;
+  return '';
+}
+
 function resetPlayer(p) {
   if (p.members) p.mIdx = 0;
   Object.assign(p, { score: S.start, darts: 0, lives: KILLER_LIVES, armed: false, out: false, prog: 0, points: 0, streak: 0, fouls: 0, wins: 0 });
@@ -1541,6 +1648,9 @@ function throwDart(choiceId) {
 
   render();
   if (res.correct) { pulse(currentIdx()); sfx.hit(); buzz(40); } else { sfx.miss(); }
+  if (S.game !== 'daily' && S.visit.length === 3 && S.visit.every(d => d.res.correct)) unlock('three');
+  if (S.game === 'x01' && S.visit.reduce((t, d) => t + (d.res.correct ? d.res.points : 0), 0) >= 100) unlock('ton');
+  if (S.game === 'sudden' && p.streak >= 10) unlock('nerves');
 
   if (after.win) { S.legOver = true; setTimeout(() => legWon(p), 650); return; }
   if (after.over) { S.legOver = true; setTimeout(suddenOver, 700); return; }
@@ -1601,7 +1711,7 @@ function resolveBonus(guess) {
   const hit = guess ? checkManager(S.match, guess) : null;
   track('Manager bonus', { result: hit ? 'Correct' : guess ? 'Wrong' : 'Passed' });
   S.visit.bonus = hit ? MANAGER_BONUS : 0;
-  if (hit) { p.score -= MANAGER_BONUS; sfx.bonus(); buzz([40, 60, 40]); } else { sfx.miss(); }
+  if (hit) { p.score -= MANAGER_BONUS; sfx.bonus(); buzz([40, 60, 40]); unlock('gaffer'); } else { sfx.miss(); }
   openModal(`
     <h2>${hit ? '🔥 Bonus!' : 'No bonus'}</h2>
     <p>${hit ? `${esc(hit)}, correct. <b>−${MANAGER_BONUS}</b>` : `The managers were <b>${esc(S.match.managers[0])}</b> and <b>${esc(S.match.managers[1])}</b>.`}</p>
@@ -1626,6 +1736,10 @@ function endVisit() {
 
 function legWon(p) {
   p.legs += 1;
+  unlock('first');
+  if (S.game === 'x01') unlock('checkout');
+  if (S.game === 'killer') unlock('killer');
+  if (S.game === 'clock') unlock('grounds');
   track('Game finished', gameInfo({ result: S.players.length === 1 ? 'Solo finish' : 'Winner', rounds: S.round }));
   const solo = S.players.length === 1;
   let extra = '', big = '', eyebrow = 'Game shot!', title = `🎯 ${esc(p.name)} wins`;
@@ -1673,11 +1787,12 @@ function legWon(p) {
       <button class="btn primary" data-act="nextleg">${solo ? 'Go again' : 'Play again'}</button>
     </div>
     ${SHARE_BTN}
-    ${dailyNudge()}`, { dismissable: false });
+    ${nextNudge(S.game)}`, { dismissable: false });
 }
 
 function suddenOver() {
   const p = current();
+  unlock('first');
   track('Game finished', gameInfo({ result: 'Sudden death over', points: p.points, streak: p.streak }));
   const best = store.get('best:sudden', null);
   const isBest = !easyOn() && p.points > 0 && (!best || p.points > best.points);
@@ -1697,7 +1812,7 @@ function suddenOver() {
       <button class="btn primary" data-act="nextleg">Go again</button>
     </div>
     <div class="row slim"><button class="btn link" data-act="newgame">Change game</button>${SHARE_BTN}</div>
-    ${dailyNudge()}`, { dismissable: false });
+    ${nextNudge('sudden')}`, { dismissable: false });
 }
 
 function answerKey() {
@@ -1751,7 +1866,7 @@ document.addEventListener('click', async e => {
   }
   const act = b.dataset.act, v = b.dataset.v;
   switch (act) {
-    case 'pick': track('Game picked', { game: GAMES[v] ? GAMES[v].title : v }); S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
+    case 'pick': if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } track('Game picked', { game: GAMES[v] ? GAMES[v].title : v }); S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
     case 'hub': goHub(); break;
     case 'daily':
       if (S.busy) break;
@@ -1765,9 +1880,17 @@ document.addEventListener('click', async e => {
     case 'share': shareResult(b); break;
     case 'story': shareStory(); break;
     case 'daily-invite': inviteDaily(b); break;
+    case 'tutorial':
+      track('Tutorial watched', { game: G().title });
+      openModal(`<h2>${G().icon} How ${esc(G().title)} works</h2>
+        <video class="tut-video" poster="tutorials/${S.game}.jpg?v=1" autoplay muted playsinline loop controls preload="none" width="720" height="960">
+          <source src="tutorials/${S.game}.mp4?v=1" type="video/mp4"><source src="tutorials/${S.game}.webm?v=1" type="video/webm">
+        </video>
+        <button class="btn primary big" data-act="close">Got it</button>`);
+      break;
     case 'reminder': track('Reminder opened'); openModal(reminderHtml()); break;
     case 'remind-time': store.set('remindTime', v); openModal(reminderHtml()); break;
-    case 'remind-add': track('Reminder added', { calendar: v }); setTimeout(() => toast('Check your calendar to confirm ⏰'), 400); break;
+    case 'remind-add': store.set('remindAdded', true); track('Reminder added', { calendar: v }); setTimeout(() => toast('Check your calendar to confirm ⏰'), 400); break;
     case 'easy': S.easy = !S.easy; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
     case 'choose': throwDart(v); break;
     case 'install': installApp(); break;
@@ -1848,11 +1971,14 @@ document.addEventListener('click', async e => {
     case 'newgame': modalRoot._onClose = null; closeModal(); goHub(); break;
     case 'home':
       if (S.screen === 'hub') break;
+      if (S.game === 'daily' && S.screen === 'play') track('Daily paused', { darts: S.visit.length });
       if (S.screen === 'setup' || S.screen === 'leagues' || S.game === 'daily') { goHub(); break; }
       openModal(`<h2>Leave this game?</h2><p>Scores for this game will be lost.</p>
         <div class="row"><button class="btn ghost" data-act="close">Keep playing</button><button class="btn danger" data-act="leave">Leave game</button></div>`);
       break;
-    case 'leave': modalRoot._onClose = null; closeModal(); goHub(); break;
+    case 'leave': track('Game quit', gameInfo({ round: S.round, progress: quitProgress() })); modalRoot._onClose = null; closeModal(); goHub(); break;
+    case 'club-pick': openModal(clubPickerHtml()); break;
+    case 'club-set': S.clubs = [v, '']; saveSetup(); track('Club picked', { club: v || 'Any club' }); closeModal(); renderHub(); if (v) toast(`${v} matches only 🏟️`); break;
   }
 });
 

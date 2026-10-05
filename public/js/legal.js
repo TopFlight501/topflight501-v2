@@ -8,7 +8,7 @@ export const privacyHtml = `
   <div class="legal">
     <p><b>The short version:</b> Top Flight 501 doesn’t ask for, collect or store your personal information. There are no accounts, no cookies, no adverts and no tracking across other sites. We count visits anonymously so we know how the game is being used.</p>
     <h3>What stays on your device</h3>
-    <p>To make the game work, your browser saves a few things on your own phone or computer: your settings (theme, sound, vibration, reminder time), the player names you type, your game setup, your personal bests, a record of games you’ve finished, your Daily Match results and which matches you’ve already been shown (so they don’t repeat). This is stored using your browser’s local storage. It never leaves your device and we can’t see it.</p>
+    <p>To make the game work, your browser saves a few things on your own phone or computer: your settings (theme, sound, vibration, reminder time), the player names you type, your game setup, your personal bests, a record of games you’ve finished, your Daily Match results, achievements and which matches you’ve already been shown (so they don’t repeat). This is stored using your browser’s local storage. It never leaves your device and we can’t see it.</p>
     <p>If you set a Daily Match reminder, it’s added straight to your own calendar app. We don’t receive your details or any calendar information.</p>
     <p>You can delete it at any time with <b>Settings → Delete all my data</b>, or by clearing your browser’s site data. If you make a backup file, that file stays with you.</p>
     <h3>Anonymous visit counting</h3>
