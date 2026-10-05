@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=38';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=38';
-import { sfx, setSoundEnabled } from './sound.js?v=38';
-import * as L from './leagues.js?v=38';
-import { initAnalytics, track } from './analytics.js?v=38';
-import { privacyHtml, termsHtml } from './legal.js?v=38';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=39';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=39';
+import { sfx, setSoundEnabled } from './sound.js?v=39';
+import * as L from './leagues.js?v=39';
+import { initAnalytics, track } from './analytics.js?v=39';
+import { privacyHtml, termsHtml } from './legal.js?v=39';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1267,8 +1267,11 @@ function openModal(html, { onClose, dismissable = true } = {}) {
   modalRoot.hidden = false;
   modalRoot._onClose = onClose || null;
   modalRoot._dismissable = dismissable;
-  const first = $('input, button', modalRoot);
-  if (first) first.focus();
+  // focus for keyboard users without scrolling: long pop-ups (privacy, terms, rules) must open at the top
+  const sheet = $('.sheet', modalRoot);
+  const first = $('input', modalRoot) || $('button, a', modalRoot);
+  if (first) first.focus({ preventScroll: true });
+  if (sheet) sheet.scrollTop = 0;
 }
 function closeModal() {
   modalRoot.hidden = true;
