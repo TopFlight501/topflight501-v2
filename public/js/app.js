@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=41';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=41';
-import { sfx, setSoundEnabled } from './sound.js?v=41';
-import * as L from './leagues.js?v=41';
-import { initAnalytics, track } from './analytics.js?v=41';
-import { privacyHtml, termsHtml } from './legal.js?v=41';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=44';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=44';
+import { sfx, setSoundEnabled } from './sound.js?v=44';
+import * as L from './leagues.js?v=44';
+import { initAnalytics, track } from './analytics.js?v=44';
+import { privacyHtml, termsHtml } from './legal.js?v=44';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -25,8 +25,8 @@ const ARMING = ['scorer', 'scoreline'];
 const GAMES = {
   x01: {
     title: 'The Classic', icon: '🎯', min: 1, max: 4,
-    blurb: 'Every correct answer comes off your score. First to zero wins. Play 501, or 301 or 101 for a quicker game.',
-    tags: ['501 · 301 · 101', '1–4 players', 'Manager bonus'],
+    blurb: 'The original. Every correct answer comes off your score, and the first player to reach zero wins.',
+    tags: ['501 · 301 · 101', '1–4 players'],
   },
   killer: {
     title: 'Killer', icon: '🔪', min: 2, max: 4,
@@ -908,7 +908,7 @@ function dailyBanner() {
   return `<div class="daily ${done ? 'done' : ''}">
     <button class="daily-main" data-act="daily">
       <span class="daily-i" aria-hidden="true">⭐</span>
-      <span class="daily-body"><span class="daily-t">Daily Match #${n}${streak > 1 ? ` <span class="daily-streak">🔥 ${streak}</span>` : ''}</span><span class="daily-s">${sub}</span><span class="daily-blurb">One real match, the same for everyone. Six darts, one go, then challenge your mates.</span></span>
+      <span class="daily-body"><span class="daily-t">Daily Match #${n}${streak > 1 ? ` <span class="daily-streak">🔥 ${streak}</span>` : ''}</span><span class="daily-s">${sub}</span><span class="daily-blurb">Six darts, one go. Then challenge your mates.</span></span>
       <span class="daily-go">${done ? 'Result' : saved ? 'Resume' : 'Play'}</span>
     </button>
     <button class="daily-invite" data-act="daily-invite" aria-label="Invite your mates to today's Daily Match" title="Invite your mates">${SHARE_ICON}</button>

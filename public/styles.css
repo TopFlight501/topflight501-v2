@@ -547,3 +547,8 @@ main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px
 /* never let a long line in a game tile widen the page (it shifted the whole screen on phones) */
 .games > * { min-width: 0; }
 .remind-btns a.remind-other { padding: 6px; font-size: .88rem; color: var(--muted); text-decoration: underline; }
+@media (min-width: 900px) {
+  .games .daily { padding: 16px 18px; }
+  .games .daily-blurb { margin-top: 4px; }
+  .games .daily-go { margin-top: 8px; padding: 6px 16px; }
+}
