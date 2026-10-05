@@ -16,7 +16,7 @@ export const privacyHtml = `
     <p>We use Umami (umami.is), a privacy-focused, cookie-free analytics service, to count visits and see which games are played. It records things like the page visited, the game started or finished, the type of device and browser, the country and region the visit came from, and the website that sent you here. It doesn’t use cookies, doesn’t store your IP address, doesn’t build a profile of you and can’t identify you. We only ever see totals, for example “300 games of Killer this week”.</p>
     <p>If your browser has “Do Not Track” switched on, you aren’t counted at all. Our reason for counting is our legitimate interest in understanding how the game is used so we can improve it.</p>
     <h3>Hosting</h3>
-    <p>The site is hosted by Render (render.com). Like any web host, Render’s servers handle technical information such as your IP address and browser type to deliver the pages and keep the service secure. We don’t use this information to identify you.</p>
+    <p>The site is hosted by Cloudflare (cloudflare.com). Like any web host, Cloudflare’s servers handle technical information such as your IP address and browser type to deliver the pages and keep the service secure. We don’t use this information to identify you.</p>
     <h3>Fonts and images</h3>
     <p>All fonts and images are served from this site. Apart from the anonymous visit counter above, nothing is loaded from Google or other third parties while you play.</p>
     <h3>Links to other sites</h3>
