@@ -46,7 +46,11 @@
   background: var(--bg);
   transition: opacity .45s ease, visibility .45s;
 }
-#splash.out { opacity: 0; visibility: hidden; }
+/* exit: the rings ripple outwards (like a dart hitting water), then the whole screen fades */
+#splash.out { opacity: 0; visibility: hidden; transition: opacity .45s ease .42s, visibility .45s .42s; }
+#splash.out .ring { animation: ring-exit .45s cubic-bezier(.4,0,.2,1) both; }
+#splash.out .ring.r3 { animation-delay: 0s; } #splash.out .ring.r2 { animation-delay: .07s; } #splash.out .ring.r1 { animation-delay: .14s; }
+@keyframes ring-exit { from { transform: none; opacity: 1; } to { transform: scale(1.45); opacity: 0; } }
 .splash-board { position: absolute; left: 50%; top: 39%; width: 190px; height: 190px; transform: translate(-50%, -50%); display: grid; place-items: center; animation: lift .6s cubic-bezier(.2,.7,.2,1) .1s both; }
 /* starts dead centre (where Android's launch screen leaves the logo), then glides up to sit a little higher */
 @keyframes lift { from { transform: translate(-50%, calc(-50% + 11vh)); } to { transform: translate(-50%, -50%); } }
@@ -75,6 +79,7 @@
 @media (prefers-reduced-motion: reduce) {
   .splash-disc { display: none; }
   .ring, .splash-board, .splash-mark, .splash-markwrap, .splash-name, .splash-tag, .splash-line, .splash-dots, .splash-dots span { animation: none !important; }
+  #splash.out { transition: opacity .45s ease, visibility .45s; }
 }
   </style>
   <link rel="stylesheet" href="styles.css?v=46">
@@ -149,6 +154,6 @@
       caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
     }
   </script>
-  <script type="module" src="js/app.js?v=54"></script>
+  <script type="module" src="js/app.js?v=55"></script>
 </body>
 </html>

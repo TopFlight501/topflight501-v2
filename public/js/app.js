@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=54';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=54';
-import { sfx, setSoundEnabled } from './sound.js?v=54';
-import * as L from './leagues.js?v=54';
-import { initAnalytics, track } from './analytics.js?v=54';
-import { privacyHtml, termsHtml } from './legal.js?v=54';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=55';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=55';
+import { sfx, setSoundEnabled } from './sound.js?v=55';
+import * as L from './leagues.js?v=55';
+import { initAnalytics, track } from './analytics.js?v=55';
+import { privacyHtml, termsHtml } from './legal.js?v=55';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -2220,9 +2220,9 @@ function hideSplash() {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const minShow = reduced ? 900 : 2200;
   const wait = Math.max(0, minShow - (Date.now() - (window.__splashStart || 0)));
-  setTimeout(() => { el.classList.add('out'); document.documentElement.classList.remove('booting'); setTimeout(() => el.remove(), 500); }, wait);
+  setTimeout(() => { el.classList.add('out'); document.documentElement.classList.remove('booting'); setTimeout(() => el.remove(), 950); }, wait);
 }
 document.addEventListener('click', e => {
   const el = document.getElementById('splash');
-  if (el && el.contains(e.target) && S.allSeasons.length) { el.classList.add('out'); document.documentElement.classList.remove('booting'); setTimeout(() => el.remove(), 500); }
+  if (el && el.contains(e.target) && S.allSeasons.length) { el.classList.add('out'); document.documentElement.classList.remove('booting'); setTimeout(() => el.remove(), 950); }
 }, true);
