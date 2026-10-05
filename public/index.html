@@ -53,6 +53,11 @@
 .ring.r2 { inset: 28px; border-color: color-mix(in srgb, var(--green) 45%, var(--line)); animation-delay: .25s; }
 .ring.r3 { inset: 62px; background: color-mix(in srgb, var(--green) 14%, transparent); border-color: var(--green); animation-delay: .15s; }
 @keyframes ring-in { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+/* first frame matches Android's own launch screen (logo in a white circle), then eases into ours */
+.splash-disc { position: absolute; left: 50%; top: 50%; width: 233px; height: 233px; margin: -116.5px 0 0 -116.5px; border-radius: 50%; background: #FFFFFF; animation: disc-out .5s ease .15s both; }
+@keyframes disc-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.82); } }
+.splash-markwrap { position: relative; display: block; line-height: 0; animation: settle .45s ease .1s both; }
+@keyframes settle { from { transform: scale(1.28); } to { transform: none; } }
 .splash-mark { position: relative; height: 116px; width: auto; filter: var(--mark-filter); animation: thunk .55s ease-out .45s both; transform-origin: 50% 95%; }
 @keyframes thunk { 0% { transform: none; } 30% { transform: rotate(-5deg) scale(1.04); } 60% { transform: rotate(3deg); } 100% { transform: none; } }
 .splash-text { position: absolute; left: 16px; right: 16px; top: calc(50% + 112px); text-align: center; max-width: 360px; margin: 0 auto; }
@@ -66,7 +71,8 @@
 .splash-dots span:nth-child(3) { animation-delay: .3s; }
 @keyframes dot { 0%, 100% { transform: scale(.6); opacity: .4; } 50% { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .ring, .splash-mark, .splash-name, .splash-tag, .splash-line, .splash-dots, .splash-dots span { animation: none !important; }
+  .splash-disc { display: none; }
+  .ring, .splash-mark, .splash-markwrap, .splash-name, .splash-tag, .splash-line, .splash-dots, .splash-dots span { animation: none !important; }
 }
   </style>
   <link rel="stylesheet" href="styles.css?v=35">
@@ -74,8 +80,9 @@
 <body>
   <div id="splash" role="status" aria-label="Loading Top Flight 501">
     <div class="splash-board" aria-hidden="true">
+      <span class="splash-disc"></span>
       <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
-      <img class="splash-mark" src="img/mark.png?v=9" alt="" width="71" height="116">
+      <span class="splash-markwrap"><img class="splash-mark" src="img/mark.png?v=9" alt="" width="71" height="116"></span>
     </div>
     <div class="splash-text">
       <h1 class="splash-name">Top Flight 501</h1>
