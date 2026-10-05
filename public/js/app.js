@@ -599,7 +599,7 @@ function routeStrip(p) {
   return `<div class="route" aria-label="Your route: target ${Math.min(p.prog + 1, CLOCK_TARGETS.length)} of ${CLOCK_TARGETS.length}">
     ${CLOCK_TARGETS.map((t, k) => `<span class="stop ${k < p.prog ? 'done' : k === p.prog ? 'now' : ''}"><span class="si">${k < p.prog ? '✓' : TARGET_INFO[t].icon}</span><span class="sl">${short[t]}</span></span>`).join('<span class="arrow" aria-hidden="true">›</span>')}
   </div>
-  <p class="hint route-hint">No points in this game. Hit your target to move on, even mid-visit. First to the Manager wins.</p>`;
+  <p class="hint route-hint">A race, not points: first to the Manager wins.</p>`;
 }
 
 function dartsPerVisit() { return S.game === 'daily' ? DAILY_DARTS : 3; }
@@ -722,11 +722,11 @@ function renderSentOff() {
       <p class="result ok">🎯 <b>${esc(S.players[so.solved].name)}</b> got it: ${m.score[0]}–${m.score[1]}.</p>
       <button class="btn primary big" data-act="so-next">Next match</button>` : `
       <form class="throw" data-form="guess" autocomplete="off">
-        <div class="turn-head"><h3>${esc(p.name)}, your guess</h3><span class="hint">${p.fouls} of ${MAX_FOULS} fouls</span></div>
+        <div class="turn-head"><h3>${esc(p.name)}, your guess</h3></div>
         <div class="scoreline">
-          <label><span>${esc(m.home)}</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="0" aria-label="Home goals"></label>
+          <label><span>Home</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="0" aria-label="Home goals"></label>
           <span class="dash">–</span>
-          <label><span>${esc(m.away)}</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="1" aria-label="Away goals"></label>
+          <label><span>Away</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="1" aria-label="Away goals"></label>
         </div>
         ${so.error ? `<p class="error">${esc(so.error)}</p>` : ''}
         <button class="btn primary big" type="submit">Guess the score</button>
