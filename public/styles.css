@@ -536,3 +536,10 @@ main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px
 .route .stop.now .sl { color: var(--teal); }
 .route .arrow { color: var(--muted); opacity: .5; font-size: .9rem; margin-top: -16px; }
 .route-hint { margin: 0 0 10px; font-size: .8rem; text-align: center; }
+
+/* daily reminder */
+.seg.remind { grid-template-columns: repeat(5, 1fr); }
+.seg.remind .seg-btn { padding-left: 2px; padding-right: 2px; font-size: .9rem; }
+.remind-btns { display: grid; gap: 8px; margin: 6px 0 4px; }
+.remind-btns a.btn { display: block; text-align: center; text-decoration: none; padding: 14px; }
+.remind-link, .daily-nudge { color: var(--green-deep); }

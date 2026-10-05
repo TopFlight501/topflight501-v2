@@ -1,0 +1,22 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Top Flight 501//Daily Match reminder//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:tf501-daily-2000@topflight501.com
+DTSTAMP:20261005T000000Z
+DTSTART:20261005T200000
+DURATION:PT5M
+RRULE:FREQ=DAILY
+SUMMARY:⭐ Top Flight 501 Daily Match
+DESCRIPTION:Today's Daily Match is live. One real Premier League match\, six darts\, one go: https://topflight501.com/?daily
+URL:https://topflight501.com/?daily
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+TRIGGER:PT0M
+DESCRIPTION:Today's Daily Match is live ⭐
+END:VALARM
+END:VEVENT
+END:VCALENDAR

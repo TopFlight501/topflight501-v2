@@ -9,3 +9,6 @@ services:
       - path: /data/*
         name: Cache-Control
         value: public, max-age=86400
+      - path: /reminders/*
+        name: Content-Type
+        value: text/calendar; charset=utf-8

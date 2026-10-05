@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=36';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=36';
-import { sfx, setSoundEnabled } from './sound.js?v=36';
-import * as L from './leagues.js?v=36';
-import { initAnalytics, track } from './analytics.js?v=36';
-import { privacyHtml, termsHtml } from './legal.js?v=36';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=37';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=37';
+import { sfx, setSoundEnabled } from './sound.js?v=37';
+import * as L from './leagues.js?v=37';
+import { initAnalytics, track } from './analytics.js?v=37';
+import { privacyHtml, termsHtml } from './legal.js?v=37';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -152,6 +152,10 @@ function settingsHtml() {
     <span class="label">Personal bests (solo)</span>
     ${bests.length ? `<p class="hint">${bests.join('<br>')}</p>
       <button class="btn ghost" data-act="reset-bests">Reset personal bests</button>` : '<p class="hint">No personal bests yet.</p>'}
+  </div>
+  <div class="field">
+    <span class="label">Daily Match reminder</span>
+    <button class="btn ghost" data-act="reminder">⏰ Set a daily reminder</button>
   </div>
   <div class="field">
     <span class="label">Your data</span>
@@ -793,7 +797,8 @@ function sentOffWon(p) {
       <button class="btn ghost" data-act="newgame">Change game</button>
       <button class="btn primary" data-act="nextleg">Play again</button>
     </div>
-    ${SHARE_BTN}`, { dismissable: false });
+    ${SHARE_BTN}
+    ${dailyNudge()}`, { dismissable: false });
 }
 
 // ---------- sharing ----------
@@ -896,6 +901,7 @@ function dailyBanner() {
   const prev = dailyBest(true);
   const sub = done ? `Today <b>${saved.points}</b>${best !== null && best > saved.points ? ` · Best <b>${best}</b>` : prev !== null && saved.points > prev ? ' · 🏆 New best' : ''} · New in ${untilTomorrow()}`
     : saved ? `In progress: ${saved.darts.length} of ${DAILY_DARTS} darts thrown`
+    : streak ? `🔥 ${streak}-day streak · play before midnight to keep it`
     : best !== null ? `Your best: <b>${best}</b> · can you beat it?`
     : 'Same match for everyone today';
   return `<div class="daily ${done ? 'done' : ''}">
@@ -971,6 +977,7 @@ function showDailyResult() {
       <button class="btn primary" data-act="share">↗ Share</button>
     </div>
     <button class="btn link" data-act="daily-close">Back to games</button>
+    <button class="btn link remind-link" data-act="reminder">⏰ Remind me every day</button>
     <p class="hint center small">Scores and streak are saved on this device. Playing elsewhere? Use Settings → Backup to move them.</p>`, { dismissable: false });
 }
 
@@ -1046,6 +1053,38 @@ async function shareStory() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
   toast(copied ? 'Image saved and link copied for your Link sticker 🔗' : 'Image saved. Add it to your story 📸');
+}
+
+// ---------- daily reminder (lives in the player's own calendar; nothing is sent to us) ----------
+const REMIND_TIMES = [['0800', '8am'], ['1000', '10am'], ['1230', '12:30'], ['1800', '6pm'], ['2000', '8pm']];
+function reminderHtml() {
+  const t = store.get('remindTime', '1000');
+  const [hh, mm] = [t.slice(0, 2), t.slice(2)];
+  const d = new Date(); const ds = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  const g = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&text=' + encodeURIComponent('⭐ Top Flight 501 Daily Match')
+    + '&details=' + encodeURIComponent("Today's Daily Match is live. Six darts, one go: https://topflight501.com/?daily")
+    + `&dates=${ds}T${hh}${mm}00/${ds}T${hh}${String(+mm + 5).padStart(2, '0')}00`
+    + '&recur=' + encodeURIComponent('RRULE:FREQ=DAILY');
+  return `
+  <h2>⏰ Daily Match reminder</h2>
+  <p>Get a nudge every day so you never miss a Daily Match or lose your streak.</p>
+  <div class="field"><span class="label">Remind me at</span>
+    <div class="seg remind">${REMIND_TIMES.map(([v, l]) => `<button class="seg-btn ${v === t ? 'on' : ''}" data-act="remind-time" data-v="${v}">${l}</button>`).join('')}</div>
+  </div>
+  <div class="remind-btns">
+    <a class="btn primary" href="reminders/daily-${t}.ics" data-act="remind-add" data-v="ics">📅 Add to iPhone / Outlook calendar</a>
+    <a class="btn ghost" href="${g}" target="_blank" rel="noopener" data-act="remind-add" data-v="google">Add to Google Calendar</a>
+  </div>
+  <p class="hint">The reminder goes into your own calendar app. We don't get your details, and you can delete it from your calendar any time.</p>
+  <button class="btn link" data-act="close">Close</button>`;
+}
+// nudge shown at the end of other games while today's Daily is still unplayed
+function dailyNudge() {
+  const saved = dailySaved();
+  if (saved && saved.done) return '';
+  const streak = dailyStreak();
+  return `<button class="btn link daily-nudge" data-act="daily">⭐ ${streak ? `Keep your 🔥 ${streak}-day streak: ` : ''}today's Daily Match is waiting</button>`;
 }
 
 // ---------- add to home screen ----------
@@ -1616,7 +1655,8 @@ function legWon(p) {
       <button class="btn ghost" data-act="newgame">Change game</button>
       <button class="btn primary" data-act="nextleg">${solo ? 'Go again' : 'Play again'}</button>
     </div>
-    ${SHARE_BTN}`, { dismissable: false });
+    ${SHARE_BTN}
+    ${dailyNudge()}`, { dismissable: false });
 }
 
 function suddenOver() {
@@ -1639,7 +1679,8 @@ function suddenOver() {
       <button class="btn ghost" data-act="show-key">See answers</button>
       <button class="btn primary" data-act="nextleg">Go again</button>
     </div>
-    <div class="row slim"><button class="btn link" data-act="newgame">Change game</button>${SHARE_BTN}</div>`, { dismissable: false });
+    <div class="row slim"><button class="btn link" data-act="newgame">Change game</button>${SHARE_BTN}</div>
+    ${dailyNudge()}`, { dismissable: false });
 }
 
 function answerKey() {
@@ -1697,6 +1738,7 @@ document.addEventListener('click', async e => {
     case 'hub': goHub(); break;
     case 'daily':
       if (S.busy) break;
+      if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); }
       if (dailySaved() && dailySaved().done) { S.game = 'daily'; S.dailyN = dailyNumber(); showDailyResult(); }
       else await startDaily();
       break;
@@ -1706,6 +1748,9 @@ document.addEventListener('click', async e => {
     case 'share': shareResult(b); break;
     case 'story': shareStory(); break;
     case 'daily-invite': inviteDaily(b); break;
+    case 'reminder': track('Reminder opened'); openModal(reminderHtml()); break;
+    case 'remind-time': store.set('remindTime', v); openModal(reminderHtml()); break;
+    case 'remind-add': track('Reminder added', { calendar: v }); setTimeout(() => toast('Check your calendar to confirm ⏰'), 400); break;
     case 'easy': S.easy = !S.easy; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
     case 'choose': throwDart(v); break;
     case 'install': installApp(); break;
