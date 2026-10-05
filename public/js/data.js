@@ -137,6 +137,15 @@ export async function randomMatch(seasons, clubs = [], opts = {}, retried = fals
   return randomMatch(seasons, clubs, opts, true);
 }
 
+// A specific match by id (e.g. '2023-24-15'), for challenge links: both players get the exact same matches.
+export async function matchById(id) {
+  const D = await loadSeason(id.slice(0, 7));
+  const raw = D.matches.find(m => m.id === id);
+  if (!raw) throw new Error('Match not found');
+  used.delete(raw.id); used.add(raw.id); saveSeen();
+  return expand(raw, D);
+}
+
 export function seasonLabel(s) {
   // '2016-17' -> '2016/17'
   return s.replace('-', '/');

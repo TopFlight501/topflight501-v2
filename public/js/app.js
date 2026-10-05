@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=52';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=52';
-import { sfx, setSoundEnabled } from './sound.js?v=52';
-import * as L from './leagues.js?v=52';
-import { initAnalytics, track } from './analytics.js?v=52';
-import { privacyHtml, termsHtml } from './legal.js?v=52';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=54';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=54';
+import { sfx, setSoundEnabled } from './sound.js?v=54';
+import * as L from './leagues.js?v=54';
+import { initAnalytics, track } from './analytics.js?v=54';
+import { privacyHtml, termsHtml } from './legal.js?v=54';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -476,7 +476,7 @@ function renderHandover() {
     ${S.teamGame ? `<p class="team-turn">Throwing for <b>${esc(p.name)}</b></p>` : ''}
     <p class="hint">${handoverHint(p)}</p>
     ${matchCard()}
-    ${S.turnIdx === 0 ? `<div class="reroll-row">${REROLL}</div>` : ''}
+    ${S.turnIdx === 0 ? `${S.vs ? '' : `<div class="reroll-row">${REROLL}</div>`}` : ''}
     <button class="btn primary big" data-act="go">Throw darts</button>
   </section>
   </div>`;
@@ -567,7 +567,7 @@ function renderPlay() {
   ${scoreboard()}
   <section class="card play">
     ${matchCard()}
-    ${S.game !== 'daily' && S.turnIdx === 0 && !S.visit.length && !done ? `<div class="reroll-row">${REROLL}</div>` : ''}
+    ${S.game !== 'daily' && S.turnIdx === 0 && !S.visit.length && !done ? `${S.vs ? '' : `<div class="reroll-row">${REROLL}</div>`}` : ''}
     <div class="turn-head"><h3>${esc(thrower(p))}${S.teamGame ? ` <span class="team-of">${esc(p.name)}</span>` : ''}</h3><span class="hint">${turnHeadRight(p)}</span></div>
     ${dartSlots()}
     ${S.game === 'clock' ? routeStrip(p) : ''}
@@ -710,7 +710,7 @@ function renderSentOff() {
   ${scoreboard()}
   <section class="card play sentoff">
     ${matchCard()}
-    ${so.solved === null && !so.guesses.length ? `<div class="reroll-row">${REROLL}</div>` : ''}
+    ${so.solved === null && !so.guesses.length ? `${S.vs ? '' : `<div class="reroll-row">${REROLL}</div>`}` : ''}
     <div class="so-board ${so.solved !== null ? 'solved' : ''}">
       <div class="so-team"><span class="so-name">${esc(m.home)}</span><span class="so-digit">${digit(0)}</span><span class="so-range">${so.solved !== null ? '' : rangeText(0)}</span></div>
       <span class="so-dash">–</span>
@@ -812,6 +812,79 @@ const SITE = 'topflight501.com';
 const SHARE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>';
 const DAILY_LINK = 'https://topflight501.com/?daily';
 const SHARE_BTN = '<button class="btn link share-btn" data-act="share">↗ Share result</button>';
+
+// ---------- Challenge a mate: a link that gives your mate the exact same matches on their own phone ----------
+// topflight501.com/?vs=x01&s=501&e=0&r=21&n=Name&m=2324-15.1718-200  (no accounts, nothing stored on a server)
+const VS_GAMES = ['x01', 'clock', 'sudden'];
+const challengeable = () => S.players.length === 1 && VS_GAMES.includes(S.game) && S.played && S.played.length;
+const vsLower = g => g !== 'sudden';                       // darts: fewer is better; Sudden Death points: more is better
+const vsUnit = (g, n) => g === 'sudden' ? (n === 1 ? 'point' : 'points') : (n === 1 ? 'dart' : 'darts');
+const vsMine = () => S.game === 'sudden' ? current().points : S.players[0].darts;
+const shortId = id => id.replace(/^20(\d\d)-(\d\d)-/, '$1$2-');
+const longId = id => id.replace(/^(\d\d)(\d\d)-/, '20$1-$2-');
+function challengeLink() {
+  const me = S.players[0].name, named = me && me !== 'Player';
+  return `https://topflight501.com/?vs=${S.game}${S.game === 'x01' ? `&s=${S.start}` : ''}${easyOn() ? '&e=1' : ''}&r=${vsMine()}${named ? `&n=${encodeURIComponent(me)}` : ''}&m=${S.played.map(shortId).join('.')}`;
+}
+function parseChallenge() {
+  const q = new URLSearchParams(location.search);
+  if (!q.has('vs')) return null;
+  const g = q.get('vs'), r = parseInt(q.get('r'), 10), s = parseInt(q.get('s'), 10) || 501;
+  const m = (q.get('m') || '').split('.').filter(x => /^\d{4}-\d{1,3}$/.test(x)).slice(0, 80).map(longId);
+  if (!VS_GAMES.includes(g) || !Number.isFinite(r) || !m.length || ![101, 301, 501].includes(s)) return null;
+  return { g, s, e: q.get('e') === '1', r, n: (q.get('n') || '').trim().slice(0, 20), m };
+}
+function vsWhat(c) {
+  return c.g === 'x01' ? `${vsUnit(c.g, c.r)} to check out from ${c.s}` : c.g === 'clock' ? `${vsUnit(c.g, c.r)} to get round the grounds` : `${vsUnit(c.g, c.r)} in Sudden Death`;
+}
+function challengeHtml(c) {
+  const g = GAMES[c.g];
+  return `<p class="eyebrow">⚔️ Challenge</p>
+    <h2>${c.n ? esc(c.n) : 'A mate'} challenges you</h2>
+    <p class="vs-game">${g.icon} <b>${g.title}</b>${c.g === 'x01' ? ` · ${c.s}` : ''}${c.e ? ' · Easy mode' : ''}</p>
+    <p class="big-score">${c.r}</p>
+    <p>${vsWhat(c)}. You get the exact same matches, on your phone. Can you beat it?</p>
+    <label class="vs-name"><span class="label">Your name <span class="opt">optional</span></span>
+      <input class="text" id="vs-name" maxlength="20" placeholder="So they know who beat them" autocomplete="off" value="${esc(S.names[0] || '')}"></label>
+    <div class="row">
+      <button class="btn ghost" data-act="close">Not now</button>
+      <button class="btn primary" data-act="vs-accept">Accept</button>
+    </div>
+    <button class="btn link" data-act="vs-rules">How do I play ${g.title}?</button>`;
+}
+async function acceptChallenge() {
+  const c = S.vsOffer; if (!c) return;
+  const name = (($('#vs-name') || {}).value || '').trim();
+  closeModal();
+  track('Challenge accepted', { game: GAMES[c.g].title });
+  S.game = c.g; S.start = c.s; S.easy = c.e; S.nPlayers = 1; S.teamGame = false;
+  if (name) S.names[0] = name;
+  S.players = [{ name: name || 'Player', legs: 0 }];
+  S.legStarter = 0;
+  S.vsPending = c;
+  S.screen = 'play';
+  await startLeg();
+}
+// the line on the result screen: you vs them
+function vsLine() {
+  const c = S.vs, mine = vsMine(), them = c.n || 'Your mate';
+  const better = vsLower(c.g) ? mine < c.r : mine > c.r;
+  const verdict = mine === c.r ? 'Dead level 🤝' : better ? 'You win! 🏆' : `${esc(them)} wins this one`;
+  return `<div class="vs-result ${better ? 'won' : mine === c.r ? '' : 'lost'}">
+    <span>You <b>${mine}</b></span><span class="vs-v">v</span><span>${esc(them)} <b>${c.r}</b></span>
+    <small>${verdict}</small></div>`;
+}
+function vsReply() {
+  const c = S.vs, mine = vsMine(), them = c.n || 'you';
+  const g = GAMES[c.g].title + (c.g === 'x01' ? ` (${c.s})` : '');
+  const better = vsLower(c.g) ? mine < c.r : mine > c.r;
+  if (mine === c.r) return `⚔️ Dead level! ${mine} ${vsUnit(c.g, mine)} each on ${g}. Decider? Same matches 👇`;
+  return better ? `⚔️ Beat ${c.n ? `${c.n}'s` : 'your'} ${c.r} with ${mine} ${vsUnit(c.g, mine)} on ${g} 😏 Your turn, same matches 👇`
+    : `⚔️ ${c.n || 'You'} got me: ${c.r} to my ${mine} ${vsUnit(c.g, mine)} on ${g}. Think you can do it again? 👇`;
+}
+const shareBtn = () => challengeable()
+  ? `<button class="btn link share-btn" data-act="share">⚔️ ${S.vs ? `Reply to ${S.vs.n ? esc(S.vs.n) : 'your mate'}` : 'Challenge a mate'}</button>`
+  : SHARE_BTN;
 function shareLine(p) {
   const solo = S.players.length === 1;
   const vs = () => S.players.filter(x => x !== p).map(x => x.name).join(', ');
@@ -832,6 +905,10 @@ function inviteDaily(anchor) {
   return shareText(`${lead} 👇\n${DAILY_LINK}`, anchor);
 }
 async function shareResult(anchor) {
+  if (challengeable()) {
+    track(S.vs ? 'Challenge replied' : 'Challenge sent', { game: G().title });
+    return shareText(`${S.vs ? vsReply() : S.shareText}\n${challengeLink()}`, anchor);
+  }
   const text = `${S.shareText}\n${S.game === 'daily' ? DAILY_LINK : SITE}`;
   track('Result shared', { game: GAMES[S.game] ? GAMES[S.game].title : S.game });
   return shareText(text, anchor);
@@ -1543,6 +1620,9 @@ function resetPlayer(p) {
 }
 
 async function startLeg() {
+  // a challenge only lasts one game; "Go again" afterwards is a normal game
+  S.vs = S.vsPending || null; S.vsPending = null;
+  S.played = [];
   S.players.forEach(resetPlayer);
   track('Game started', gameInfo());
   S.legOver = false;
@@ -1555,7 +1635,10 @@ async function startLeg() {
 async function newRound() {
   S.busy = true; S.error = null;
   try {
-    S.match = await randomMatch(selectedSeasons(), activeClubs(), { rich: S.game === 'clock' });
+    const q = S.vs && S.vs.m[S.played.length];
+    S.match = q ? await matchById(q).catch(() => randomMatch(selectedSeasons(), activeClubs(), { rich: S.game === 'clock' }))
+      : await randomMatch(selectedSeasons(), activeClubs(), { rich: S.game === 'clock' });
+    S.played.push(S.match.id);
   } catch (e) {
     S.busy = false;
     S.error = e && /clubs|No matches/.test(e.message) ? e.message : 'Couldn’t load a match. Check your connection and try again.';
@@ -1772,6 +1855,7 @@ function legWon(p) {
       extra = `<p>Finished in <b>${p.darts} darts</b>.</p>`;
     }
   }
+  if (S.vs && solo) extra += vsLine();
   if (!solo) extra += `<p class="legs-line">${S.players.map(x => `${esc(x.name)} <b>${x.legs}</b>`).join(' · ')}</p>`;
   const detail = S.game === 'x01' ? `${S.start}, ${p.darts} darts` : S.game === 'clock' ? `${p.darts} darts` : S.game === 'killer' ? `${p.lives} ${p.lives === 1 ? 'life' : 'lives'} left` : '';
   L.recordGame({ game: S.game, players: S.players.map(x => x.name), winner: p.name, solo, league: solo || !LEAGUES_ENABLED ? null : (S.leagueId || null), detail });
@@ -1790,7 +1874,7 @@ function legWon(p) {
       <button class="btn ghost" data-act="newgame">Change game</button>
       <button class="btn primary" data-act="nextleg">${solo ? 'Go again' : 'Play again'}</button>
     </div>
-    ${SHARE_BTN}
+    ${shareBtn()}
     ${nextNudge(S.game)}`, { dismissable: false });
 }
 
@@ -1810,12 +1894,13 @@ function suddenOver() {
     <h2>${isBest ? 'New personal best!' : 'That’s the end of the road'}</h2>
     <p class="big-score">${p.points}</p>
     <p><b>${p.streak}</b> correct in a row across ${S.matchesThisLeg} ${S.matchesThisLeg === 1 ? 'match' : 'matches'}.${!isBest && best ? ` Best: ${best.points} pts.` : ''}</p>
+    ${S.vs ? vsLine() : ''}
     <p class="hint">The miss: ${esc(TARGET_INFO[last.cat].label)}, “${esc(Array.isArray(last.answer) ? last.answer.join('-') : last.answer)}”. ${esc(last.res.message)}</p>
     <div class="row">
       <button class="btn ghost" data-act="show-key">See answers</button>
       <button class="btn primary" data-act="nextleg">Go again</button>
     </div>
-    <div class="row slim"><button class="btn link" data-act="newgame">Change game</button>${SHARE_BTN}</div>
+    <div class="row slim"><button class="btn link" data-act="newgame">Change game</button>${shareBtn()}</div>
     ${nextNudge('sudden')}`, { dismissable: false });
 }
 
@@ -1960,10 +2045,14 @@ document.addEventListener('click', async e => {
       break;
     case 'close': closeModal(); break;
     case 'go': S.screen = 'play'; render(); break;
+    case 'vs-accept': await acceptChallenge(); break;
+    case 'vs-rules': openModal(rulesHtml(S.vsOffer.g).replace('data-act="close">Got it', 'data-act="vs-back">Back to the challenge')); break;
+    case 'vs-back': openModal(challengeHtml(S.vsOffer)); break;
     case 'reroll':
+      if (S.vs) break;
       if (S.busy || S.legOver || S.pending || (S.screen === 'sentoff' ? S.so.guesses.length : (S.turnIdx !== 0 || S.visit.length))) break;
       track('Match rerolled', gameInfo());
-      S.round -= 1; S.matchesThisLeg -= 1;
+      S.round -= 1; S.matchesThisLeg -= 1; S.played.pop();
       await newRound();
       break;
     case 'so-next': S.legStarter = (S.legStarter + 1) % S.players.length; await newRound(); break;
@@ -2076,6 +2165,14 @@ document.addEventListener('keydown', e => {
   await refreshClubOptions();
   render();
   hideSplash();
+  // a challenge link (topflight501.com/?vs=...) offers the same matches a mate just played
+  const vsOffer = S.allSeasons.length ? parseChallenge() : null;
+  if (vsOffer) {
+    history.replaceState(null, '', location.pathname);
+    S.vsOffer = vsOffer;
+    track('Opened challenge link', { game: GAMES[vsOffer.g].title });
+    openModal(challengeHtml(vsOffer));
+  }
   // a shared Daily Match link (topflight501.com/?daily) opens today's match straight away
   if (new URLSearchParams(location.search).has('daily') && S.allSeasons.length) {
     history.replaceState(null, '', location.pathname);
