@@ -1,0 +1,15 @@
+# Cloudflare Pages headers (Render ignores this file)
+/data/*
+  Cache-Control: public, max-age=86400
+
+/reminders/*
+  Content-Type: text/calendar; charset=utf-8
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/tutorials/*
+  Cache-Control: public, max-age=2592000
+
+/img/*
+  Cache-Control: public, max-age=604800
