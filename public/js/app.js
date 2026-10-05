@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=50';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=50';
-import { sfx, setSoundEnabled } from './sound.js?v=50';
-import * as L from './leagues.js?v=50';
-import { initAnalytics, track } from './analytics.js?v=50';
-import { privacyHtml, termsHtml } from './legal.js?v=50';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=51';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=51';
+import { sfx, setSoundEnabled } from './sound.js?v=51';
+import * as L from './leagues.js?v=51';
+import { initAnalytics, track } from './analytics.js?v=51';
+import { privacyHtml, termsHtml } from './legal.js?v=51';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -255,7 +255,7 @@ function renderSetup() {
   <section class="card setup">
     <button class="back" data-act="hub">‹ All games</button>
     <p class="eyebrow">${g.icon} ${g.title}</p>
-    <h2>Ready to throw?</h2>
+    <h2>Pre-match</h2>
     <div class="setup-cols">
     <div class="setup-side">
     ${store.get('hideRules:' + S.game, false) ? `
