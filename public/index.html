@@ -47,7 +47,9 @@
   transition: opacity .45s ease, visibility .45s;
 }
 #splash.out { opacity: 0; visibility: hidden; }
-.splash-board { position: absolute; left: 50%; top: 50%; width: 190px; height: 190px; transform: translate(-50%, -50%); display: grid; place-items: center; }
+.splash-board { position: absolute; left: 50%; top: 39%; width: 190px; height: 190px; transform: translate(-50%, -50%); display: grid; place-items: center; animation: lift .6s cubic-bezier(.2,.7,.2,1) .1s both; }
+/* starts dead centre (where Android's launch screen leaves the logo), then glides up to sit a little higher */
+@keyframes lift { from { transform: translate(-50%, calc(-50% + 11vh)); } to { transform: translate(-50%, -50%); } }
 .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--line); animation: ring-in .6s ease-out both; }
 .ring.r1 { animation-delay: .35s; }
 .ring.r2 { inset: 28px; border-color: color-mix(in srgb, var(--green) 45%, var(--line)); animation-delay: .25s; }
@@ -60,7 +62,7 @@
 @keyframes settle { from { transform: scale(1.28); } to { transform: none; } }
 .splash-mark { position: relative; height: 116px; width: auto; filter: var(--mark-filter); animation: thunk .55s ease-out .45s both; transform-origin: 50% 95%; }
 @keyframes thunk { 0% { transform: none; } 30% { transform: rotate(-5deg) scale(1.04); } 60% { transform: rotate(3deg); } 100% { transform: none; } }
-.splash-text { position: absolute; left: 16px; right: 16px; top: calc(50% + 112px); text-align: center; max-width: 360px; margin: 0 auto; }
+.splash-text { position: absolute; left: 16px; right: 16px; top: calc(39% + 112px); text-align: center; max-width: 360px; margin: 0 auto; }
 .splash-name { margin: 0; font-size: 2.1rem; font-weight: 800; color: var(--teal); letter-spacing: -.02em; animation: rise .5s ease .55s both; }
 .splash-tag { margin: 2px 0 12px; font-size: .75rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); animation: rise .5s ease .65s both; }
 .splash-line { margin: 0 auto; font-size: 1.1rem; font-weight: 600; color: var(--ink); text-wrap: balance; min-height: 2.9em; animation: rise .5s ease .8s both; }
@@ -72,7 +74,7 @@
 @keyframes dot { 0%, 100% { transform: scale(.6); opacity: .4; } 50% { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .splash-disc { display: none; }
-  .ring, .splash-mark, .splash-markwrap, .splash-name, .splash-tag, .splash-line, .splash-dots, .splash-dots span { animation: none !important; }
+  .ring, .splash-board, .splash-mark, .splash-markwrap, .splash-name, .splash-tag, .splash-line, .splash-dots, .splash-dots span { animation: none !important; }
 }
   </style>
   <link rel="stylesheet" href="styles.css?v=36">
