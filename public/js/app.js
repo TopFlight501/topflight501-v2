@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=39';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=39';
-import { sfx, setSoundEnabled } from './sound.js?v=39';
-import * as L from './leagues.js?v=39';
-import { initAnalytics, track } from './analytics.js?v=39';
-import { privacyHtml, termsHtml } from './legal.js?v=39';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=40';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=40';
+import { sfx, setSoundEnabled } from './sound.js?v=40';
+import * as L from './leagues.js?v=40';
+import { initAnalytics, track } from './analytics.js?v=40';
+import { privacyHtml, termsHtml } from './legal.js?v=40';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1072,10 +1072,23 @@ function reminderHtml() {
   <div class="field"><span class="label">Remind me at</span>
     <div class="seg remind">${REMIND_TIMES.map(([v, l]) => `<button class="seg-btn ${v === t ? 'on' : ''}" data-act="remind-time" data-v="${v}">${l}</button>`).join('')}</div>
   </div>
-  <div class="remind-btns">
-    <a class="btn primary" href="reminders/daily-${t}.ics" data-act="remind-add" data-v="ics">📅 Add to iPhone / Outlook calendar</a>
-    <a class="btn ghost" href="${g}" target="_blank" rel="noopener" data-act="remind-add" data-v="google">Add to Google Calendar</a>
-  </div>
+  ${(() => {
+    // one button that suits the device; the other calendar is still there behind a small link
+    const ua = navigator.userAgent;
+    const apple = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const android = /android/i.test(ua);
+    const ics = { href: `reminders/daily-${t}.ics`, v: 'ics', attrs: '' };
+    const goo = { href: g, v: 'google', attrs: ' target="_blank" rel="noopener"' };
+    const [main, other, mainLabel, otherLabel] = android
+      ? [goo, ics, '📅 Add to Google Calendar', 'Use a different calendar (Outlook, Samsung…)']
+      : apple
+        ? [ics, goo, '📅 Add to Calendar', 'Use Google Calendar instead']
+        : [ics, goo, '📅 Add to your calendar', 'Use Google Calendar instead'];
+    return `<div class="remind-btns">
+      <a class="btn primary" href="${main.href}"${main.attrs} data-act="remind-add" data-v="${main.v}">${mainLabel}</a>
+      <a class="btn link remind-other" href="${other.href}"${other.attrs} data-act="remind-add" data-v="${other.v}">${otherLabel}</a>
+    </div>`;
+  })()}
   <p class="hint">The reminder goes into your own calendar app. We don't get your details, and you can delete it from your calendar any time.</p>
   <button class="btn link" data-act="close">Close</button>`;
 }
