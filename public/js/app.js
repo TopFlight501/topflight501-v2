@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=57';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=57';
-import { sfx, setSoundEnabled } from './sound.js?v=57';
-import * as L from './leagues.js?v=57';
-import { initAnalytics, track } from './analytics.js?v=57';
-import { privacyHtml, termsHtml } from './legal.js?v=57';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=58';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=58';
+import { sfx, setSoundEnabled } from './sound.js?v=58';
+import * as L from './leagues.js?v=58';
+import { initAnalytics, track } from './analytics.js?v=58';
+import { privacyHtml, termsHtml } from './legal.js?v=58';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1520,7 +1520,7 @@ function gameRules(game) {
       <li><b>Last one standing</b> wins. Knocked-out players skip their turns.</li>`,
     clock: `
       <li><b>Go round the ground.</b> Hit each target in order: 👕 Lineup player, 🟨 Booked player, 🅰️ Assist, ⚽ Scorer, 🔢 Exact scoreline, then the 🧑‍💼 <b>Manager</b> to finish.</li>
-      <li><b>One target at a time.</b> Each correct dart moves you on to the next target, even within the same visit.</li>
+      <li><b>Three darts a visit.</b> Each correct dart moves you on to the next target, even within the same visit. A wrong answer uses up a dart. After three, pass the phone.</li>
       <li><b>Every target is possible.</b> Matches in this game always have at least one goal, one assist and one booking.</li>
       <li><b>First to finish wins.</b> Solo, try to get round in as few darts as you can.</li>`,
     sentoff: `
