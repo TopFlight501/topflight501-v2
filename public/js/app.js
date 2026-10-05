@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=51';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=51';
-import { sfx, setSoundEnabled } from './sound.js?v=51';
-import * as L from './leagues.js?v=51';
-import { initAnalytics, track } from './analytics.js?v=51';
-import { privacyHtml, termsHtml } from './legal.js?v=51';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=52';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=52';
+import { sfx, setSoundEnabled } from './sound.js?v=52';
+import * as L from './leagues.js?v=52';
+import { initAnalytics, track } from './analytics.js?v=52';
+import { privacyHtml, termsHtml } from './legal.js?v=52';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1186,13 +1186,13 @@ function clubLine() {
   return `<button class="club-line ${c ? 'on' : ''}" data-act="club-pick" style="${clubVars(c)}">
     <span>${c ? `🏟️ <b>${esc(c)}</b> matches only` : '🏟️ Got a club? Play only their matches'}</span><span class="club-go">${c ? 'Change' : 'Pick club'} ›</span></button>`;
 }
-function clubPickerHtml() {
-  const cur = S.clubs[0];
-  return `<h2>🏟️ Play your club</h2>
-    <p class="hint">Every game uses only your club’s real Premier League matches (from the seasons you’ve picked). The Daily Match stays the same for everyone.</p>
+function clubPickerHtml(ctx = '') {
+  const cur = S.clubs[0], cx = ctx ? ` data-ctx="${ctx}"` : '';
+  return `<h2>${ctx ? 'Preferred club' : '🏟️ Play your club'}</h2>
+    <p class="hint">${ctx ? 'Only your club’s real matches will come up.' : 'Every game uses only your club’s real Premier League matches (from the seasons you’ve picked). The Daily Match stays the same for everyone.'}</p>
     <div class="club-list">
-      <button class="club-opt ${!cur ? 'on' : ''}" data-act="club-set" data-v="">🌍 Any club</button>
-      ${S.clubOptions.map(c => `<button class="club-opt ${c === cur ? 'on' : ''}" data-act="club-set" data-v="${esc(c)}" style="${clubVars(c)}"><span class="club-sw" aria-hidden="true"></span>${esc(c)}</button>`).join('')}
+      <button class="club-opt ${!cur ? 'on' : ''}" data-act="club-set" data-v=""${cx}>🌍 Any club</button>
+      ${S.clubOptions.map(c => `<button class="club-opt ${c === cur ? 'on' : ''}" data-act="club-set" data-v="${esc(c)}"${cx} style="${clubVars(c)}"><span class="club-sw" aria-hidden="true"></span>${esc(c)}</button>`).join('')}
     </div>
     <button class="btn link" data-act="close">Close</button>`;
 }
@@ -1862,6 +1862,10 @@ function confetti() {
 // ---------- events ----------
 function goHub() { S.screen = 'hub'; S.error = null; renderHub(); }
 
+// on a laptop/PC the browser's own club dropdown is a long, unstyled list, so open the tidy club picker instead (phones keep their native picker)
+document.addEventListener('mousedown', e => {
+  if (e.target.id === 'club' && e.button === 0 && matchMedia('(pointer: fine)').matches) { e.preventDefault(); openModal(clubPickerHtml('setup')); }
+});
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]');
   if (!b) {
@@ -1982,7 +1986,8 @@ document.addEventListener('click', async e => {
       break;
     case 'leave': track('Game quit', gameInfo({ round: S.round, progress: quitProgress() })); modalRoot._onClose = null; closeModal(); goHub(); break;
     case 'club-pick': openModal(clubPickerHtml()); break;
-    case 'club-set': S.clubs = [v, '']; saveSetup(); track('Club picked', { club: v || 'Any club' }); closeModal(); renderHub(); if (v) toast(`${v} matches only 🏟️`); break;
+    case 'club-set': if (b.dataset.ctx === 'setup') { S.clubs = [v, '']; track('Club picked', { club: v || 'Any club' }); closeModal(); renderSetup(); break; }
+      S.clubs = [v, '']; saveSetup(); track('Club picked', { club: v || 'Any club' }); closeModal(); renderHub(); if (v) toast(`${v} matches only 🏟️`); break;
   }
 });
 
