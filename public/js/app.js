@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=37';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=37';
-import { sfx, setSoundEnabled } from './sound.js?v=37';
-import * as L from './leagues.js?v=37';
-import { initAnalytics, track } from './analytics.js?v=37';
-import { privacyHtml, termsHtml } from './legal.js?v=37';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=38';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=38';
+import { sfx, setSoundEnabled } from './sound.js?v=38';
+import * as L from './leagues.js?v=38';
+import { initAnalytics, track } from './analytics.js?v=38';
+import { privacyHtml, termsHtml } from './legal.js?v=38';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -901,7 +901,7 @@ function dailyBanner() {
   const prev = dailyBest(true);
   const sub = done ? `Today <b>${saved.points}</b>${best !== null && best > saved.points ? ` · Best <b>${best}</b>` : prev !== null && saved.points > prev ? ' · 🏆 New best' : ''} · New in ${untilTomorrow()}`
     : saved ? `In progress: ${saved.darts.length} of ${DAILY_DARTS} darts thrown`
-    : streak ? `🔥 ${streak}-day streak · play before midnight to keep it`
+    : streak ? `🔥 Play today to keep your ${streak}-day streak`
     : best !== null ? `Your best: <b>${best}</b> · can you beat it?`
     : 'Same match for everyone today';
   return `<div class="daily ${done ? 'done' : ''}">
