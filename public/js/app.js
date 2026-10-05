@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=46';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=46';
-import { sfx, setSoundEnabled } from './sound.js?v=46';
-import * as L from './leagues.js?v=46';
-import { initAnalytics, track } from './analytics.js?v=46';
-import { privacyHtml, termsHtml } from './legal.js?v=46';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=47';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=47';
+import { sfx, setSoundEnabled } from './sound.js?v=47';
+import * as L from './leagues.js?v=47';
+import { initAnalytics, track } from './analytics.js?v=47';
+import { privacyHtml, termsHtml } from './legal.js?v=47';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -445,7 +445,9 @@ function scoreboard() {
 
 function matchCard(cls = '') {
   const m = S.match;
-  return `<div class="match ${cls}">
+  // your club's colours as an outline on the match card (not in the Daily Match, which is the same for everyone)
+  const club = S.game !== 'daily' && S.clubs[0] && CLUB_COLOURS[S.clubs[0]] ? S.clubs[0] : '';
+  return `<div class="match ${cls} ${club ? 'club-theme' : ''}" ${club ? `style="${clubVars(club)}"` : ''}>
     <div class="match-meta"><span>Premier League ${seasonLabel(m.season)}</span><span>Round ${S.round}</span></div>
     <div class="teams"><span class="team">${esc(m.home)}</span><span class="vs">v</span><span class="team">${esc(m.away)}</span></div>
     <div class="match-date">${fmtDate(m.date)}</div>
