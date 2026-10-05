@@ -622,3 +622,6 @@ select option { background: var(--card); color: var(--ink); }
 .chips.two .chip-l { font-size: 1.05rem; }
 .chips.two .chip-p { font-size: .8rem; color: var(--green-deep); font-weight: 700; }
 .chips.two .chip.on .chip-p { color: var(--on-strong-dim); }
+
+.wipe-list { text-align: left; margin: .4rem 0 .6rem; padding-left: 1.2rem; line-height: 1.7; }
+.stack { display: flex; flex-direction: column; gap: 8px; margin-top: .6rem; }
