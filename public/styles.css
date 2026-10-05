@@ -613,3 +613,10 @@ select option { background: var(--card); color: var(--ink); }
 .vs-result small { grid-column: 1 / -1; text-align: center; font-weight: 800; font-size: .9rem; color: var(--ink); }
 .vs-result.won { border-color: var(--green); }
 .vs-result.won small { color: var(--green-deep, var(--green)); }
+/* only two categories on offer (Killer, before you're armed): two roomy buttons that fill the row */
+.chips.two { grid-template-columns: 1fr 1fr; gap: 10px; }
+.chips.two .chip { padding: 16px 10px 14px; gap: 4px; border-radius: 16px; }
+.chips.two .chip-i { font-size: 1.7rem; }
+.chips.two .chip-l { font-size: 1.05rem; }
+.chips.two .chip-p { font-size: .8rem; color: var(--green-deep); font-weight: 700; }
+.chips.two .chip.on .chip-p { color: var(--on-strong-dim); }

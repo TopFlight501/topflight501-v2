@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=56';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=56';
-import { sfx, setSoundEnabled } from './sound.js?v=56';
-import * as L from './leagues.js?v=56';
-import { initAnalytics, track } from './analytics.js?v=56';
-import { privacyHtml, termsHtml } from './legal.js?v=56';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=57';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=57';
+import { sfx, setSoundEnabled } from './sound.js?v=57';
+import * as L from './leagues.js?v=57';
+import { initAnalytics, track } from './analytics.js?v=57';
+import { privacyHtml, termsHtml } from './legal.js?v=57';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -517,7 +517,7 @@ function allowedCats(p) {
 function chipPoints(k, c) {
   if (S.game === 'x01') return `−${c.points}${c.redPoints ? '/' + c.redPoints : ''}`;
   if (S.game === 'sudden' || S.game === 'daily') return `+${k === 'lineup' && lineupOld() ? 30 : c.points}${c.redPoints ? '/' + c.redPoints : ''}`;
-  if (S.game === 'killer') return ARMING.includes(k) ? (current().armed ? 'Kill' : 'Arms') : (current().armed ? 'Kill' : '—');
+  if (S.game === 'killer') return current().armed ? 'Kill' : 'Become a Killer';
   return 'Target';
 }
 
@@ -577,7 +577,7 @@ function renderPlay() {
     ${!done ? `
       <form class="throw" data-form="throw" autocomplete="off">
         <span class="label">${label}</span>
-        <div class="chips ${cats.length === 1 ? 'single' : ''}">${catBtns}</div>
+        <div class="chips ${cats.length === 1 ? 'single' : cats.length === 2 ? 'two' : ''}">${catBtns}</div>
         ${input}
         ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
         ${S.cat && easyOn() && NAME_CATS.includes(S.cat) ? '' : `<button class="btn primary big" type="submit" ${S.cat ? '' : 'disabled'}>Throw</button>`}
