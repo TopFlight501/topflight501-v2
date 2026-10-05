@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=48';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=48';
-import { sfx, setSoundEnabled } from './sound.js?v=48';
-import * as L from './leagues.js?v=48';
-import { initAnalytics, track } from './analytics.js?v=48';
-import { privacyHtml, termsHtml } from './legal.js?v=48';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=50';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=50';
+import { sfx, setSoundEnabled } from './sound.js?v=50';
+import * as L from './leagues.js?v=50';
+import { initAnalytics, track } from './analytics.js?v=50';
+import { privacyHtml, termsHtml } from './legal.js?v=50';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -255,7 +255,7 @@ function renderSetup() {
   <section class="card setup">
     <button class="back" data-act="hub">‹ All games</button>
     <p class="eyebrow">${g.icon} ${g.title}</p>
-    <h2>Step to the oche</h2>
+    <h2>Ready to throw?</h2>
     <div class="setup-cols">
     <div class="setup-side">
     ${store.get('hideRules:' + S.game, false) ? `
@@ -1177,7 +1177,10 @@ const CLUB_COLOURS = {
   'Swansea City': ['#121212', '#FFFFFF'], 'Tottenham Hotspur': ['#132257', '#FFFFFF'], 'Watford': ['#FBEE23', '#ED2127'], 'West Bromwich Albion': ['#122F67', '#FFFFFF'],
   'West Ham United': ['#7A263A', '#1BB1E7'], 'Wolverhampton Wanderers': ['#FDB913', '#231F20'],
 };
-const clubVars = c => { const k = CLUB_COLOURS[c]; return k ? `--c1:${k[0]};--c2:${k[1]}` : ''; };
+// white vanishes on the light theme and near-black on the dark theme, so those halves take the club's other colour (one solid outline)
+const lum = h => { const n = parseInt(h.slice(1), 16), f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(n >> 16) + .7152 * f(n >> 8 & 255) + .0722 * f(n & 255); };
+const pair = (a, b, bad) => bad(a) && bad(b) ? [a, a] : bad(a) ? [b, b] : bad(b) ? [a, a] : [a, b];
+const clubVars = c => { const k = CLUB_COLOURS[c]; if (!k) return ''; const [l1, l2] = pair(k[0], k[1], h => lum(h) > .85), [d1, d2] = pair(k[0], k[1], h => lum(h) < .032); return `--l1:${l1};--l2:${l2};--d1:${d1};--d2:${d2}`; };
 function clubLine() {
   const c = S.clubs[0];
   return `<button class="club-line ${c ? 'on' : ''}" data-act="club-pick" style="${clubVars(c)}">

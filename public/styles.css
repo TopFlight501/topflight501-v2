@@ -577,7 +577,7 @@ main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px
 .club-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 52vh; overflow-y: auto; margin: 10px 0 6px; padding: 2px; }
 .club-opt { display: flex; align-items: center; gap: 8px; font: inherit; font-weight: 700; font-size: .86rem; text-align: left; color: var(--ink); background: var(--soft); border: 1.5px solid var(--line); border-radius: 12px; padding: 9px 10px; cursor: pointer; line-height: 1.15; min-width: 0; }
 .club-opt .club-sw { flex: none; width: 14px; height: 22px; border-radius: 4px; background: linear-gradient(90deg, var(--c1) 50%, var(--c2) 50%); box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
-.club-opt.on { background: var(--card); border-color: transparent; box-shadow: 0 0 0 2px var(--c1, var(--teal)), 0 0 0 4px var(--c2, var(--line)); }
+.club-opt.on { border: 2px solid transparent; background: linear-gradient(var(--card), var(--card)) padding-box, linear-gradient(90deg, var(--c1, var(--teal)) 50%, var(--c2, var(--teal)) 50%) border-box; }
 @media (min-width: 900px) { .club-list { grid-template-columns: 1fr 1fr 1fr; } }
 
 /* tutorials */
@@ -587,8 +587,13 @@ main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px
 .tut-video { display: block; width: 100%; max-width: 360px; height: auto; aspect-ratio: 3 / 4; margin: 4px auto 14px; border-radius: 18px; background: #0e252c; }
 
 /* club colours on the match card */
-.match.club-theme { position: relative; border-color: transparent; box-shadow: inset 0 0 0 2px var(--c1), inset 0 0 0 4px var(--c2); overflow: hidden; }
-.match.club-theme::before { content: ''; position: absolute; left: 0; top: 0; width: 34px; height: 6px; background: linear-gradient(90deg, var(--c1) 50%, var(--c2) 50%); border-bottom-right-radius: 6px; }
+.match.club-theme { border: 2px solid transparent; background: linear-gradient(var(--soft), var(--soft)) padding-box, linear-gradient(90deg, var(--c1) 50%, var(--c2) 50%) border-box; }
 
 /* preferred club box picks up the club's colours */
-.clubs.club-theme select { border-color: transparent; box-shadow: 0 0 0 2px var(--c1), 0 0 0 4px var(--c2); }
+.clubs.club-theme select { border: 2px solid transparent; background: linear-gradient(var(--card), var(--card)) padding-box, linear-gradient(90deg, var(--c1) 50%, var(--c2) 50%) border-box; }
+@media (min-width: 900px) { .match-side.club-theme { background: linear-gradient(var(--card), var(--card)) padding-box, linear-gradient(90deg, var(--c1) 50%, var(--c2) 50%) border-box; } }
+
+/* club colours: light / dark theme pairs */
+[style*="--l1"] { --c1: var(--l1); --c2: var(--l2); }
+:root[data-theme="dark"] [style*="--l1"] { --c1: var(--d1); --c2: var(--d2); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) [style*="--l1"] { --c1: var(--d1); --c2: var(--d2); } }
