@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=58';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=58';
-import { sfx, setSoundEnabled } from './sound.js?v=58';
-import * as L from './leagues.js?v=58';
-import { initAnalytics, track } from './analytics.js?v=58';
-import { privacyHtml, termsHtml } from './legal.js?v=58';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=59';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=59';
+import { sfx, setSoundEnabled } from './sound.js?v=59';
+import * as L from './leagues.js?v=59';
+import { initAnalytics, track } from './analytics.js?v=59';
+import { privacyHtml, termsHtml } from './legal.js?v=59';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1978,8 +1978,8 @@ document.addEventListener('click', async e => {
     case 'tutorial':
       track('Tutorial watched', { game: G().title });
       openModal(`<h2>${G().icon} How ${esc(G().title)} works</h2>
-        <video class="tut-video" poster="tutorials/${S.game}.jpg?v=1" autoplay muted playsinline loop controls preload="none" width="720" height="960">
-          <source src="tutorials/${S.game}.mp4?v=1" type="video/mp4"><source src="tutorials/${S.game}.webm?v=1" type="video/webm">
+        <video class="tut-video" poster="tutorials/${S.game}.jpg?v=2" autoplay muted playsinline loop controls preload="none" width="720" height="960">
+          <source src="tutorials/${S.game}.mp4?v=2" type="video/mp4"><source src="tutorials/${S.game}.webm?v=2" type="video/webm">
         </video>
         <button class="btn primary big" data-act="close">Got it</button>`);
       break;
