@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=47';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=47';
-import { sfx, setSoundEnabled } from './sound.js?v=47';
-import * as L from './leagues.js?v=47';
-import { initAnalytics, track } from './analytics.js?v=47';
-import { privacyHtml, termsHtml } from './legal.js?v=47';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=48';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=48';
+import { sfx, setSoundEnabled } from './sound.js?v=48';
+import * as L from './leagues.js?v=48';
+import { initAnalytics, track } from './analytics.js?v=48';
+import { privacyHtml, termsHtml } from './legal.js?v=48';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -231,7 +231,6 @@ function renderHub() {
       </span>
       <span class="game-go" aria-hidden="true">›</span>
     </button>` : ''}
-    ${clubLine()}
     ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
   </section>
   ${installBar()}`;
@@ -342,7 +341,7 @@ function renderSetup() {
 
     <div class="field f-half">
       <span class="label">Preferred club <span class="opt">optional</span></span>
-      <div class="clubs">
+      <div class="clubs ${S.clubs[0] && CLUB_COLOURS[S.clubs[0]] ? 'club-theme' : ''}" style="${clubVars(S.clubs[0])}">
         <select id="club" data-club="0" aria-label="Preferred club">
           <option value="">Any club</option>
           ${S.clubOptions.map(c => `<option value="${esc(c)}" ${c === S.clubs[0] ? 'selected' : ''}>${esc(c)}</option>`).join('')}
