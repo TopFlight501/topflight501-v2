@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=40';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=40';
-import { sfx, setSoundEnabled } from './sound.js?v=40';
-import * as L from './leagues.js?v=40';
-import { initAnalytics, track } from './analytics.js?v=40';
-import { privacyHtml, termsHtml } from './legal.js?v=40';
+import { getSeasons, randomMatch, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=41';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=41';
+import { sfx, setSoundEnabled } from './sound.js?v=41';
+import * as L from './leagues.js?v=41';
+import { initAnalytics, track } from './analytics.js?v=41';
+import { privacyHtml, termsHtml } from './legal.js?v=41';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -24,9 +24,9 @@ const ARMING = ['scorer', 'scoreline'];
 
 const GAMES = {
   x01: {
-    title: '501 Checkout', icon: '🎯', min: 1, max: 4,
-    blurb: 'The classic. Every correct answer comes off your score. First to zero wins the leg.',
-    tags: ['1–4 players', 'Manager bonus'],
+    title: 'The Classic', icon: '🎯', min: 1, max: 4,
+    blurb: 'Every correct answer comes off your score. First to zero wins. Play 501, or 301 or 101 for a quicker game.',
+    tags: ['501 · 301 · 101', '1–4 players', 'Manager bonus'],
   },
   killer: {
     title: 'Killer', icon: '🔪', min: 2, max: 4,
@@ -325,6 +325,7 @@ function renderSetup() {
       <div class="seg three">
         ${[501, 301, 101].map(n => `<button class="seg-btn num ${S.start === n ? 'on' : ''}" data-act="start" data-v="${n}">${n}</button>`).join('')}
       </div>
+      <p class="hint">${S.start === 501 ? 'The full game. Pick 301 or 101 for a quicker one.' : S.start === 301 ? 'A quicker game, roughly half the length of 501.' : 'A quick-fire game, a few rounds each.'}</p>
     </div>` : ''}
 
     <div class="field f-half">
