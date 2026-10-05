@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=55';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=55';
-import { sfx, setSoundEnabled } from './sound.js?v=55';
-import * as L from './leagues.js?v=55';
-import { initAnalytics, track } from './analytics.js?v=55';
-import { privacyHtml, termsHtml } from './legal.js?v=55';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=56';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=56';
+import { sfx, setSoundEnabled } from './sound.js?v=56';
+import * as L from './leagues.js?v=56';
+import { initAnalytics, track } from './analytics.js?v=56';
+import { privacyHtml, termsHtml } from './legal.js?v=56';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -509,6 +509,8 @@ function dartSlots() {
 
 function allowedCats(p) {
   if (S.game === 'clock') return CLOCK_TARGETS[p.prog] ? [CLOCK_TARGETS[p.prog]] : [];
+  // Killer: until you're armed only a scorer or the scoreline counts, so only those two are offered
+  if (S.game === 'killer' && !p.armed) return Object.keys(CATEGORIES).filter(k => ARMING.includes(k));
   return Object.keys(CATEGORIES);
 }
 
@@ -1513,7 +1515,7 @@ function gameRules(game) {
       <li><b>Checkout.</b> You don’t need exactly 0. The first player to reach 0 or below wins the leg.</li>`,
     killer: `
       <li><b>Three lives each.</b> 2–4 players.</li>
-      <li><b>Become a Killer.</b> Name a <b>scorer</b> or the <b>exact scoreline</b> to arm yourself. Other answers don’t count until you’re armed.</li>
+      <li><b>Become a Killer.</b> Name a <b>scorer</b> or the <b>exact scoreline</b> to arm yourself. Until you’re armed, only those two are on offer.</li>
       <li><b>Go for the kill.</b> Once you’re a Killer, every correct answer of any type takes a life from a rival of your choice.</li>
       <li><b>Last one standing</b> wins. Knocked-out players skip their turns.</li>`,
     clock: `
