@@ -683,3 +683,28 @@ select option { background: var(--card); color: var(--ink); }
 .clue-btn { display: block; margin: 8px 0 2px auto; background: none; border: 0; padding: 4px 2px; color: var(--teal); font: inherit; font-weight: 700; font-size: .92rem; cursor: pointer; }
 .clue-btn span { font-weight: 500; opacity: .7; font-size: .8rem; }
 .clue { margin: 0 0 10px; padding: 10px 13px; border-radius: 12px; background: rgba(245,197,24,.14); border: 1px solid rgba(245,197,24,.5); font-size: .92rem; line-height: 1.4; animation: pop180 .3s ease-out; }
+
+/* Typing mode: phone keyboard open on the play screen */
+body.kb .brand-tag, body.kb .stage-side, body.kb .gamebar, body.kb .reroll-row, body.kb .play-foot, body.kb footer,
+body.kb .route-hint, body.kb .coach, body.kb .match-meta, body.kb .match-date, body.kb .chip-p, body.kb .chip-tag, body.kb .throw > .label { display: none !important; }
+body.kb .brand img { height: 30px; width: auto; }
+body.kb .card.play { padding-top: 12px; }
+body.kb .card.play .match { padding: 8px 12px; margin-bottom: 8px; }
+body.kb .card.play .teams { font-size: 1.05rem; }
+body.kb .turn-head { margin: 4px 0; }
+body.kb .darts .dart { min-height: 0; padding: 6px 4px; }
+body.kb .chips { display: flex !important; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-bottom: 8px; }
+body.kb .chips::-webkit-scrollbar { display: none; }
+body.kb .chip { flex: none; flex-direction: row; align-items: center; gap: 5px; min-height: 0; padding: 6px 10px; border-radius: 999px; }
+body.kb .chip .chip-i { font-size: 1rem; }
+body.kb .chip .chip-l { font-size: .9rem; }
+body.kb .result { margin: 6px 0; padding: 8px 12px; }
+body.kb .clue { margin-bottom: 8px; }
+body.kb .card.play { padding-top: 8px; }
+body.kb .card.play .match { padding: 6px 10px; margin-bottom: 6px; }
+body.kb .card.play .teams { font-size: .9rem; line-height: 1.15; }
+body.kb .darts { margin-bottom: 6px; }
+body.kb .darts .dart { padding: 3px 4px; }
+body.kb .darts .dart .dart-n { font-size: .7rem; }
+body.kb .throw .answer { padding-top: 10px; padding-bottom: 10px; }
+body.kb .throw .btn.big { padding-top: 12px; padding-bottom: 12px; }

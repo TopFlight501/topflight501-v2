@@ -581,7 +581,7 @@ function renderPlay() {
   let input = '';
   if (S.cat === 'scoreline') {
     input = `<div class="scoreline">
-      <label><span>${esc(S.match.home)}</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="0" aria-label="Home goals"></label>
+      <label><span>${esc(S.match.home)}</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="0" enterkeyhint="next" aria-label="Home goals"></label>
       <span class="dash">–</span>
       <label><span>${esc(S.match.away)}</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="1" aria-label="Away goals"></label>
     </div>`;
@@ -589,7 +589,7 @@ function renderPlay() {
     input = `<div class="choices">${getChoices(S.cat).map(o => `<button type="button" class="choice" data-act="choose" data-v="${esc(o.id)}">${esc(o.label)}</button>`).join('')}</div>`;
   } else if (S.cat) {
     const ph = { scorer: 'Who scored?', assist: 'Who set one up?', lineup: 'Name anyone who played', booked: 'Who went in the book?', manager: 'Name either manager' }[S.cat];
-    input = `<input class="text answer" data-answer autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="${ph}">`;
+    input = `<input class="text answer" data-answer enterkeyhint="go" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="${ph}">`;
   }
 
   const dn = S.game === 'daily' ? `Dart ${S.visit.length + 1} of ${DAILY_DARTS}` : `Dart ${S.visit.length + 1}`;
@@ -764,7 +764,7 @@ function renderSentOff() {
       <form class="throw" data-form="guess" autocomplete="off">
         <div class="turn-head"><h3>${esc(p.name)}, your guess</h3></div>
         <div class="scoreline">
-          <label><span>Home</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="0" aria-label="Home goals"></label>
+          <label><span>Home</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="0" enterkeyhint="next" aria-label="Home goals"></label>
           <span class="dash">–</span>
           <label><span>Away</span><input type="number" inputmode="numeric" min="0" max="15" data-sl="1" aria-label="Away goals"></label>
         </div>
@@ -2330,6 +2330,20 @@ if (window.visualViewport) {
   visualViewport.addEventListener('resize', () => { syncVV(); clearTimeout(t); t = setTimeout(() => keepInView(document.activeElement), 80); });
   visualViewport.addEventListener('scroll', syncVV);
 }
+
+// Typing mode (phones): while the answer box has the keyboard up, tidy the play screen down to
+// the match, the category row, the answer box and Throw, so it all fits above the keyboard
+const touchUI = matchMedia('(hover: none)').matches;
+const isAnswerBox = el => el && el.matches && el.matches('.play [data-answer], .play [data-sl]');
+function setTyping(on) {
+  if (!touchUI || document.body.classList.contains('kb') === on) return;
+  document.body.classList.toggle('kb', on);
+  if (on) { const c = $('.card.play'); if (c) requestAnimationFrame(() => window.scrollTo({ top: Math.max(0, scrollY + c.getBoundingClientRect().top - 58), behavior: 'auto' })); }
+}
+document.addEventListener('focusin', e => { if (isAnswerBox(e.target)) setTyping(true); });
+document.addEventListener('focusout', () => setTimeout(() => { if (!isAnswerBox(document.activeElement)) setTyping(false); }, 120));
+// tapping a category or Throw while typing keeps the keyboard up instead of closing it first
+document.addEventListener('pointerdown', e => { if (document.body.classList.contains('kb') && e.target.closest('.play .chip, .play .clue-btn')) e.preventDefault(); });
 
 // subtle line under the pinned header once the page is scrolled
 addEventListener('scroll', () => {
