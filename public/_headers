@@ -1,4 +1,4 @@
-# Cloudflare Pages headers (Render ignores this file)
+# Cloudflare Pages headers
 /data/*
   Cache-Control: public, max-age=86400
 
