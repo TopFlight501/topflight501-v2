@@ -245,7 +245,7 @@ function renderHub() {
       <p class="welcome-small">No sign-up, no app to download. Just pick a game below.</p>
     </div>` : ''}
     <p class="eyebrow">Premier League trivia, darts style</p>
-    <h2>Pick your game</h2>
+    <div class="hub-head"><h2>Pick your game</h2><button type="button" class="quick-pill" data-act="quick" title="Solo, 301, straight in. No setup." aria-label="Quick play: solo 301, straight in">⚡ Quick play</button></div>
     <div class="games">
       ${dailyBanner()}
 
@@ -256,7 +256,6 @@ function renderHub() {
             <span class="game-title">${g.title}</span>
             <span class="game-blurb">${g.blurb}</span>
             <span class="game-tags">${g.tags.map(t => `<span>${t}</span>`).join('')}</span>
-            ${k === 'x01' ? '<span class="quick-chip" data-act="quick" role="button" tabindex="0" title="Solo, 301, straight in. No setup."><b>⚡ Quick play</b> solo 301, no setup</span>' : ''}
           </span>
           <span class="game-go" aria-hidden="true">›</span>
         </button>`).join('')}
