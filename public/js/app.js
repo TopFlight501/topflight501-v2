@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=69';
-import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=69';
-import { sfx, setSoundEnabled } from './sound.js?v=69';
-import * as L from './leagues.js?v=69';
-import { initAnalytics, track } from './analytics.js?v=69';
-import { privacyHtml, termsHtml } from './legal.js?v=69';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=70';
+import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=70';
+import { sfx, setSoundEnabled } from './sound.js?v=70';
+import * as L from './leagues.js?v=70';
+import { initAnalytics, track } from './analytics.js?v=70';
+import { privacyHtml, termsHtml } from './legal.js?v=70';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -354,9 +354,9 @@ function renderSetup() {
     <div class="field">
       <span class="label">Starting score</span>
       <div class="seg three">
-        ${[501, 301, 101].map(n => `<button class="seg-btn num ${S.start === n ? 'on' : ''}" data-act="start" data-v="${n}">${n}${n === 301 ? '<span class="seg-tag">Beginners</span>' : ''}</button>`).join('')}
+        ${[501, 301, 101].map(n => `<button class="seg-btn num ${S.start === n ? 'on' : ''}" data-act="start" data-v="${n}">${n}</button>`).join('')}
       </div>
-      <p class="hint">${S.start === 501 ? 'The full game. Pick 301 or 101 for a quicker one.' : S.start === 301 ? 'Recommended for beginners: a quicker game, roughly half the length of 501.' : 'A quick-fire game, a few rounds each.'}</p>
+      <p class="hint">${S.start === 501 ? 'The full game. New to it? Try 301 for a quicker one.' : S.start === 301 ? 'Recommended for beginners: a quicker game, roughly half the length of 501.' : 'A quick-fire game, a few rounds each.'}</p>
     </div>` : ''}
 
     <div class="field f-half">

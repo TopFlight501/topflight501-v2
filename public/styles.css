@@ -678,7 +678,6 @@ select option { background: var(--card); color: var(--ink); }
 
 .seg-btn { position: relative; }
 .seg-tag { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: .6rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; background: #2BD09E; color: #06251c; padding: 2px 7px; border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
-.seg.three:has(.seg-tag) { margin-top: 10px; }
 
 /* Pundit's clue */
 .clue-btn { display: block; margin: 8px 0 2px auto; background: none; border: 0; padding: 4px 2px; color: var(--teal); font: inherit; font-weight: 700; font-size: .92rem; cursor: pointer; }
