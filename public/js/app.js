@@ -64,6 +64,8 @@ const easyOn = () => S.easy && S.game !== 'daily' && S.game !== 'sentoff';
 const hardOn = () => S.hard && ['x01', 'killer', 'clock', 'sudden'].includes(S.game);
 const HARD_SECS = 60;
 // 180 rule: two Scorers in a row and the next dart is worth 60 whatever the category
+// First Classic game: a short tip on the first dart of round 1, until a round has been played
+const coachOn = () => S.game === 'x01' && S.round <= 1 && !S.visit.length && !store.get('tipClassic', false);
 const onFor180 = () => S.game === 'x01' && S.visit.length >= 2 && S.visit.length < dartsPerVisit() && !S.legOver
   && S.visit.slice(-2).every(d => d.res.correct && d.cat === 'scorer');
 
@@ -73,7 +75,7 @@ const S = {
   game: 'x01',
   nPlayers: 2,
   unit: 'managers',       // 'managers' | 'teams' (labels for x01 head-to-head)
-  start: 501,
+  start: 301,             // new players start on the quicker 301; saved setup overrides
   names: ['', '', '', ''],
   seasonFrom: null,
   seasonTo: null,
@@ -556,6 +558,7 @@ function renderPlay() {
       <span class="chip-i">${c.icon}</span>
       <span class="chip-l">${c.short}</span>
       <span class="chip-p">${chipPoints(k, c)}</span>
+      ${k === 'lineup' && coachOn() ? '<span class="chip-tag">Easiest</span>' : ''}
     </button>`;
   }).join('');
 
@@ -591,6 +594,9 @@ function renderPlay() {
     ${onFor180() && !done ? `<div class="on180"><span class="o-i">🔥</span><div><b>On for a 180!</b><small>Two scorers in a row: any right answer now scores 60</small></div></div>` : ''}
     ${!done ? `
       <form class="throw" data-form="throw" autocomplete="off">
+        ${coachOn() ? `<div class="coach"><button type="button" class="coach-x" data-act="coach-x" aria-label="Hide tip">✕</button>
+          <b>👋 First go?</b> Pick a box, then name a player from this match.
+          <span>👕 <b>Lineup</b> is easiest, ⚽ <b>Scorer</b> takes off most.${S.vs ? '' : ' Don’t know it? Tap <b>🔄 New match</b>.'}</span></div>` : ''}
         <span class="label">${label}</span>
         <div class="chips ${cats.length === 1 ? 'single' : cats.length === 2 ? 'two' : ''}">${catBtns}</div>
         ${input}
@@ -1881,6 +1887,7 @@ function hitVictim(i) {
 
 function endVisit() {
   if (S.legOver || S.pending) return;
+  if (S.game === 'x01') store.set('tipClassic', true);
   const p = current();
   const hits = S.visit.filter(d => d.res.correct).length;
   const pts = S.visit.reduce((t, d) => t + (d.res.correct ? d.res.points : 0), 0);
@@ -2059,6 +2066,7 @@ document.addEventListener('click', async e => {
     case 'remind-add': store.set('remindAdded', true); track('Reminder added', { calendar: v }); setTimeout(() => toast('Check your calendar to confirm ⏰'), 400); break;
     case 'easy': S.easy = !S.easy; if (S.easy) S.hard = false; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
     case 'hard': S.hard = !S.hard; if (S.hard) S.easy = false; track('Setting changed', { setting: 'hard', value: String(S.hard) }); renderSetup(); break;
+    case 'coach-x': store.set('tipClassic', true); track('Tip dismissed'); renderPlay(); break;
     case 'diff': S.easy = v === 'easy'; S.hard = v === 'hard'; track('Setting changed', { setting: 'difficulty', value: v }); renderSetup(); break;
     case 'choose': throwDart(v); break;
     case 'install': installApp(); break;
