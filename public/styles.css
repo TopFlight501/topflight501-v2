@@ -675,3 +675,7 @@ select option { background: var(--card); color: var(--ink); }
 .coach-x:hover { opacity: 1; }
 .chip { position: relative; }
 .chip-tag { position: absolute; top: -9px; right: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.15); font-size: .62rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; background: #2BD09E; color: #06251c; padding: 2px 6px; border-radius: 999px; }
+
+.seg-btn { position: relative; }
+.seg-tag { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: .6rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; background: #2BD09E; color: #06251c; padding: 2px 7px; border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+.seg.three:has(.seg-tag) { margin-top: 10px; }
