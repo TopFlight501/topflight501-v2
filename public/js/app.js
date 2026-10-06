@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=71';
-import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=71';
-import { sfx, setSoundEnabled } from './sound.js?v=71';
-import * as L from './leagues.js?v=71';
-import { initAnalytics, track } from './analytics.js?v=71';
-import { privacyHtml, termsHtml } from './legal.js?v=71';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=72';
+import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=72';
+import { sfx, setSoundEnabled } from './sound.js?v=72';
+import * as L from './leagues.js?v=72';
+import { initAnalytics, track } from './analytics.js?v=72';
+import { privacyHtml, termsHtml } from './legal.js?v=72';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -2244,8 +2244,13 @@ document.addEventListener('change', async e => {
   if (t.dataset.season) {
     if (t.dataset.season === 'from') S.seasonFrom = t.value;
     if (t.dataset.season === 'to') S.seasonTo = t.value;
+    // keep the range the right way round: earliest season on the left
+    const ia = S.allSeasons.indexOf(S.seasonFrom), ib = S.allSeasons.indexOf(S.seasonTo);
+    if (ia > ib && ib >= 0) [S.seasonFrom, S.seasonTo] = [S.seasonTo, S.seasonFrom];
+    const had = S.clubs[0];
     await refreshClubOptions();
     renderSetup();
+    if (had && !S.clubs[0]) toast(`${had} weren’t in the Premier League in those seasons, so it’s back to any club`);
   }
   if (t.dataset.club !== undefined) {
     S.clubs = [t.value, ''];
