@@ -1743,6 +1743,14 @@ function throwDart(choiceId) {
     res = S.cat === 'manager' ? managerDart(answer, claimed) : checkDart(S.match, S.cat, answer, claimed);
   }
   S.choices = null;
+  if (res.invalid && res.dup) {
+    S.error = null; render();
+    openModal(`<h2>Already used 👀</h2>
+      <p>You’ve already had <b>${esc(shortName(res.player))}</b> as ${{ scorer: 'a scorer', assist: 'an assist', booked: 'a booking' }[res.usedAs]} on this match.</p>
+      <p class="hint">Lineup has to be someone new. No dart lost, just pick another player.</p>
+      <button class="btn primary big" data-act="close">Pick someone else</button>`, { onClose: () => { const i = $('[data-answer]'); if (i) i.focus(); } });
+    return;
+  }
   if (res.invalid) { S.error = res.message; render(); return; }
   applyThrow(answer, res);
 }
