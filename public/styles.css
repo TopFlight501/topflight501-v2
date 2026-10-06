@@ -707,3 +707,19 @@ select option { background: var(--card); color: var(--ink); }
 .past-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; cursor: pointer; text-align: left; }
 .past-row small { display: block; opacity: .7; font-size: .8rem; }
 .past-score { font-weight: 800; color: var(--teal); }
+
+.daily-links { display: flex; gap: 12px; }
+.quick-link { display: none; }
+@media (min-width: 900px) {
+  .games .quick { display: none; }
+  .quick-link { display: inline; }
+  .daily-cell { display: flex; flex-direction: column; gap: 8px; }
+  .daily-cell .daily { flex: 1; }
+  .daily-cell .daily-extra { margin: 0 4px; }
+}
+@media (min-width: 900px) {
+  .daily-cell .daily-extra { flex-wrap: wrap; row-gap: 2px; font-size: .82rem; }
+  .daily-cell .daily-extra > span:first-child:empty { display: none; }
+  .daily-cell .daily-top { white-space: nowrap; }
+  .daily-cell .daily-links { white-space: nowrap; margin-left: auto; }
+}

@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=72';
-import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=72';
-import { sfx, setSoundEnabled } from './sound.js?v=72';
-import * as L from './leagues.js?v=72';
-import { initAnalytics, track } from './analytics.js?v=72';
-import { privacyHtml, termsHtml } from './legal.js?v=72';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=73';
+import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=73';
+import { sfx, setSoundEnabled } from './sound.js?v=73';
+import * as L from './leagues.js?v=73';
+import { initAnalytics, track } from './analytics.js?v=73';
+import { privacyHtml, termsHtml } from './legal.js?v=73';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1048,7 +1048,7 @@ function dailyBanner() {
     : streak ? `🔥 Play today to keep your ${streak}-day streak`
     : best !== null ? `Your best: <b>${best}</b> · can you beat it?`
     : 'Same match for everyone today';
-  return `<div class="daily ${done ? 'done' : ''}">
+  return `<div class="daily-cell"><div class="daily ${done ? 'done' : ''}">
     <button class="daily-main" data-act="daily">
       <span class="daily-i" aria-hidden="true">⭐</span>
       <span class="daily-body"><span class="daily-t">Daily Match #${n}${streak > 1 ? ` <span class="daily-streak">🔥 ${streak}</span>` : ''}</span><span class="daily-s">${sub}</span><span class="daily-blurb">Six darts, one go. Then challenge your mates.</span></span>
@@ -1056,7 +1056,7 @@ function dailyBanner() {
     </button>
     <button class="daily-invite" data-act="daily-invite" aria-label="Invite your mates to today's Daily Match" title="Invite your mates">${SHARE_ICON}</button>
   </div>
-  <div class="daily-extra">${S.todayTop && !done ? `<span class="daily-top">🏆 Today’s top: <b>${S.todayTop.p}</b> ${flag(S.todayTop.cc)}</span>` : '<span></span>'}${n > 1 ? '<button type="button" class="past-link" data-act="past">📅 Past Dailies</button>' : ''}</div>`;
+  <div class="daily-extra">${S.todayTop && !done ? `<span class="daily-top">🏆 Today’s top: <b>${S.todayTop.p}</b> ${flag(S.todayTop.cc)}</span>` : '<span></span>'}<span class="daily-links"><button type="button" class="past-link quick-link" data-act="quick">⚡ Quick game</button>${n > 1 ? '<button type="button" class="past-link" data-act="past">📅 Past Dailies</button>' : ''}</span></div></div>`;
 }
 function untilTomorrow() {
   const now = new Date(), t = new Date(now); t.setHours(24, 0, 0, 0);
