@@ -22,6 +22,8 @@ export const privacyHtml = `
     <h3>Links to other sites</h3>
     <p>Links to X, Instagram and Buy Me a Coffee take you to those services, which have their own privacy policies.</p>
     <h3>Contacting us</h3>
+    <h3>Daily Match leaderboard</h3>
+    <p>When you finish the Daily Match, your score is added to anonymous daily totals so we can show today’s top score and how you compare. Our host, Cloudflare, tells us which country the score came from. We keep only the score, the day and the country: no names, IP addresses or device IDs.</p>
     <p>If you email us at <b>${CONTACT}</b> (for example to report a match), we use your email only to reply and don’t share it.</p>
     <h3>Your rights</h3>
     <p>Because we don’t hold personal data about you, there’s normally nothing for us to access or delete. Visit counts are anonymous totals and can’t be traced back to you. If you have a question, email <b>${CONTACT}</b>. You also have the right to complain to the Data Protection Commission in Ireland (dataprotection.ie).</p>

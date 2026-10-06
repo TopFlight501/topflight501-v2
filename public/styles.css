@@ -657,3 +657,11 @@ select option { background: var(--card); color: var(--ink); }
 .dart-timer.low .dt-bar { background: #e5484d; }
 .dart-timer .dt-n { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: .8rem; font-weight: 800; color: inherit; }
 .dart-timer.low .dt-n { color: #e5484d; }
+
+/* Daily leaderboard card */
+.daily-board { margin: 12px 0 4px; padding: 12px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); text-align: left; }
+.daily-board .b-head { margin: 0 0 6px; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+.daily-board .b-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 5px 0; border-top: 1px solid var(--line); }
+.daily-board .b-row:first-of-type { border-top: 0; }
+.daily-board .b-row b small { font-weight: 600; opacity: .7; }
+.daily-board .b-cc { justify-content: space-around; font-weight: 700; }

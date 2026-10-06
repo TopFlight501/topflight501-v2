@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=65';
-import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=65';
-import { sfx, setSoundEnabled } from './sound.js?v=65';
-import * as L from './leagues.js?v=65';
-import { initAnalytics, track } from './analytics.js?v=65';
-import { privacyHtml, termsHtml } from './legal.js?v=65';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=66';
+import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=66';
+import { sfx, setSoundEnabled } from './sound.js?v=66';
+import * as L from './leagues.js?v=66';
+import { initAnalytics, track } from './analytics.js?v=66';
+import { privacyHtml, termsHtml } from './legal.js?v=66';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1057,7 +1057,33 @@ function dailyOver() {
   track('Game finished', { game: 'Daily Match', day: saved.n, points: saved.points, hits: saved.darts.filter(d => d.res.correct).length });
   L.recordGame({ game: 'daily', players: ['You'], winner: null, solo: true, league: null, detail: `#${saved.n}, ${saved.points} pts` });
   if (saved.points > 0) { confetti(); sfx.win(); } else sfx.miss();
+  if (!store.get('boardSent:' + saved.n, false)) {
+    store.set('boardSent:' + saved.n, true);
+    S.board = fetch('/api/daily', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ n: saved.n, p: saved.points }) })
+      .then(r => r.ok ? r.json() : null).catch(() => null);
+  }
   showDailyResult();
+}
+
+// ---------- Daily leaderboard (anonymous totals from /api/daily) ----------
+const flag = cc => cc && cc !== 'XX' ? String.fromCodePoint(...[...cc].map(c => 127397 + c.charCodeAt(0))) : '🌍';
+function boardHtml(b, mine) {
+  if (!b || !b.count) return '';
+  const rows = [];
+  if (b.top) rows.push(`<div class="b-row"><span>🏆 Today’s top</span><b>${b.top.p} ${flag(b.top.cc)}</b></div>`);
+  if (b.count >= 5 && mine != null) {
+    const below = Object.entries(b.hist).reduce((t, [p, c]) => t + (Number(p) < mine ? c : 0), 0);
+    rows.push(`<div class="b-row"><span>📊 You beat</span><b>${Math.round(below / (b.count - 1) * 100)}% of players</b></div>`);
+  }
+  if (b.countries.length > 1) rows.push(`<div class="b-row b-cc">${b.countries.map((c, i) => `<span>${['🥇', '🥈', '🥉'][i]} ${flag(c.cc)} ${c.p}</span>`).join('')}</div>`);
+  if (b.best && b.best.n !== b.n) rows.push(`<div class="b-row"><span>🌟 All-time best</span><b>${b.best.p} ${flag(b.best.cc)} <small>Daily #${b.best.n}</small></b></div>`);
+  return `<p class="b-head">Today’s Daily · ${b.count} ${b.count === 1 ? 'player' : 'players'}</p>${rows.join('')}`;
+}
+function fillBoard(mine) {
+  const el = () => $('[data-board]');
+  (S.board || fetch('/api/daily?n=' + (dailySaved() || {}).n).then(r => r.ok ? r.json() : null).catch(() => null))
+    .then(b => { const e = el(); if (e && b) { const h = boardHtml(b, mine); if (h) { e.innerHTML = h; e.hidden = false; } } });
+  S.board = null;
 }
 function showDailyResult() {
   const saved = dailySaved();
@@ -1074,6 +1100,7 @@ function showDailyResult() {
     <p class="big-score center">${saved.points}</p>
     <p class="daily-emoji">${dailyEmoji(saved.darts)}</p>
     <p class="hint center">${hits} of ${DAILY_DARTS} darts hit${streak > 1 ? ` · 🔥 ${streak}-day streak` : ''}${bestLine ? `<br>${bestLine}` : ''}<br>Next match in ${untilTomorrow()}</p>
+    <div class="daily-board" data-board hidden></div>
     <div class="row three-up">
       <button class="btn ghost" data-act="daily-key">Answers</button>
       <button class="btn ghost story-btn" data-act="story">📸 Story</button>
@@ -1082,6 +1109,7 @@ function showDailyResult() {
     <button class="btn link" data-act="daily-close">Back to games</button>
     ${store.get('remindAdded', false) ? nextNudge('daily') : '<button class="btn link remind-link" data-act="reminder">⏰ Remind me every day</button>'}
     <p class="hint center small">Scores and streak are saved on this device. Playing elsewhere? Use Settings → Backup to move them.</p>`, { dismissable: false });
+  fillBoard(saved.points);
 }
 
 // ---------- Instagram story image of your Daily result ----------
