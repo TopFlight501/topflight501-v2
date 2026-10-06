@@ -665,3 +665,5 @@ select option { background: var(--card); color: var(--ink); }
 .daily-board .b-row:first-of-type { border-top: 0; }
 .daily-board .b-row b small { font-weight: 600; opacity: .7; }
 .daily-board .b-cc { justify-content: space-around; font-weight: 700; }
+
+.diff-hint { margin-top: 6px !important; }

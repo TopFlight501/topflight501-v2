@@ -322,15 +322,15 @@ function renderSetup() {
     </div>`}
     ${bestLine ? `<p class="hint">${bestLine}</p>` : ''}
 
-    ${S.game !== 'sentoff' ? `
-    <button type="button" class="toggle-row" data-act="easy" aria-pressed="${S.easy}">
-      <span><b>Easy mode</b> <span class="hint">Pick from 4 names instead of typing</span></span>
-      <span class="switch ${S.easy ? 'on' : ''}" aria-hidden="true"></span>
-    </button>
-    ${['x01', 'killer', 'clock', 'sudden'].includes(S.game) ? `<button type="button" class="toggle-row" data-act="hard" aria-pressed="${S.hard}">
-      <span><b>Hard mode</b> <span class="hint">${HARD_SECS} seconds per dart, no googling</span></span>
-      <span class="switch ${S.hard ? 'on' : ''}" aria-hidden="true"></span>
-    </button>` : ''}` : ''}
+    ${S.game !== 'sentoff' ? (() => {
+      const d = S.easy ? 'easy' : S.hard && ['x01', 'killer', 'clock', 'sudden'].includes(S.game) ? 'hard' : 'normal';
+      const hint = { easy: 'Pick from 4 names instead of typing', normal: 'Type your answers', hard: `${HARD_SECS} seconds per dart, no googling` }[d];
+      return `<div class="field">
+      <span class="label">Difficulty</span>
+      <div class="seg three">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', '⏱️ Hard']].map(([v, l]) => `<button class="seg-btn ${d === v ? 'on' : ''}" data-act="diff" data-v="${v}">${l}</button>`).join('')}</div>
+      <p class="hint diff-hint">${hint}</p>
+    </div>
+`; })() : ''}
 
     ${S.game === 'x01' ? `
     <div class="field">
@@ -2059,6 +2059,7 @@ document.addEventListener('click', async e => {
     case 'remind-add': store.set('remindAdded', true); track('Reminder added', { calendar: v }); setTimeout(() => toast('Check your calendar to confirm ⏰'), 400); break;
     case 'easy': S.easy = !S.easy; if (S.easy) S.hard = false; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
     case 'hard': S.hard = !S.hard; if (S.hard) S.easy = false; track('Setting changed', { setting: 'hard', value: String(S.hard) }); renderSetup(); break;
+    case 'diff': S.easy = v === 'easy'; S.hard = v === 'hard'; track('Setting changed', { setting: 'difficulty', value: v }); renderSetup(); break;
     case 'choose': throwDart(v); break;
     case 'install': installApp(); break;
     case 'install-x': store.set('installDone', true); track('Install prompt', { action: 'Dismissed' }); renderHub(); break;
