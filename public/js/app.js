@@ -248,7 +248,7 @@ function renderHub() {
     <h2>Pick your game</h2>
     <div class="games">
       ${dailyBanner()}
-      <button class="quick" data-act="quick"><span class="quick-i" aria-hidden="true">⚡</span><span class="quick-b"><b>Quick game</b><small>Solo, 301, straight in. No setup.</small></span><span class="game-go" aria-hidden="true">›</span></button>
+
       ${Object.entries(GAMES).filter(([, g]) => !g.hidden).map(([k, g]) => `
         <button class="game-card" data-act="pick" data-v="${k}">
           <span class="game-icon" aria-hidden="true">${g.icon}</span>
@@ -256,6 +256,7 @@ function renderHub() {
             <span class="game-title">${g.title}</span>
             <span class="game-blurb">${g.blurb}</span>
             <span class="game-tags">${g.tags.map(t => `<span>${t}</span>`).join('')}</span>
+            ${k === 'x01' ? '<span class="quick-chip" data-act="quick" role="button" tabindex="0" title="Solo, 301, straight in. No setup."><b>⚡ Quick play</b> solo 301, no setup</span>' : ''}
           </span>
           <span class="game-go" aria-hidden="true">›</span>
         </button>`).join('')}
@@ -1047,16 +1048,16 @@ function dailyBanner() {
     : saved ? `In progress: ${saved.darts.length} of ${DAILY_DARTS} darts thrown`
     : streak ? `🔥 Play today to keep your ${streak}-day streak`
     : best !== null ? `Your best: <b>${best}</b> · can you beat it?`
+    : S.todayTop ? `🏆 Today’s top: <b>${S.todayTop.p}</b> ${flag(S.todayTop.cc)} · beat it?`
     : 'Same match for everyone today';
-  return `<div class="daily-cell"><div class="daily ${done ? 'done' : ''}">
+  return `<div class="daily ${done ? 'done' : ''}">
     <button class="daily-main" data-act="daily">
       <span class="daily-i" aria-hidden="true">⭐</span>
       <span class="daily-body"><span class="daily-t">Daily Match #${n}${streak > 1 ? ` <span class="daily-streak">🔥 ${streak}</span>` : ''}</span><span class="daily-s">${sub}</span><span class="daily-blurb">Six darts, one go. Then challenge your mates.</span></span>
       <span class="daily-go">${done ? 'Result' : saved ? 'Resume' : 'Play'}</span>
     </button>
     <button class="daily-invite" data-act="daily-invite" aria-label="Invite your mates to today's Daily Match" title="Invite your mates">${SHARE_ICON}</button>
-  </div>
-  <div class="daily-extra">${S.todayTop && !done ? `<span class="daily-top">🏆 Today’s top: <b>${S.todayTop.p}</b> ${flag(S.todayTop.cc)}</span>` : '<span></span>'}<span class="daily-links"><button type="button" class="past-link quick-link" data-act="quick">⚡ Quick game</button>${n > 1 ? '<button type="button" class="past-link" data-act="past">📅 Past Dailies</button>' : ''}</span></div></div>`;
+  </div>`;
 }
 function untilTomorrow() {
   const now = new Date(), t = new Date(now); t.setHours(24, 0, 0, 0);
@@ -1189,6 +1190,7 @@ function showDailyResult() {
       <button class="btn ghost story-btn" data-act="story">📸 Story</button>
       <button class="btn primary" data-act="share">↗ Share</button>
     </div>
+    <button class="btn link" data-act="past">📅 Play past Dailies</button>
     <button class="btn link" data-act="daily-close">Back to games</button>
     ${store.get('remindAdded', false) ? nextNudge('daily') : '<button class="btn link remind-link" data-act="reminder">⏰ Remind me every day</button>'}
     <p class="hint center small">Scores and streak are saved on this device. Playing elsewhere? Use Settings → Backup to move them.</p>`, { dismissable: false });
