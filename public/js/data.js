@@ -19,9 +19,18 @@ export async function getSeasons() {
   return seasonList;
 }
 
+// Player background for the Pundit's clue: { code: [birthDate, [[season, club], ...]] }
+let people = null;
+export async function getPeople() {
+  if (!people) {
+    try { const r = await fetch('data/people.json?v=1'); people = r.ok ? await r.json() : {}; } catch { people = {}; }
+  }
+  return people;
+}
+
 async function loadSeason(season) {
   if (!cache.has(season)) {
-    const res = await fetch(`data/${season}.json`);
+    const res = await fetch(`data/${season}.json?v=2`);
     if (!res.ok) throw new Error(`Could not load ${season}`);
     cache.set(season, await res.json());
   }
@@ -32,7 +41,8 @@ async function loadSeason(season) {
 function expand(raw, D) {
   const players = raw.p.map(([id, side, goals, assists, card, started, og]) => {
     const [full, web] = D.players[id] || [String(id), ''];
-    return { id, full, web, side, goals, assists, card, og: og || 0, started: started === undefined || started === -1 ? null : started === 1 };
+    const [pos, code] = (D.pi && D.pi[id]) || [0, 0];
+    return { id, full, web, side, goals, assists, card, og: og || 0, pos, code, started: started === undefined || started === -1 ? null : started === 1 };
   });
   return {
     id: raw.id,

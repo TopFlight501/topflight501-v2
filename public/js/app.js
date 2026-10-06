@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=73';
-import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=73';
-import { sfx, setSoundEnabled } from './sound.js?v=73';
-import * as L from './leagues.js?v=73';
-import { initAnalytics, track } from './analytics.js?v=73';
-import { privacyHtml, termsHtml } from './legal.js?v=73';
+import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=74';
+import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=74';
+import { sfx, setSoundEnabled } from './sound.js?v=74';
+import * as L from './leagues.js?v=74';
+import { initAnalytics, track } from './analytics.js?v=74';
+import { privacyHtml, termsHtml } from './legal.js?v=74';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -77,10 +77,24 @@ function makeClue(cat) {
   const pool = remaining(cat);
   if (!pool.length) return null;
   const p = pool[Math.floor(Math.random() * pool.length)];
-  if (cat === 'scorer') return p.goals ? `A <b>${team(p)}</b> player, surname starts with <b>${letter(p)}</b>.${p.goals > 1 ? ` He scored ${p.goals}.` : ''}` : `A <b>${team(p)}</b> player, surname starts with <b>${letter(p)}</b>. It went in off him (own goal).`;
-  if (cat === 'assist') return `A <b>${team(p)}</b> player, surname starts with <b>${letter(p)}</b>.${p.assists > 1 ? ` He set up ${p.assists}.` : ''}`;
-  if (cat === 'booked') return `A <b>${team(p)}</b> player, surname starts with <b>${letter(p)}</b>.${p.card === 2 ? ' He saw red 🟥' : ''}`;
-  return `${p.started === false ? 'Came off the bench' : 'Started'} for <b>${team(p)}</b>, surname starts with <b>${letter(p)}</b>.`;
+  // Background facts only, never what happened in the match (no goal counts, no red cards)
+  const POS = ['player', 'goalkeeper', 'defender', 'midfielder', 'forward'];
+  const info = (S.people || {})[p.code];
+  const facts = [];
+  if (info && info[0]) {
+    const b = new Date(info[0] + 'T00:00:00Z'), d = new Date(m.date + 'T00:00:00Z');
+    let age = d.getUTCFullYear() - b.getUTCFullYear();
+    if (d.getUTCMonth() < b.getUTCMonth() || (d.getUTCMonth() === b.getUTCMonth() && d.getUTCDate() < b.getUTCDate())) age -= 1;
+    if (age > 15 && age < 46) facts.push(`He was <b>${age}</b> at the time.`);
+  }
+  if (info && info[1]) {
+    const here = p.side === 0 ? m.home : m.away;
+    const others = [...new Set(info[1].map(x => x[1]).filter(c => c !== here))];
+    if (others.length) facts.push(`He also played in the Premier League for <b>${esc(others[Math.floor(Math.random() * others.length)])}</b>.`);
+  }
+  const fact = facts.length ? facts[Math.floor(Math.random() * facts.length)] : `Surname starts with <b>${letter(p)}</b>.`;
+  const og = cat === 'scorer' && p.og && !p.goals;
+  return `${/^[AEIOU]/.test(team(p)) ? 'An' : 'A'} <b>${team(p)}</b> <b>${POS[p.pos] || 'player'}</b>${og ? ' (it was an own goal)' : ''}. ${fact}`;
 }
 const onFor180 = () => S.game === 'x01' && S.visit.length >= 2 && S.visit.length < dartsPerVisit() && !S.legOver
   && S.visit.slice(-2).every(d => d.res.correct && d.cat === 'scorer' && !d.clued);
@@ -1606,7 +1620,7 @@ const COMMON_RULES = `
   <li><b>Own goals count.</b> An own goal is a goal, so the player who scored it counts as a Scorer.</li>
   <li><b>Every goal counts.</b> A player can be picked once for each goal or assist they got: two goals means two Scorer darts, two assists means two Assist darts. Lineup, Booked and the scoreline count once per player per match.</li>
   <li><b>Lineup means someone new.</b> A player you’ve already had as a scorer, assist or booking on this match can’t be your Lineup answer. It won’t cost you a dart, just pick someone else.</li>
-  <li><b>🎙️ Pundit’s clue.</b> Stuck? Pick a box and tap it for one hint per turn. A right answer after a clue scores half (not in Hard mode, Easy mode or the Daily).</li>
+  <li><b>🎙️ Pundit’s clue.</b> Stuck? Pick a box and tap it for one hint per turn: the player’s team and position, plus their age at the time or another Premier League club they played for. A right answer after a clue scores half (not in Hard mode, Easy mode or the Daily).</li>
   <li><b>⏱️ Hard mode.</b> Turn it on before the game: you get ${HARD_SECS} seconds for each dart, and running out of time is a miss.</li>
   <li><b>See what you missed.</b> After each match, tap <b>👀 Last match’s answers</b> to see everything you could have had. The game carries on.</li>
   <li><b>Give up.</b> Stuck? Giving up shows every answer for this match, but the game ends and has to be restarted.</li>`;
@@ -1710,6 +1724,7 @@ function answerKeyHtml(m = S.match, review = false, got = new Set()) {
 // ---------- game flow ----------
 async function begin(quick = false) {
   S.quick = quick;
+  getPeople().then(p => { S.people = p; });
   clampPlayers();
   const multi = S.nPlayers > 1;
   const ordinals = ['One', 'Two', 'Three', 'Four'];
@@ -2140,8 +2155,8 @@ document.addEventListener('click', async e => {
     case 'tutorial':
       track('Tutorial watched', { game: G().title });
       openModal(`<h2>${G().icon} How ${esc(G().title)} works</h2>
-        <video class="tut-video" poster="tutorials/${S.game}.jpg?v=2" autoplay muted playsinline loop controls preload="none" width="720" height="960">
-          <source src="tutorials/${S.game}.mp4?v=2" type="video/mp4"><source src="tutorials/${S.game}.webm?v=2" type="video/webm">
+        <video class="tut-video" poster="tutorials/${S.game}.jpg?v=3" autoplay muted playsinline loop controls preload="none" width="720" height="960">
+          <source src="tutorials/${S.game}.mp4?v=3" type="video/mp4"><source src="tutorials/${S.game}.webm?v=3" type="video/webm">
         </video>
         <button class="btn primary big" data-act="close">Got it</button>`);
       break;
