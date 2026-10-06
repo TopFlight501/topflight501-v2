@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=62';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=62';
-import { sfx, setSoundEnabled } from './sound.js?v=62';
-import * as L from './leagues.js?v=62';
-import { initAnalytics, track } from './analytics.js?v=62';
-import { privacyHtml, termsHtml } from './legal.js?v=62';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=63';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=63';
+import { sfx, setSoundEnabled } from './sound.js?v=63';
+import * as L from './leagues.js?v=63';
+import { initAnalytics, track } from './analytics.js?v=63';
+import { privacyHtml, termsHtml } from './legal.js?v=63';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -61,6 +61,11 @@ const OLD_LINEUP_UNTIL = 2;   // Daily #1 and #2 used Lineup = 30; from #3 it's 
 const lineupOld = () => S.game === 'daily' && S.dailyN <= OLD_LINEUP_UNTIL;
 const NAME_CATS = ['scorer', 'assist', 'lineup', 'booked', 'manager'];
 const easyOn = () => S.easy && S.game !== 'daily' && S.game !== 'sentoff';
+const hardOn = () => S.hard && ['x01', 'killer', 'clock', 'sudden'].includes(S.game);
+const HARD_SECS = 60;
+// 180 rule: two Scorers in a row and the next dart is worth 60 whatever the category
+const onFor180 = () => (S.game === 'x01' || S.game === 'daily') && S.visit.length >= 2 && S.visit.length < dartsPerVisit() && !S.legOver
+  && S.visit.slice(-2).every(d => d.res.correct && d.cat === 'scorer');
 
 // ---------- state ----------
 const S = {
@@ -96,6 +101,7 @@ const S = {
   members: [['', ''], ['', ''], ['', ''], ['', '']],   // Teams mode: each team's players (2 to 8 each)
   teamGame: false,
   easy: false,            // Easy mode: pick from four names instead of typing
+  hard: false,            // Hard mode: 60 seconds per dart
   choices: null,          // the four options currently shown
   shareText: '',
 };
@@ -320,7 +326,11 @@ function renderSetup() {
     <button type="button" class="toggle-row" data-act="easy" aria-pressed="${S.easy}">
       <span><b>Easy mode</b> <span class="hint">Pick from 4 names instead of typing</span></span>
       <span class="switch ${S.easy ? 'on' : ''}" aria-hidden="true"></span>
-    </button>` : ''}
+    </button>
+    ${['x01', 'killer', 'clock', 'sudden'].includes(S.game) ? `<button type="button" class="toggle-row" data-act="hard" aria-pressed="${S.hard}">
+      <span><b>Hard mode</b> <span class="hint">${HARD_SECS} seconds per dart, no googling</span></span>
+      <span class="switch ${S.hard ? 'on' : ''}" aria-hidden="true"></span>
+    </button>` : ''}` : ''}
 
     ${S.game === 'x01' ? `
     <div class="field">
@@ -429,7 +439,7 @@ function scoreboard() {
   const n = S.players.length;
   return `<div class="gamebar">
     <button type="button" class="back quit" data-act="home" aria-label="Quit game and go back to all games">‹ Quit game</button>
-    ${S.game === 'daily' ? `<button type="button" class="back invite" data-act="daily-invite">${SHARE_ICON} Invite mates</button>` : `<span class="gamebar-t">${G().icon} ${esc(G().title)}${easyOn() ? ' · Easy' : ''}</span>`}
+    ${S.game === 'daily' ? `<button type="button" class="back invite" data-act="daily-invite">${SHARE_ICON} Invite mates</button>` : `<span class="gamebar-t">${G().icon} ${esc(G().title)}${easyOn() ? ' · Easy' : hardOn() ? ' · Hard' : ''}</span>`}
   </div>
   <div class="stage-side">
   <div class="board ${n === 1 ? 'solo' : ''} ${n > 2 ? 'many' : ''}">
@@ -501,7 +511,7 @@ function dartSlots() {
   const n = dartsPerVisit();
   return `<div class="darts ${n > 3 ? 'six' : ''}">${Array.from({ length: n }, (_, i) => i).map(i => {
     const d = S.visit[i];
-    if (!d) return `<div class="dart ${i === S.visit.length ? 'next' : ''}"><span class="dart-n">${n > 3 ? i + 1 : 'Dart ' + (i + 1)}</span></div>`;
+    if (!d) { const g = i === S.visit.length && onFor180(); return `<div class="dart ${i === S.visit.length ? 'next' : ''} ${g ? 'gold' : ''}"><span class="dart-n">${g ? (n > 3 ? '🎯' : '🎯 For 180') : n > 3 ? i + 1 : 'Dart ' + (i + 1)}</span></div>`; }
     return `<div class="dart ${d.res.correct ? 'hit' : 'miss'}">
       <span class="dart-n">${n > 3 ? TARGET_INFO[d.cat].icon : TARGET_INFO[d.cat].short}</span>
       <span class="dart-v">${dartValue(d)}</span>
@@ -517,6 +527,7 @@ function allowedCats(p) {
 }
 
 function chipPoints(k, c) {
+  if (onFor180()) return S.game === 'x01' ? '−60' : '+60';
   if (S.game === 'x01') return `−${c.points}${c.redPoints ? '/' + c.redPoints : ''}`;
   if (S.game === 'sudden' || S.game === 'daily') return `+${k === 'lineup' && lineupOld() ? 30 : c.points}${c.redPoints ? '/' + c.redPoints : ''}`;
   if (S.game === 'killer') return current().armed ? 'Kill' : 'Become a Killer';
@@ -541,7 +552,7 @@ function renderPlay() {
     const c = TARGET_INFO[k];
     const none = easyOn() && NAME_CATS.includes(k) && !remaining(k).length;
     return `
-    <button type="button" class="chip ${S.cat === k ? 'on' : ''} ${none ? 'none' : ''}" data-act="cat" data-v="${k}" ${none ? 'disabled title="None left on this match"' : ''}>
+    <button type="button" class="chip ${S.cat === k ? 'on' : ''} ${none ? 'none' : ''} ${onFor180() ? 'gold' : ''}" data-act="cat" data-v="${k}" ${none ? 'disabled title="None left on this match"' : ''}>
       <span class="chip-i">${c.icon}</span>
       <span class="chip-l">${c.short}</span>
       <span class="chip-p">${chipPoints(k, c)}</span>
@@ -574,8 +585,10 @@ function renderPlay() {
     ${S.game !== 'daily' && S.turnIdx === 0 && !S.visit.length && !done ? `<div class="reroll-row">${S.prev && S.players.length === 1 ? PREVKEY : ''}${S.vs ? '' : REROLL}</div>` : ''}
     <div class="turn-head"><h3>${esc(thrower(p))}${S.teamGame ? ` <span class="team-of">${esc(p.name)}</span>` : ''}</h3><span class="hint">${turnHeadRight(p)}</span></div>
     ${dartSlots()}
+    ${hardOn() && !done ? `<div class="dart-timer" aria-label="Time left"><span class="dt-bar"></span><span class="dt-n">${HARD_SECS}s</span></div>` : ''}
     ${S.game === 'clock' ? routeStrip(p) : ''}
     ${last ? `<p class="result ${last.res.correct ? 'ok' : 'bad'}">${last.res.correct ? '🎯 ' : ''}${esc(last.res.message)}${last.res.correct ? resultPts(last.res) : ''}${last.extra ? `<span class="extra">${esc(last.extra)}</span>` : ''}</p>` : ''}
+    ${onFor180() && !done ? `<div class="on180"><span class="o-i">🔥</span><div><b>On for a 180!</b><small>Two scorers in a row: any right answer now scores 60</small></div></div>` : ''}
     ${!done ? `
       <form class="throw" data-form="throw" autocomplete="off">
         <span class="label">${label}</span>
@@ -1196,7 +1209,7 @@ const ACHIEVEMENTS = [
   { id: 'checkout', icon: '🎯', name: 'Checked out', desc: 'Win a game of The Classic' },
   { id: 'ton', icon: '💯', name: 'Ton up', desc: '100+ in one visit in The Classic' },
   { id: 'three', icon: '🔥', name: 'Three from three', desc: 'Hit all three darts in a visit' },
-  { id: 'gaffer', icon: '🧑‍💼', name: 'Gaffer guru', desc: 'Land the manager bonus' },
+  { id: 'oneeighty', icon: '🎯', name: 'One hundred and eighty', desc: 'Two scorers, then any right answer' },
   { id: 'perfect', icon: '⭐', name: 'Perfect day', desc: '6 out of 6 in a Daily Match' },
   { id: 'streak3', icon: '📅', name: 'Hat-trick', desc: 'A 3-day Daily Match streak' },
   { id: 'streak7', icon: '🗓️', name: 'Week warrior', desc: 'A 7-day Daily Match streak' },
@@ -1278,7 +1291,7 @@ function clubPickerHtml(ctx = '') {
     <button class="btn link" data-act="close">Close</button>`;
 }
 function saveSetup() {
-  store.set('setup', { ...store.get('setup', {}), leagueId: S.leagueId, game: GAMES[S.game] && !GAMES[S.game].hidden ? S.game : 'x01', nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, members: S.members });
+  store.set('setup', { ...store.get('setup', {}), leagueId: S.leagueId, game: GAMES[S.game] && !GAMES[S.game].hidden ? S.game : 'x01', nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, hard: S.hard, members: S.members });
 }
 
 // ---------- add to home screen ----------
@@ -1480,6 +1493,7 @@ const COMMON_RULES = `
   <li><b>Spelling tolerance.</b> Surnames are fine and small typos are forgiven.</li>
   <li><b>Own goals count.</b> An own goal is a goal, so the player who scored it counts as a Scorer.</li>
   <li><b>Every goal counts.</b> A player can be picked once for each goal or assist they got: two goals means two Scorer darts, two assists means two Assist darts. Lineup, Booked and the scoreline count once per player per match.</li>
+  <li><b>⏱️ Hard mode.</b> Turn it on before the game: you get ${HARD_SECS} seconds for each dart, and running out of time is a miss.</li>
   <li><b>See what you missed.</b> After each match, tap <b>👀 Last match’s answers</b> to see everything you could have had. The game carries on.</li>
   <li><b>Give up.</b> Stuck? Giving up shows every answer for this match, but the game ends and has to be restarted.</li>`;
 
@@ -1514,7 +1528,7 @@ function gameRules(game) {
     x01: `
       <li><b>Start on 501, 301 or 101.</b> Play solo for your fastest checkout, or 2–4 head-to-head. <b>Managers</b>: one person each, three darts a visit. <b>Teams</b>: 2–8 people per team take turns, one teammate throwing each visit. Teams can be different sizes.</li>
       <li><b>Deduction tiers.</b> Pick any category for each dart. Correct answers come off your score. ${TIERS}</li>
-      <li><b>🔥 Manager bonus.</b> Hit all three darts and you get a bonus guess: name either manager for another −${MANAGER_BONUS}.</li>
+      <li><b>🎯 180!</b> Hit two Scorers in a row and your next dart is worth 60 in any category. Get it right for a 180.</li>
       <li><b>Checkout.</b> You don’t need exactly 0. The first player to reach 0 or below wins the leg.</li>`,
     killer: `
       <li><b>Three lives each.</b> 2–4 players.</li>
@@ -1536,6 +1550,7 @@ function gameRules(game) {
       <li><b>One match a day.</b> Everyone in the world gets the same match, and you get one go at it.</li>
       <li><b>Six darts.</b> Pick any category for each dart. Correct answers add their points. ${TIERS}</li>
       <li><b>Misses don’t end it.</b> Use all six darts, then share your score and see how your mates did.</li>
+      <li><b>🎯 180!</b> Two Scorers in a row and your next dart is worth 60 in any category.</li>
       <li><b>Come back tomorrow</b> for a new match and keep your 🔥 streak going.</li>
       <li><b>Saved on this device.</b> Your Daily scores, best and streak live on the phone or computer you play on. Use Settings → Backup to move them to another device.</li>`,
     sudden: `
@@ -1603,7 +1618,7 @@ function gameInfo(extra = {}) {
     club: S.clubs[0] || 'Any club',
     seasons: `${seasonLabel(S.seasonFrom || '')} to ${seasonLabel(S.seasonTo || '')}`,
     ...(S.game === 'x01' ? { start: S.start } : {}),
-    ...(easyOn() ? { mode: 'Easy' } : {}),
+    ...(easyOn() ? { mode: 'Easy' } : hardOn() ? { mode: 'Hard' } : {}),
     ...extra,
   };
 }
@@ -1698,6 +1713,13 @@ function throwDart(choiceId) {
   }
   S.choices = null;
   if (res.invalid) { S.error = res.message; render(); return; }
+  applyThrow(answer, res);
+}
+
+function applyThrow(answer, res) {
+  const p = current();
+  const claimed = S.claimed[currentIdx()];
+  const boost = onFor180();
   S.error = null;
   p.darts += 1;
   const dart = { cat: S.cat, answer, res, extra: '' };
@@ -1708,6 +1730,7 @@ function throwDart(choiceId) {
   const after = { win: false, pick: false, over: false };
   switch (S.game) {
     case 'x01':
+      if (res.correct && boost) res.points = 60;
       if (res.correct) p.score -= res.points;
       if (p.score <= 0) after.win = true;
       break;
@@ -1735,6 +1758,7 @@ function throwDart(choiceId) {
       break;
     case 'daily':
       if (res.correct && dart.cat === 'lineup' && lineupOld()) res.points = 30;
+      if (res.correct && boost) res.points = 60;
       if (res.correct) p.points += res.points;
       saveDaily();
       if (S.visit.length >= DAILY_DARTS) after.daily = true;
@@ -1746,12 +1770,44 @@ function throwDart(choiceId) {
   if (S.game !== 'daily' && S.visit.length === 3 && S.visit.every(d => d.res.correct)) unlock('three');
   if (S.game === 'x01' && S.visit.reduce((t, d) => t + (d.res.correct ? d.res.points : 0), 0) >= 100) unlock('ton');
   if (S.game === 'sudden' && p.streak >= 10) unlock('nerves');
+  if (res.correct && boost) { dart.extra = ' 180! 🎯'; celebrate180(S.visit.slice(-3)); unlock('oneeighty'); track('180', gameInfo()); }
 
   if (after.win) { S.legOver = true; setTimeout(() => legWon(p), 650); return; }
   if (after.over) { S.legOver = true; setTimeout(suddenOver, 700); return; }
   if (after.daily) { S.legOver = true; setTimeout(dailyOver, 700); return; }
   if (after.pick) { setTimeout(pickVictim, 400); return; }
-  if (S.game === 'x01' && S.visit.length === 3 && S.visit.every(d => d.res.correct)) { S.bonusDue = true; setTimeout(managerBonus, 500); }
+}
+
+// Hard mode: one clock per dart; pauses while a pop-up is open
+function hardTick() {
+  if (!hardOn() || S.screen !== 'play' || S.legOver || S.pending || S.visit.length >= dartsPerVisit()) { S.timerKey = null; return; }
+  const key = `${S.round}-${S.turnIdx}-${S.visit.length}`;
+  const now = Date.now();
+  if (S.timerKey !== key) { S.timerKey = key; S.timerEnd = now + HARD_SECS * 1000; }
+  else if (!modalRoot.hidden) S.timerEnd += now - (S.timerLast || now);
+  S.timerLast = now;
+  const left = Math.max(0, S.timerEnd - now), bar = $('.dt-bar'), num = $('.dt-n');
+  if (bar) { bar.style.width = (left / (HARD_SECS * 10)) + '%'; bar.parentElement.classList.toggle('low', left <= 10000); }
+  if (num) num.textContent = Math.ceil(left / 1000) + 's';
+  if (left <= 0 && modalRoot.hidden) {
+    S.timerKey = null;
+    S.cat = S.cat || allowedCats(current())[0];
+    track('Dart timed out', gameInfo());
+    applyThrow('', { correct: false, points: 0, message: '⏱️ Out of time!' });
+  }
+}
+setInterval(hardTick, 200);
+
+function celebrate180(darts) {
+  sfx.bonus(); buzz([60, 80, 60, 80, 120]);
+  const el = document.createElement('div');
+  el.className = 'celeb180'; el.setAttribute('aria-live', 'polite');
+  el.innerHTML = `<div class="c-n">180!</div><div class="c-t">One hundred and eighty!</div>
+    <div class="c-d">${darts.map(d => `<span>${TARGET_INFO[d.cat].icon} ${esc(d.res.player ? shortName(d.res.player) : TARGET_INFO[d.cat].short)}</span>`).join('')}</div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('in'));
+  setTimeout(() => el.classList.add('out'), 1700);
+  setTimeout(() => el.remove(), 2200);
 }
 
 // Killer: choose who loses a life
@@ -1994,7 +2050,8 @@ document.addEventListener('click', async e => {
     case 'reminder': track('Reminder opened'); openModal(reminderHtml()); break;
     case 'remind-time': store.set('remindTime', v); openModal(reminderHtml()); break;
     case 'remind-add': store.set('remindAdded', true); track('Reminder added', { calendar: v }); setTimeout(() => toast('Check your calendar to confirm ⏰'), 400); break;
-    case 'easy': S.easy = !S.easy; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
+    case 'easy': S.easy = !S.easy; if (S.easy) S.hard = false; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
+    case 'hard': S.hard = !S.hard; if (S.hard) S.easy = false; track('Setting changed', { setting: 'hard', value: String(S.hard) }); renderSetup(); break;
     case 'choose': throwDart(v); break;
     case 'install': installApp(); break;
     case 'install-x': store.set('installDone', true); track('Install prompt', { action: 'Dismissed' }); renderHub(); break;
@@ -2017,7 +2074,7 @@ document.addEventListener('click', async e => {
     case 'backup': backup(); break;
     case 'restore': closeModal(); restore(); break;
     case 'wipe': {
-      const days = Object.keys(dailyLog()).length, nb = bestsList().length, na = Object.keys(store.get('ach', {})).length, nl = L.getLeagues().length;
+      const days = Object.keys(dailyLog()).length, nb = bestsList().length, na = ACHIEVEMENTS.filter(a => store.get('ach', {})[a.id]).length, nl = L.getLeagues().length;
       const li = (n, t) => n ? `<li>${t}</li>` : '';
       openModal(`<h2>Are you sure you want to delete everything?</h2>
         <p>This permanently deletes <b>all</b> of this from this device:</p>
@@ -2163,6 +2220,7 @@ document.addEventListener('keydown', e => {
       start: saved.start || S.start,
       leagueId: saved.leagueId || '',
       easy: !!saved.easy,
+      hard: !!saved.hard,
     });
     if (Array.isArray(saved.names)) S.names = [0, 1, 2, 3].map(i => saved.names[i] || '');
     if (Array.isArray(saved.members)) S.members = [0, 1, 2, 3].map(i => {

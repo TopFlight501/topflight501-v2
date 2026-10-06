@@ -630,3 +630,30 @@ select option { background: var(--card); color: var(--ink); }
 .prev-key { margin-right: auto; background: none; border: 0; padding: 6px 2px; color: var(--teal); font: inherit; font-weight: 700; font-size: .9rem; cursor: pointer; }
 .prev-key:hover { text-decoration: underline; }
 .got { color: #12a37a; font-weight: 800; }
+
+/* 180 rule */
+.dart.next.gold { border: 2px solid #F5C518 !important; box-shadow: 0 0 0 4px rgba(245,197,24,.22); background: rgba(245,197,24,.1) !important; }
+.dart.next.gold .dart-n { color: #a87f00; font-weight: 800; }
+.chip.gold { border-color: #F5C518 !important; background: rgba(245,197,24,.08); }
+.chip.gold .chip-p { color: #a87f00; font-weight: 800; }
+.on180 { display: flex; align-items: center; gap: 10px; margin: 2px 0 12px; padding: 10px 14px; border-radius: 14px; background: linear-gradient(135deg,#F5C518,#ffdf5e); color: #2a2100; box-shadow: 0 6px 18px rgba(245,197,24,.3); animation: pop180 .35s ease-out; }
+.on180 .o-i { font-size: 1.4rem; }
+.on180 b { font-size: 1.15rem; display: block; }
+.on180 small { display: block; font-weight: 600; opacity: .8; font-size: .85rem; }
+@keyframes pop180 { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+[data-theme="dark"] .dart.next.gold .dart-n, [data-theme="dark"] .chip.gold .chip-p { color: #F5C518; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dart.next.gold .dart-n, :root:not([data-theme="light"]) .chip.gold .chip-p { color: #F5C518; } }
+.celeb180 { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; background: rgba(10,30,36,.96); opacity: 0; transition: opacity .25s; pointer-events: none; padding: 20px; }
+.celeb180.in { opacity: 1; } .celeb180.out { opacity: 0; transition: opacity .45s; }
+.celeb180 .c-n { font-size: clamp(110px, 32vw, 180px); font-weight: 900; letter-spacing: -.04em; line-height: .9; background: linear-gradient(180deg,#ffe680,#F5C518 60%,#d49b00); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 8px 30px rgba(245,197,24,.45)); transform: scale(.6); transition: transform .45s cubic-bezier(.2,1.6,.4,1); }
+.celeb180.in .c-n { transform: scale(1); }
+.celeb180 .c-t { font-size: 1.6rem; font-weight: 800; margin-top: 10px; text-transform: uppercase; }
+.celeb180 .c-d { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
+.celeb180 .c-d span { background: rgba(245,197,24,.18); border: 1.5px solid #F5C518; border-radius: 12px; padding: 6px 12px; font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .celeb180 .c-n { transition: none; transform: none; } .on180 { animation: none; } }
+/* Hard mode timer */
+.dart-timer { position: relative; height: 22px; margin: -2px 0 12px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.dart-timer .dt-bar { position: absolute; inset: 0 auto 0 0; width: 100%; background: #2BD09E; border-radius: 999px; transition: width .2s linear, background .3s; }
+.dart-timer.low .dt-bar { background: #e5484d; }
+.dart-timer .dt-n { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: .8rem; font-weight: 800; color: inherit; }
+.dart-timer.low .dt-n { color: #e5484d; }
