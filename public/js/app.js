@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=64';
-import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=64';
-import { sfx, setSoundEnabled } from './sound.js?v=64';
-import * as L from './leagues.js?v=64';
-import { initAnalytics, track } from './analytics.js?v=64';
-import { privacyHtml, termsHtml } from './legal.js?v=64';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=65';
+import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=65';
+import { sfx, setSoundEnabled } from './sound.js?v=65';
+import * as L from './leagues.js?v=65';
+import { initAnalytics, track } from './analytics.js?v=65';
+import { privacyHtml, termsHtml } from './legal.js?v=65';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -64,7 +64,7 @@ const easyOn = () => S.easy && S.game !== 'daily' && S.game !== 'sentoff';
 const hardOn = () => S.hard && ['x01', 'killer', 'clock', 'sudden'].includes(S.game);
 const HARD_SECS = 60;
 // 180 rule: two Scorers in a row and the next dart is worth 60 whatever the category
-const onFor180 = () => (S.game === 'x01' || S.game === 'daily') && S.visit.length >= 2 && S.visit.length < dartsPerVisit() && !S.legOver
+const onFor180 = () => S.game === 'x01' && S.visit.length >= 2 && S.visit.length < dartsPerVisit() && !S.legOver
   && S.visit.slice(-2).every(d => d.res.correct && d.cat === 'scorer');
 
 // ---------- state ----------
@@ -1209,7 +1209,7 @@ const ACHIEVEMENTS = [
   { id: 'checkout', icon: '🎯', name: 'Checked out', desc: 'Win a game of The Classic' },
   { id: 'ton', icon: '💯', name: 'Ton up', desc: '100+ in one visit in The Classic' },
   { id: 'three', icon: '🔥', name: 'Three from three', desc: 'Hit all three darts in a visit' },
-  { id: 'oneeighty', icon: '🎯', name: 'One hundred and eighty', desc: 'Two scorers, then any right answer' },
+  { id: 'oneeighty', icon: '🎯', name: 'One hundred and eighty', desc: 'Two scorers, then any right answer in The Classic' },
   { id: 'perfect', icon: '⭐', name: 'Perfect day', desc: '6 out of 6 in a Daily Match' },
   { id: 'streak3', icon: '📅', name: 'Hat-trick', desc: 'A 3-day Daily Match streak' },
   { id: 'streak7', icon: '🗓️', name: 'Week warrior', desc: 'A 7-day Daily Match streak' },
@@ -1550,7 +1550,6 @@ function gameRules(game) {
       <li><b>One match a day.</b> Everyone in the world gets the same match, and you get one go at it.</li>
       <li><b>Six darts.</b> Pick any category for each dart. Correct answers add their points. ${TIERS}</li>
       <li><b>Misses don’t end it.</b> Use all six darts, then share your score and see how your mates did.</li>
-      <li><b>🎯 180!</b> Two Scorers in a row and your next dart is worth 60 in any category.</li>
       <li><b>Come back tomorrow</b> for a new match and keep your 🔥 streak going.</li>
       <li><b>Saved on this device.</b> Your Daily scores, best and streak live on the phone or computer you play on. Use Settings → Backup to move them to another device.</li>`,
     sudden: `
@@ -1758,7 +1757,6 @@ function applyThrow(answer, res) {
       break;
     case 'daily':
       if (res.correct && dart.cat === 'lineup' && lineupOld()) res.points = 30;
-      if (res.correct && boost) res.points = 60;
       if (res.correct) p.points += res.points;
       saveDaily();
       if (S.visit.length >= DAILY_DARTS) after.daily = true;
