@@ -89,7 +89,7 @@ const onFor180 = () => S.game === 'x01' && S.visit.length >= 2 && S.visit.length
 const S = {
   screen: 'hub',
   game: 'x01',
-  nPlayers: 2,
+  nPlayers: 1,             // new visitors start solo; saved setup overrides
   unit: 'managers',       // 'managers' | 'teams' (labels for x01 head-to-head)
   start: 501,
   names: ['', '', '', ''],
@@ -248,6 +248,7 @@ function renderHub() {
     <h2>Pick your game</h2>
     <div class="games">
       ${dailyBanner()}
+      <button class="quick" data-act="quick"><span class="quick-i" aria-hidden="true">⚡</span><span class="quick-b"><b>Quick game</b><small>Solo, 301, straight in. No setup.</small></span><span class="game-go" aria-hidden="true">›</span></button>
       ${Object.entries(GAMES).filter(([, g]) => !g.hidden).map(([k, g]) => `
         <button class="game-card" data-act="pick" data-v="${k}">
           <span class="game-icon" aria-hidden="true">${g.icon}</span>
@@ -468,7 +469,7 @@ function scoreboard() {
   const n = S.players.length;
   return `<div class="gamebar">
     <button type="button" class="back quit" data-act="home" aria-label="Quit game and go back to all games">‹ Quit game</button>
-    ${S.game === 'daily' ? `<button type="button" class="back invite" data-act="daily-invite">${SHARE_ICON} Invite mates</button>` : `<span class="gamebar-t">${G().icon} ${esc(G().title)}${easyOn() ? ' · Easy' : hardOn() ? ' · Hard' : ''}</span>`}
+    ${S.game === 'daily' && !S.past ? `<button type="button" class="back invite" data-act="daily-invite">${SHARE_ICON} Invite mates</button>` : `<span class="gamebar-t">${G().icon} ${esc(G().title)}${easyOn() ? ' · Easy' : hardOn() ? ' · Hard' : ''}</span>`}
   </div>
   <div class="stage-side">
   <div class="board ${n === 1 ? 'solo' : ''} ${n > 2 ? 'many' : ''}">
@@ -1029,7 +1030,14 @@ function dailyStreak() {
   while (log[dailyKey(d)] !== undefined) { n += 1; d.setDate(d.getDate() - 1); }
   return n;
 }
+function loadTodayTop() {
+  if (S.todayTopLoaded) return; S.todayTopLoaded = true;
+  fetch('/api/daily?n=' + dailyNumber()).then(r => r.ok ? r.json() : null).then(b => {
+    if (b && b.count >= BOARD_MIN && b.top) { S.todayTop = b.top; if (S.screen === 'hub' && modalRoot.hidden) renderHub(); }
+  }).catch(() => {});
+}
 function dailyBanner() {
+  loadTodayTop();
   const n = dailyNumber(), saved = dailySaved();
   const done = saved && saved.done;
   const streak = dailyStreak();
@@ -1047,20 +1055,21 @@ function dailyBanner() {
       <span class="daily-go">${done ? 'Result' : saved ? 'Resume' : 'Play'}</span>
     </button>
     <button class="daily-invite" data-act="daily-invite" aria-label="Invite your mates to today's Daily Match" title="Invite your mates">${SHARE_ICON}</button>
-  </div>`;
+  </div>
+  <div class="daily-extra">${S.todayTop && !done ? `<span class="daily-top">🏆 Today’s top: <b>${S.todayTop.p}</b> ${flag(S.todayTop.cc)}</span>` : '<span></span>'}${n > 1 ? '<button type="button" class="past-link" data-act="past">📅 Past Dailies</button>' : ''}</div>`;
 }
 function untilTomorrow() {
   const now = new Date(), t = new Date(now); t.setHours(24, 0, 0, 0);
   const m = Math.max(1, Math.round((t - now) / 60000));
   return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
 }
-async function startDaily() {
-  S.game = 'daily'; S.busy = true;
-  S.dailyN = dailyNumber();
+async function startDaily(pastN) {
+  S.game = 'daily'; S.busy = true; S.past = !!pastN;
+  S.dailyN = pastN || dailyNumber();
   try { S.match = await dailyMatch(S.dailyN); }
   catch { S.busy = false; S.error = 'Couldn’t load today’s match. Check your connection and try again.'; goHub(); return; }
   S.busy = false;
-  const saved = dailySaved();
+  const saved = S.past ? null : dailySaved();
   S.players = [{ name: 'You', legs: 0 }];
   resetPlayer(S.players[0]);
   S.legOver = false; S.pending = null; S.round = 1; S.matchesThisLeg = 1;
@@ -1071,11 +1080,12 @@ async function startDaily() {
     S.visit = saved.darts;
     S.players[0].points = saved.points;
     S.players[0].darts = saved.darts.length;
-  } else track('Game started', { game: 'Daily Match', day: S.dailyN });
+  } else track('Game started', { game: S.past ? 'Past Daily' : 'Daily Match', day: S.dailyN });
   S.screen = 'play';
   render(); window.scrollTo(0, 0);
 }
 function saveDaily() {
+  if (S.past) return;   // replays of past Dailies aren't saved as today's
   const p = S.players[0];
   store.set('daily', {
     key: dailyKey(), n: S.dailyN, points: p.points, done: S.visit.length >= DAILY_DARTS,
@@ -1085,6 +1095,7 @@ function saveDaily() {
 }
 function dailyEmoji(darts) { return darts.map(d => (d.res.correct ? '🎯' : '⬜')).join(''); }
 function dailyOver() {
+  if (S.past) return pastOver();
   const saved = dailySaved();
   const log = dailyLog(); log[saved.key] = saved.points; store.set('dailyLog', log);
   unlock('first');
@@ -1099,6 +1110,40 @@ function dailyOver() {
       .then(r => r.ok ? r.json() : null).catch(() => null);
   }
   showDailyResult();
+}
+
+// ---------- Past Dailies: replay any earlier day (no streak, no leaderboard) ----------
+const DAILY_FIRST = Date.UTC(2026, 9, 2);
+const dailyDate = n => new Date(DAILY_FIRST + (n - 1) * 864e5);
+function pastHtml() {
+  const today = dailyNumber(), live = dailyLog(), past = store.get('pastLog', {});
+  const rows = [];
+  for (let n = today - 1; n >= 1; n--) {
+    const d = dailyDate(n), key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    const score = live[key] != null ? live[key] : past[n];
+    rows.push(`<button class="past-row" data-act="past-play" data-v="${n}"><span><b>Daily #${n}</b><small>${d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}</small></span><span class="past-score">${score != null ? `${score} pts` : 'Play ›'}</span></button>`);
+  }
+  return `<h2>📅 Past Dailies</h2>
+    <p class="hint">Missed one? Replay any earlier Daily Match. Just for fun: replays don’t count towards your streak or the leaderboard.</p>
+    <div class="past-list">${rows.join('') || '<p class="hint">No past Dailies yet. Come back tomorrow!</p>'}</div>
+    <button class="btn ghost" data-act="close">Close</button>`;
+}
+function pastOver() {
+  const p = S.players[0], hits = S.visit.filter(d => d.res.correct).length;
+  const past = store.get('pastLog', {}); past[S.dailyN] = Math.max(past[S.dailyN] || 0, p.points); store.set('pastLog', past);
+  track('Game finished', { game: 'Past Daily', day: S.dailyN, points: p.points, hits });
+  if (p.points > 0) { confetti(); sfx.win(); } else sfx.miss();
+  showPastResult();
+}
+function showPastResult() {
+  const p = S.players[0], hits = S.visit.filter(d => d.res.correct).length;
+  openModal(`<p class="eyebrow">📅 Past Daily #${S.dailyN}</p>
+    <h2>${hits >= 4 ? 'Cracking effort' : hits >= 2 ? 'Not bad at all' : 'Tough one'}</h2>
+    <p class="big-score center">${p.points}</p>
+    <p class="daily-emoji">${dailyEmoji(S.visit)}</p>
+    <p class="hint center">${hits} of ${DAILY_DARTS} darts hit · replay, so no streak or leaderboard</p>
+    <div class="row"><button class="btn ghost" data-act="past-key">Answers</button><button class="btn primary" data-act="past">Another past Daily</button></div>
+    <button class="btn link" data-act="daily-close">Back to games</button>`, { dismissable: false });
 }
 
 // ---------- Daily leaderboard (anonymous totals from /api/daily) ----------
@@ -1662,7 +1707,7 @@ function answerKeyHtml(m = S.match, review = false, got = new Set()) {
 }
 
 // ---------- game flow ----------
-async function begin() {
+async function begin(quick = false) {
   clampPlayers();
   const multi = S.nPlayers > 1;
   const ordinals = ['One', 'Two', 'Three', 'Four'];
@@ -1674,7 +1719,7 @@ async function begin() {
     ...(S.teamGame ? { members: S.members[i].map((m, j) => (m || '').trim() || `Player ${j + 1}`), mIdx: 0 } : {}),
   }));
   S.legStarter = 0;
-  store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, members: S.members });
+  if (!quick) store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, members: S.members });
   await startLeg();
 }
 
@@ -2110,6 +2155,17 @@ document.addEventListener('click', async e => {
       renderPlay(); break;
     }
     case 'welcome-x': S.welcome = false; store.set('welcomed', true); track('Welcome closed'); renderHub(); break;
+    case 'quick':
+      if (S.busy) break;
+      if (S.welcome) { S.welcome = false; store.set('welcomed', true); }
+      track('Quick game');
+      S.game = 'x01'; S.nPlayers = 1; S.start = 301; S.teamGame = false; S.leagueId = '';
+      if (!S.allSeasons.length) { S.screen = 'setup'; renderSetup(); break; }
+      S.busy = true; await begin(true); break;
+    case 'past': if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } track('Past Dailies opened'); openModal(pastHtml()); break;
+    case 'past-play': modalRoot._onClose = null; closeModal(); await startDaily(Number(v)); break;
+    case 'past-key': openModal(answerKeyHtml().replace('data-act="daily-result">Back', 'data-act="past-back">Back')); break;
+    case 'past-back': showPastResult(); break;
     case 'coach-x': store.set('tipClassic', true); track('Tip dismissed'); renderPlay(); break;
     case 'diff': S.easy = v === 'easy'; S.hard = v === 'hard'; track('Setting changed', { setting: 'difficulty', value: v }); renderSetup(); break;
     case 'choose': throwDart(v); break;
