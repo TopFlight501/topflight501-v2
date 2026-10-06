@@ -633,7 +633,8 @@ function categoryPool(cat) {
 function remaining(cat) {
   const claimed = S.claimed[currentIdx()] || new Map();
   if (cat === 'manager') return claimed.has('manager') ? [] : S.match.managers.filter(Boolean);
-  return categoryPool(cat).filter(p => (claimed.get(`${cat}:${p.id}`) || 0) < timesAllowed(cat, p));
+  return categoryPool(cat).filter(p => (claimed.get(`${cat}:${p.id}`) || 0) < timesAllowed(cat, p)
+    && !(cat === 'lineup' && ['scorer', 'assist', 'booked'].some(c => claimed.has(`${c}:${p.id}`))));
 }
 function getChoices(cat) {
   if (S.choices && S.choices.cat === cat) return S.choices.opts;
@@ -1523,6 +1524,7 @@ const COMMON_RULES = `
   <li><b>Spelling tolerance.</b> Surnames are fine and small typos are forgiven.</li>
   <li><b>Own goals count.</b> An own goal is a goal, so the player who scored it counts as a Scorer.</li>
   <li><b>Every goal counts.</b> A player can be picked once for each goal or assist they got: two goals means two Scorer darts, two assists means two Assist darts. Lineup, Booked and the scoreline count once per player per match.</li>
+  <li><b>Lineup means someone new.</b> A player you’ve already had as a scorer, assist or booking on this match can’t be your Lineup answer. It won’t cost you a dart, just pick someone else.</li>
   <li><b>⏱️ Hard mode.</b> Turn it on before the game: you get ${HARD_SECS} seconds for each dart, and running out of time is a miss.</li>
   <li><b>See what you missed.</b> After each match, tap <b>👀 Last match’s answers</b> to see everything you could have had. The game carries on.</li>
   <li><b>Give up.</b> Stuck? Giving up shows every answer for this match, but the game ends and has to be restarted.</li>`;

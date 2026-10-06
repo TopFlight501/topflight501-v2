@@ -148,6 +148,11 @@ export function checkDart(match, category, answer, claimed) {
       : category === 'assist' ? (allowed === 1 ? 'their assist' : `all ${allowed} of their assists`) : 'that';
     return { correct: false, points: 0, invalid: true, message: `You've already claimed ${shortName(hit)} for ${what}.` };
   }
+  // Lineup is for players you haven't already used: no double-dipping on a scorer, assist or booking
+  if (category === 'lineup') {
+    const used = ['scorer', 'assist', 'booked'].find(c => claimed.has(`${c}:${hit.id}`));
+    if (used) return { correct: false, points: 0, invalid: true, message: `You’ve already had ${shortName(hit)} as ${{ scorer: 'a scorer', assist: 'an assist', booked: 'a booking' }[used]}. Pick someone else for Lineup.` };
+  }
   let points = cat.points, extra = '';
   if (category === 'booked') {
     if (hit.card === 2) { points = cat.redPoints; extra = ' 🟥 Red card!'; }
