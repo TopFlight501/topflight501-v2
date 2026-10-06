@@ -1709,6 +1709,7 @@ function answerKeyHtml(m = S.match, review = false, got = new Set()) {
 
 // ---------- game flow ----------
 async function begin(quick = false) {
+  S.quick = quick;
   clampPlayers();
   const multi = S.nPlayers > 1;
   const ordinals = ['One', 'Two', 'Three', 'Four'];
@@ -1771,7 +1772,9 @@ async function newRound() {
   const prev = S.game !== 'sentoff' && S.match && S.round > 0 ? { m: S.match, got: new Set(S.claimed.flatMap(c => [...c.keys()])) } : null;
   try {
     const q = S.vs && S.vs.m[S.played.length];
+    const recent = S.allSeasons.slice(-5);   // Quick play: the last five seasons, famous games only
     S.match = q ? await matchById(q).catch(() => randomMatch(selectedSeasons(), activeClubs(), { rich: S.game === 'clock' }))
+      : S.quick ? await randomMatch(recent, [], { famous: true })
       : await randomMatch(selectedSeasons(), activeClubs(), { rich: S.game === 'clock' });
     S.played.push(S.match.id);
   } catch (e) {
@@ -2120,7 +2123,7 @@ document.addEventListener('click', async e => {
   }
   const act = b.dataset.act, v = b.dataset.v;
   switch (act) {
-    case 'pick': if (S.welcome) { S.welcome = false; store.set('welcomed', true); } if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } track('Game picked', { game: GAMES[v] ? GAMES[v].title : v }); S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
+    case 'pick': if (S.quickPrev) { Object.assign(S, S.quickPrev); S.quickPrev = null; } if (S.welcome) { S.welcome = false; store.set('welcomed', true); } if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } track('Game picked', { game: GAMES[v] ? GAMES[v].title : v }); S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
     case 'hub': goHub(); break;
     case 'daily':
       if (S.busy) break;
@@ -2160,6 +2163,7 @@ document.addEventListener('click', async e => {
       if (S.busy) break;
       if (S.welcome) { S.welcome = false; store.set('welcomed', true); }
       track('Quick game');
+      if (!S.quickPrev) S.quickPrev = { nPlayers: S.nPlayers, start: S.start, leagueId: S.leagueId };
       S.game = 'x01'; S.nPlayers = 1; S.start = 301; S.teamGame = false; S.leagueId = '';
       if (!S.allSeasons.length) { S.screen = 'setup'; renderSetup(); break; }
       S.busy = true; await begin(true); break;

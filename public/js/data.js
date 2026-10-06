@@ -122,7 +122,10 @@ export async function randomMatch(seasons, clubs = [], opts = {}, retried = fals
     if (!pool.length) throw new Error('None of those clubs played in the chosen seasons.');
   }
   const rich = m => m.s[0] + m.s[1] > 0 && m.p.some(x => x[3] > 0) && m.p.some(x => x[4] > 0);
-  const wanted = m => (!clubs.length || clubs.includes(m.h) || clubs.includes(m.a)) && (!opts.rich || rich(m));
+  // opts.famous (Quick play): well-known games for an easy first taste. Big-six clashes, or a big-six side in a game with 3+ goals
+  const BIG = ['Arsenal', 'Chelsea', 'Liverpool', 'Manchester City', 'Manchester United', 'Tottenham Hotspur'];
+  const famous = m => { const b = BIG.includes(m.h) + BIG.includes(m.a); return m.s[0] + m.s[1] > 0 && (b === 2 || (b === 1 && m.s[0] + m.s[1] >= 3)); };
+  const wanted = m => (!clubs.length || clubs.includes(m.h) || clubs.includes(m.a)) && (!opts.rich || rich(m)) && (!opts.famous || famous(m));
   for (let attempt = 0; attempt < 40; attempt++) {
     const season = pool[Math.floor(Math.random() * pool.length)];
     const D = await loadSeason(season);
