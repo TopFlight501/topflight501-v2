@@ -66,8 +66,24 @@ const HARD_SECS = 60;
 // 180 rule: two Scorers in a row and the next dart is worth 60 whatever the category
 // First Classic game: a short tip on the first dart of round 1, until a round has been played
 const coachOn = () => S.game === 'x01' && S.round <= 1 && !S.visit.length && !store.get('tipClassic', false);
+// Pundit's clue: one per visit, a right answer after it scores half
+const clueOk = () => ['x01', 'killer', 'clock', 'sudden'].includes(S.game) && !hardOn() && !easyOn();
+function makeClue(cat) {
+  const m = S.match;
+  const team = p => esc(p.side === 0 ? m.home : m.away);
+  const letter = p => esc(((p.web || p.full || '?').trim()[0] || '?').toUpperCase());
+  if (cat === 'scoreline') { const t = m.score[0] + m.score[1]; return t === 0 ? 'Neither side found the net.' : `There ${t === 1 ? 'was <b>1 goal</b>' : `were <b>${t} goals</b>`} in this game.`; }
+  if (cat === 'manager') { const i = m.managers[0] ? 0 : 1; const n = (m.managers[i] || '').split(' / ')[0].trim().split(' ').pop(); return n ? `The ${esc(i ? m.away : m.home)} manager’s surname starts with <b>${esc(n[0].toUpperCase())}</b>.` : null; }
+  const pool = remaining(cat);
+  if (!pool.length) return null;
+  const p = pool[Math.floor(Math.random() * pool.length)];
+  if (cat === 'scorer') return p.goals ? `A <b>${team(p)}</b> player, surname starts with <b>${letter(p)}</b>.${p.goals > 1 ? ` He scored ${p.goals}.` : ''}` : `A <b>${team(p)}</b> player, surname starts with <b>${letter(p)}</b>. It went in off him (own goal).`;
+  if (cat === 'assist') return `A <b>${team(p)}</b> player, surname starts with <b>${letter(p)}</b>.${p.assists > 1 ? ` He set up ${p.assists}.` : ''}`;
+  if (cat === 'booked') return `A <b>${team(p)}</b> player, surname starts with <b>${letter(p)}</b>.${p.card === 2 ? ' He saw red 🟥' : ''}`;
+  return `${p.started === false ? 'Came off the bench' : 'Started'} for <b>${team(p)}</b>, surname starts with <b>${letter(p)}</b>.`;
+}
 const onFor180 = () => S.game === 'x01' && S.visit.length >= 2 && S.visit.length < dartsPerVisit() && !S.legOver
-  && S.visit.slice(-2).every(d => d.res.correct && d.cat === 'scorer');
+  && S.visit.slice(-2).every(d => d.res.correct && d.cat === 'scorer' && !d.clued);
 
 // ---------- state ----------
 const S = {
@@ -599,7 +615,9 @@ function renderPlay() {
           <span>👕 <b>Lineup</b> is easiest, ⚽ <b>Scorer</b> takes off most.${S.vs ? '' : ' Don’t know it? Tap <b>🔄 New match</b>.'}</span></div>` : ''}
         <span class="label">${label}</span>
         <div class="chips ${cats.length === 1 ? 'single' : cats.length === 2 ? 'two' : ''}">${catBtns}</div>
+        ${S.clue ? `<div class="clue">🎙️ <b>Pundit${S.clue.cat !== S.cat ? ` (${TARGET_INFO[S.clue.cat].short})` : ''}:</b> ${S.clue.text}</div>` : ''}
         ${input}
+        ${S.cat && clueOk() && !S.clue && !S.visit.clueUsed ? '<button type="button" class="clue-btn" data-act="clue">🎙️ Pundit’s clue <span>(right answer scores half)</span></button>' : ''}
         ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
         ${S.cat && easyOn() && NAME_CATS.includes(S.cat) ? '' : `<button class="btn primary big" type="submit" ${S.cat ? '' : 'disabled'}>Throw</button>`}
       </form>` : (S.legOver || S.pending) ? '' : `
@@ -1531,6 +1549,7 @@ const COMMON_RULES = `
   <li><b>Own goals count.</b> An own goal is a goal, so the player who scored it counts as a Scorer.</li>
   <li><b>Every goal counts.</b> A player can be picked once for each goal or assist they got: two goals means two Scorer darts, two assists means two Assist darts. Lineup, Booked and the scoreline count once per player per match.</li>
   <li><b>Lineup means someone new.</b> A player you’ve already had as a scorer, assist or booking on this match can’t be your Lineup answer. It won’t cost you a dart, just pick someone else.</li>
+  <li><b>🎙️ Pundit’s clue.</b> Stuck? Pick a box and tap it for one hint per turn. A right answer after a clue scores half (not in Hard mode, Easy mode or the Daily).</li>
   <li><b>⏱️ Hard mode.</b> Turn it on before the game: you get ${HARD_SECS} seconds for each dart, and running out of time is a miss.</li>
   <li><b>See what you missed.</b> After each match, tap <b>👀 Last match’s answers</b> to see everything you could have had. The game carries on.</li>
   <li><b>Give up.</b> Stuck? Giving up shows every answer for this match, but the game ends and has to be restarted.</li>`;
@@ -1720,6 +1739,7 @@ async function newRound() {
 
 function startTurn() {
   S.visit = [];
+  S.clue = null;
   S.cat = null;
   S.choices = null;
   S.error = null;
@@ -1768,6 +1788,10 @@ function applyThrow(answer, res) {
   S.error = null;
   p.darts += 1;
   const dart = { cat: S.cat, answer, res, extra: '' };
+  if (S.clue && S.clue.cat === S.cat) {
+    dart.clued = true; S.clue = null;
+    if (res.correct && res.points) { res.points = Math.ceil(res.points / 2 / 5) * 5; dart.extra = ' (half points with the pundit’s clue)'; }
+  }
   if (res.correct) claimed.set(res.key, (claimed.get(res.key) || 0) + 1);
   S.visit.push(dart);
   S.cat = null;
@@ -1775,7 +1799,7 @@ function applyThrow(answer, res) {
   const after = { win: false, pick: false, over: false };
   switch (S.game) {
     case 'x01':
-      if (res.correct && boost) res.points = 60;
+      if (res.correct && boost && !dart.clued) res.points = 60;
       if (res.correct) p.score -= res.points;
       if (p.score <= 0) after.win = true;
       break;
@@ -1814,7 +1838,7 @@ function applyThrow(answer, res) {
   if (S.game !== 'daily' && S.visit.length === 3 && S.visit.every(d => d.res.correct)) unlock('three');
   if (S.game === 'x01' && S.visit.reduce((t, d) => t + (d.res.correct ? d.res.points : 0), 0) >= 100) unlock('ton');
   if (S.game === 'sudden' && p.streak >= 10) unlock('nerves');
-  if (res.correct && boost) { dart.extra = ' 180! 🎯'; celebrate180(S.visit.slice(-3)); unlock('oneeighty'); track('180', gameInfo()); }
+  if (res.correct && boost && !dart.clued) { dart.extra = ' 180! 🎯'; celebrate180(S.visit.slice(-3)); unlock('oneeighty'); track('180', gameInfo()); }
 
   if (after.win) { S.legOver = true; setTimeout(() => legWon(p), 650); return; }
   if (after.over) { S.legOver = true; setTimeout(suddenOver, 700); return; }
@@ -2066,6 +2090,14 @@ document.addEventListener('click', async e => {
     case 'remind-add': store.set('remindAdded', true); track('Reminder added', { calendar: v }); setTimeout(() => toast('Check your calendar to confirm ⏰'), 400); break;
     case 'easy': S.easy = !S.easy; if (S.easy) S.hard = false; track('Setting changed', { setting: 'easy', value: String(S.easy) }); renderSetup(); break;
     case 'hard': S.hard = !S.hard; if (S.hard) S.easy = false; track('Setting changed', { setting: 'hard', value: String(S.hard) }); renderSetup(); break;
+    case 'clue': {
+      if (!S.cat || S.clue || S.visit.clueUsed || !clueOk()) break;
+      const text = makeClue(S.cat);
+      if (!text) { S.error = 'Nothing left to find in that box. Try another one.'; renderPlay(); break; }
+      S.clue = { cat: S.cat, text }; S.visit.clueUsed = true; S.error = null;
+      track('Pundit clue', gameInfo({ category: TARGET_INFO[S.cat].short }));
+      renderPlay(); break;
+    }
     case 'coach-x': store.set('tipClassic', true); track('Tip dismissed'); renderPlay(); break;
     case 'diff': S.easy = v === 'easy'; S.hard = v === 'hard'; track('Setting changed', { setting: 'difficulty', value: v }); renderSetup(); break;
     case 'choose': throwDart(v); break;
