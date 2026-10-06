@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=61';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=61';
-import { sfx, setSoundEnabled } from './sound.js?v=61';
-import * as L from './leagues.js?v=61';
-import { initAnalytics, track } from './analytics.js?v=61';
-import { privacyHtml, termsHtml } from './legal.js?v=61';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=62';
+import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=62';
+import { sfx, setSoundEnabled } from './sound.js?v=62';
+import * as L from './leagues.js?v=62';
+import { initAnalytics, track } from './analytics.js?v=62';
+import { privacyHtml, termsHtml } from './legal.js?v=62';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -462,6 +462,7 @@ function prevLine(prev) {
   return '';
 }
 
+const PREVKEY = `<button type="button" class="prev-key" data-act="prev-key">👀 Last match’s answers</button>`;
 const REROLL = `<button type="button" class="reroll" data-act="reroll" title="Played this one before? Get a different match">🔄 New match</button>`;
 
 function renderHandover() {
@@ -477,7 +478,7 @@ function renderHandover() {
     ${S.teamGame ? `<p class="team-turn">Throwing for <b>${esc(p.name)}</b></p>` : ''}
     <p class="hint">${handoverHint(p)}</p>
     ${matchCard()}
-    ${S.turnIdx === 0 ? `${S.vs ? '' : `<div class="reroll-row">${REROLL}</div>`}` : ''}
+    ${S.turnIdx === 0 ? `<div class="reroll-row">${S.prev ? PREVKEY : ''}${S.vs ? '' : REROLL}</div>` : ''}
     <button class="btn primary big" data-act="go">Throw darts</button>
   </section>
   </div>`;
@@ -570,7 +571,7 @@ function renderPlay() {
   ${scoreboard()}
   <section class="card play">
     ${matchCard()}
-    ${S.game !== 'daily' && S.turnIdx === 0 && !S.visit.length && !done ? `${S.vs ? '' : `<div class="reroll-row">${REROLL}</div>`}` : ''}
+    ${S.game !== 'daily' && S.turnIdx === 0 && !S.visit.length && !done ? `<div class="reroll-row">${S.prev && S.players.length === 1 ? PREVKEY : ''}${S.vs ? '' : REROLL}</div>` : ''}
     <div class="turn-head"><h3>${esc(thrower(p))}${S.teamGame ? ` <span class="team-of">${esc(p.name)}</span>` : ''}</h3><span class="hint">${turnHeadRight(p)}</span></div>
     ${dartSlots()}
     ${S.game === 'clock' ? routeStrip(p) : ''}
@@ -585,7 +586,7 @@ function renderPlay() {
       </form>` : (S.legOver || S.pending) ? '' : `
       <button class="btn primary big" data-act="endvisit">${nextLabel()}</button>`}
     <div class="play-foot">
-      ${S.game === 'daily' ? '' : '<button class="btn ghost" data-act="key">📖 Answer key</button>'}
+      ${S.game === 'daily' ? '' : '<button class="btn ghost" data-act="key">🏳️ Give up</button>'}
       <button class="btn ghost" data-act="rules">❓ Rules</button>
     </div>
   </section>
@@ -736,7 +737,7 @@ function renderSentOff() {
       <li class="${g.exact ? 'ok' : ''}"><b>${esc(g.name)}</b> ${g.h}–${g.a}
         <span>${g.exact ? '🎯 Correct' : `${esc(m.home)} ${sideWord(g.c[0])} · ${esc(m.away)} ${sideWord(g.c[1])}${g.note ? ` · ${g.note}` : ''}`}</span></li>`).join('')}</ul>` : ''}
     <div class="play-foot">
-      <button class="btn ghost" data-act="key">📖 Answer key</button>
+      <button class="btn ghost" data-act="key">🏳️ Give up</button>
       <button class="btn ghost" data-act="rules">❓ Rules</button>
     </div>
   </section>
@@ -1479,7 +1480,8 @@ const COMMON_RULES = `
   <li><b>Spelling tolerance.</b> Surnames are fine and small typos are forgiven.</li>
   <li><b>Own goals count.</b> An own goal is a goal, so the player who scored it counts as a Scorer.</li>
   <li><b>Every goal counts.</b> A player can be picked once for each goal or assist they got: two goals means two Scorer darts, two assists means two Assist darts. Lineup, Booked and the scoreline count once per player per match.</li>
-  <li><b>Answer key forfeit.</b> Stuck? The answer key shows everything, but the game ends and has to be restarted.</li>`;
+  <li><b>See what you missed.</b> After each match, tap <b>👀 Last match’s answers</b> to see everything you could have had. The game carries on.</li>
+  <li><b>Give up.</b> Stuck? Giving up shows every answer for this match, but the game ends and has to be restarted.</li>`;
 
 const TIERS = `
   <table class="tiers">
@@ -1544,8 +1546,8 @@ function gameRules(game) {
   }[game];
 }
 
-function answerKeyHtml() {
-  const m = S.match;
+function answerKeyHtml(m = S.match, review = false, got = new Set()) {
+  const tk = (cat, p) => got.has(`${cat}:${p.id}`) ? ' <span class="got">✓</span>' : '';
   const side = i => m.players.filter(p => p.side === i);
   const list = (arr, fmt) => arr.length ? arr.map(fmt).join(', ') : '<span class="muted">None</span>';
   const col = i => {
@@ -1558,22 +1560,23 @@ function answerKeyHtml() {
       <h4>${esc(i === 0 ? m.home : m.away)}</h4>
       <p><span class="k">Manager</span> ${esc(m.managers[i] || 'Unknown')}</p>
       <p><span class="k">⚽ Scorers</span> ${list([
-        ...ps.filter(p => p.goals).map(p => esc(shortName(p)) + (p.goals > 1 ? ` ×${p.goals}` : '')),
-        ...m.players.filter(p => p.side !== i && p.og).map(p => esc(shortName(p)) + ` (OG${p.og > 1 ? ' ×' + p.og : ''})`),
+        ...ps.filter(p => p.goals).map(p => esc(shortName(p)) + (p.goals > 1 ? ` ×${p.goals}` : '') + tk('scorer', p)),
+        ...m.players.filter(p => p.side !== i && p.og).map(p => esc(shortName(p)) + ` (OG${p.og > 1 ? ' ×' + p.og : ''})` + tk('scorer', p)),
       ], x => x)}</p>
-      <p><span class="k">🅰️ Assists</span> ${list(ps.filter(p => p.assists), p => esc(shortName(p)) + (p.assists > 1 ? ` ×${p.assists}` : ''))}</p>
-      <p><span class="k">🟨🟥 Cards</span> ${list(ps.filter(p => p.card), p => esc(shortName(p)) + (p.card === 2 ? ' 🟥' : ' 🟨'))}</p>
-      <p><span class="k">👕 ${known ? 'Started' : 'Played'}</span> ${list(known ? starters : ps, p => esc(displayName(p)))}</p>
-      ${known ? `<p><span class="k">🔁 Subs used</span> ${list(subs, p => esc(displayName(p)))}</p>` : ''}
+      <p><span class="k">🅰️ Assists</span> ${list(ps.filter(p => p.assists), p => esc(shortName(p)) + (p.assists > 1 ? ` ×${p.assists}` : '') + tk('assist', p))}</p>
+      <p><span class="k">🟨🟥 Cards</span> ${list(ps.filter(p => p.card), p => esc(shortName(p)) + (p.card === 2 ? ' 🟥' : ' 🟨') + tk('booked', p))}</p>
+      <p><span class="k">👕 ${known ? 'Started' : 'Played'}</span> ${list(known ? starters : ps, p => esc(displayName(p)) + tk('lineup', p))}</p>
+      ${known ? `<p><span class="k">🔁 Subs used</span> ${list(subs, p => esc(displayName(p)) + tk('lineup', p))}</p>` : ''}
     </div>`;
   };
   return `
-  <h2>Answer key</h2>
-  <div class="key-score">${esc(m.home)} <b>${m.score[0]} – ${m.score[1]}</b> ${esc(m.away)}</div>
+  <h2>${review ? 'Last match’s answers' : 'Answer key'}</h2>
+  <div class="key-score">${esc(m.home)} <b>${m.score[0]} – ${m.score[1]}</b> ${esc(m.away)}${got.has('scoreline') ? ' <span class="got">✓</span>' : ''}</div>
+  ${review && got.size ? '<p class="hint center"><span class="got">✓</span> = got it this game</p>' : ''}
   <p class="hint center">${fmtDate(m.date)}</p>
   <div class="key-grid">${col(0)}${col(1)}</div>
   <p class="hint">Something wrong? <a href="mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('Match data report ' + m.id)}&body=${encodeURIComponent(`Match: ${m.home} ${m.score[0]}-${m.score[1]} ${m.away} (${m.date}, id ${m.id})\n\nWhat's wrong:\n`)}">Report this match</a></p>
-  ${S.game === 'daily' ? '<button class="btn primary big" data-act="daily-result">Back</button>' : `<button class="btn primary big" data-act="forfeit-done">${S.game === 'sudden' ? 'Start again' : 'Restart game'}</button>`}`;
+  ${review ? '<button class="btn primary big" data-act="close">Back to the game</button>' : S.game === 'daily' ? '<button class="btn primary big" data-act="daily-result">Back</button>' : `<button class="btn primary big" data-act="forfeit-done">${S.game === 'sudden' ? 'Start again' : 'Restart game'}</button>`}`;
 }
 
 // ---------- game flow ----------
@@ -1629,7 +1632,7 @@ async function startLeg() {
   S.players.forEach(resetPlayer);
   track('Game started', gameInfo());
   S.legOver = false;
-  S.pending = null;
+  S.pending = null; S.bonusDue = false;
   S.round = 0;
   S.matchesThisLeg = 0;
   await newRound();
@@ -1637,6 +1640,7 @@ async function startLeg() {
 
 async function newRound() {
   S.busy = true; S.error = null;
+  const prev = S.game !== 'sentoff' && S.match && S.round > 0 ? { m: S.match, got: new Set(S.claimed.flatMap(c => [...c.keys()])) } : null;
   try {
     const q = S.vs && S.vs.m[S.played.length];
     S.match = q ? await matchById(q).catch(() => randomMatch(selectedSeasons(), activeClubs(), { rich: S.game === 'clock' }))
@@ -1650,6 +1654,7 @@ async function newRound() {
     return;
   }
   S.busy = false;
+  S.prev = prev;
   S.round += 1;
   S.matchesThisLeg += 1;
   const n = S.players.length;
@@ -1746,7 +1751,7 @@ function throwDart(choiceId) {
   if (after.over) { S.legOver = true; setTimeout(suddenOver, 700); return; }
   if (after.daily) { S.legOver = true; setTimeout(dailyOver, 700); return; }
   if (after.pick) { setTimeout(pickVictim, 400); return; }
-  if (S.game === 'x01' && S.visit.length === 3 && S.visit.every(d => d.res.correct)) setTimeout(managerBonus, 500);
+  if (S.game === 'x01' && S.visit.length === 3 && S.visit.every(d => d.res.correct)) { S.bonusDue = true; setTimeout(managerBonus, 500); }
 }
 
 // Killer: choose who loses a life
@@ -1797,6 +1802,7 @@ function managerBonus() {
 }
 
 function resolveBonus(guess) {
+  S.bonusDue = false;
   const p = current();
   const hit = guess ? checkManager(S.match, guess) : null;
   track('Manager bonus', { result: hit ? 'Correct' : guess ? 'Wrong' : 'Passed' });
@@ -1811,7 +1817,7 @@ function resolveBonus(guess) {
 }
 
 function endVisit() {
-  if (S.legOver || S.pending) return;
+  if (S.legOver || S.pending || S.bonusDue) return;
   const p = current();
   const hits = S.visit.filter(d => d.res.correct).length;
   const pts = S.visit.reduce((t, d) => t + (d.res.correct ? d.res.points : 0), 0) + (S.visit.bonus || 0);
@@ -1909,11 +1915,12 @@ function suddenOver() {
 
 function answerKey() {
   openModal(`
-    <h2>Open the answer key?</h2>
+    <h2>Give up?</h2>
     <p>You’ll see every answer for this match, but <b>the current game ends</b> and has to be restarted.</p>
+    <p class="hint">Just want to see what you missed? After each match, tap <b>👀 Last match’s answers</b>. The game carries on.</p>
     <div class="row">
       <button class="btn ghost" data-act="close">Keep playing</button>
-      <button class="btn danger" data-act="forfeit">Show answers</button>
+      <button class="btn danger" data-act="forfeit">Give up &amp; show answers</button>
     </div>`);
 }
 
@@ -2063,8 +2070,8 @@ document.addEventListener('click', async e => {
       if (S.vs) break;
       if (S.busy || S.legOver || S.pending || (S.screen === 'sentoff' ? S.so.guesses.length : (S.turnIdx !== 0 || S.visit.length))) break;
       track('Match rerolled', gameInfo());
-      S.round -= 1; S.matchesThisLeg -= 1; S.played.pop();
-      await newRound();
+      { const keep = S.prev; S.round -= 1; S.matchesThisLeg -= 1; S.played.pop();
+      await newRound(); S.prev = keep; if (S.prev === keep) render(); }
       break;
     case 'so-next': S.legStarter = (S.legStarter + 1) % S.players.length; await newRound(); break;
     case 'cat': e.preventDefault(); if (S.cat !== v) S.choices = null; S.cat = v; S.error = null; renderPlay(); break;
@@ -2072,6 +2079,7 @@ document.addEventListener('click', async e => {
     case 'endvisit': endVisit(); break;
     case 'bonus-skip': resolveBonus(''); break;
     case 'key': answerKey(); break;
+    case 'prev-key': if (S.prev) { track('Last match answers', gameInfo()); openModal(answerKeyHtml(S.prev.m, true, S.prev.got)); } break;
     case 'forfeit': track('Answer key opened', gameInfo({ round: S.round })); S.legOver = true; openModal(answerKeyHtml(), { dismissable: false }); break;
     case 'show-key': openModal(answerKeyHtml(), { dismissable: false }); break;
     case 'forfeit-done': modalRoot._onClose = null; closeModal(); S.legStarter = (S.legStarter + 1) % S.players.length; await startLeg(); break;

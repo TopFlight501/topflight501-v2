@@ -625,3 +625,8 @@ select option { background: var(--card); color: var(--ink); }
 
 .wipe-list { text-align: left; margin: .4rem 0 .6rem; padding-left: 1.2rem; line-height: 1.7; }
 .stack { display: flex; flex-direction: column; gap: 8px; margin-top: .6rem; }
+
+.reroll-row { display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
+.prev-key { margin-right: auto; background: none; border: 0; padding: 6px 2px; color: var(--teal); font: inherit; font-weight: 700; font-size: .9rem; cursor: pointer; }
+.prev-key:hover { text-decoration: underline; }
+.got { color: #12a37a; font-weight: 800; }
