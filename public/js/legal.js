@@ -1,5 +1,5 @@
 // Privacy notice and terms of use. Plain English, kept short.
-const UPDATED = '1 October 2026';
+const UPDATED = '6 October 2026';
 const CONTACT = 'topflight501@outlook.com';
 
 export const privacyHtml = `
@@ -38,11 +38,11 @@ export const termsHtml = `
     <h3>Not official</h3>
     <p>Top Flight 501 is not affiliated with, endorsed by or connected to the Premier League, Fantasy Premier League or any football club. Club and competition names are used only to describe real matches.</p>
     <h3>Match data</h3>
-    <p>Match details come from publicly available records, including Fantasy Premier League data and Wikipedia’s list of Premier League managers. We check them carefully, but mistakes are possible. If you spot one, use “Report this match” in the answer key.</p>
+    <p>Match details come from publicly available records, including Fantasy Premier League data and Wikipedia’s list of Premier League managers. We check them carefully, but mistakes are possible. If you spot one, tap “Report this match” on that match’s answers (“👀 Last match’s answers” after a match, or after giving up).</p>
     <h3>Fair use</h3>
     <p>Please don’t try to disrupt the site, copy it wholesale or use it for anything unlawful.</p>
     <h3>No guarantees</h3>
-    <p>The game is provided as it is, without warranties. We may change, pause or stop it at any time. Your settings and personal bests are saved on your device, so keep a backup if they matter to you.</p>
+    <p>The game is provided as it is, without warranties. We may change, pause or stop it at any time. Your settings, personal bests, achievements and Daily Match scores are saved only on your device, so use Settings → Backup if they matter to you.</p>
     <h3>Liability</h3>
     <p>To the extent the law allows, we aren’t responsible for any loss arising from using the site. Nothing in these terms limits rights you have under Irish or EU consumer law.</p>
     <h3>Contact</h3>

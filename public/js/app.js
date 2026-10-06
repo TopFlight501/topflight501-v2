@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=63';
-import { CATEGORIES, MANAGER_BONUS, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=63';
-import { sfx, setSoundEnabled } from './sound.js?v=63';
-import * as L from './leagues.js?v=63';
-import { initAnalytics, track } from './analytics.js?v=63';
-import { privacyHtml, termsHtml } from './legal.js?v=63';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=64';
+import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=64';
+import { sfx, setSoundEnabled } from './sound.js?v=64';
+import * as L from './leagues.js?v=64';
+import { initAnalytics, track } from './analytics.js?v=64';
+import { privacyHtml, termsHtml } from './legal.js?v=64';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -466,7 +466,7 @@ function matchCard(cls = '') {
 
 function prevLine(prev) {
   if (!prev) return '';
-  if (S.game === 'x01') return `${esc(prev.name)} scored <b>${prev.points}</b> with that visit${prev.bonus ? ' (incl. Manager Bonus)' : ''}.`;
+  if (S.game === 'x01') return `${esc(prev.name)} scored <b>${prev.points}</b> with that visit.`;
   if (S.game === 'killer') return `${esc(prev.name)} hit <b>${prev.hits}</b> of 3${prev.note ? `: ${esc(prev.note)}` : '.'}`;
   if (S.game === 'clock') return `${esc(prev.name)} moved on <b>${prev.hits}</b> ${prev.hits === 1 ? 'target' : 'targets'}.`;
   return '';
@@ -1647,7 +1647,7 @@ async function startLeg() {
   S.players.forEach(resetPlayer);
   track('Game started', gameInfo());
   S.legOver = false;
-  S.pending = null; S.bonusDue = false;
+  S.pending = null;
   S.round = 0;
   S.matchesThisLeg = 0;
   await newRound();
@@ -1841,44 +1841,13 @@ function hitVictim(i) {
   if (alive.length === 1) { S.legOver = true; setTimeout(() => legWon(p), 650); }
 }
 
-function managerBonus() {
-  const m = S.match;
-  openModal(`
-    <p class="eyebrow">🔥 Three from three</p>
-    <h2>Tactical manager bonus</h2>
-    <p>Name the manager of <b>either</b> team for another <b>−${MANAGER_BONUS}</b>.</p>
-    <p class="hint">${esc(m.home)} v ${esc(m.away)}, ${fmtDate(m.date)}</p>
-    <form data-form="bonus" autocomplete="off">
-      <input class="text" data-bonus placeholder="Manager’s name" autocapitalize="words" spellcheck="false">
-      <div class="row">
-        <button class="btn ghost" type="button" data-act="bonus-skip">Pass</button>
-        <button class="btn primary" type="submit">Go for it</button>
-      </div>
-    </form>`, { dismissable: false });
-}
-
-function resolveBonus(guess) {
-  S.bonusDue = false;
-  const p = current();
-  const hit = guess ? checkManager(S.match, guess) : null;
-  track('Manager bonus', { result: hit ? 'Correct' : guess ? 'Wrong' : 'Passed' });
-  S.visit.bonus = hit ? MANAGER_BONUS : 0;
-  if (hit) { p.score -= MANAGER_BONUS; sfx.bonus(); buzz([40, 60, 40]); unlock('gaffer'); } else { sfx.miss(); }
-  openModal(`
-    <h2>${hit ? '🔥 Bonus!' : 'No bonus'}</h2>
-    <p>${hit ? `${esc(hit)}, correct. <b>−${MANAGER_BONUS}</b>` : `The managers were <b>${esc(S.match.managers[0])}</b> and <b>${esc(S.match.managers[1])}</b>.`}</p>
-    <button class="btn primary big" data-act="close">Continue</button>`, {
-    onClose: () => { render(); if (hit) pulse(currentIdx()); if (p.score <= 0) { S.legOver = true; setTimeout(() => legWon(p), 500); } },
-  });
-}
-
 function endVisit() {
-  if (S.legOver || S.pending || S.bonusDue) return;
+  if (S.legOver || S.pending) return;
   const p = current();
   const hits = S.visit.filter(d => d.res.correct).length;
-  const pts = S.visit.reduce((t, d) => t + (d.res.correct ? d.res.points : 0), 0) + (S.visit.bonus || 0);
+  const pts = S.visit.reduce((t, d) => t + (d.res.correct ? d.res.points : 0), 0);
   const notes = S.visit.map(d => d.extra).filter(x => /knocked out|loses a life|Killer!/.test(x)).map(x => x.trim());
-  S.lastVisits.push({ name: S.teamGame ? `${thrower(p)} (${p.name})` : p.name, points: pts, bonus: !!S.visit.bonus, hits, note: notes.join(' ') });
+  S.lastVisits.push({ name: S.teamGame ? `${thrower(p)} (${p.name})` : p.name, points: pts, hits, note: notes.join(' ') });
   if (S.teamGame && p.members) p.mIdx += 1;   // next teammate throws this team's next visit
   // move to the next player who is still in
   do { S.turnIdx += 1; } while (S.turnIdx < S.turnOrder.length && S.players[S.turnOrder[S.turnIdx]].out);
@@ -2134,7 +2103,6 @@ document.addEventListener('click', async e => {
     case 'cat': e.preventDefault(); if (S.cat !== v) S.choices = null; S.cat = v; S.error = null; renderPlay(); break;
     case 'victim': hitVictim(Number(v)); break;
     case 'endvisit': endVisit(); break;
-    case 'bonus-skip': resolveBonus(''); break;
     case 'key': answerKey(); break;
     case 'prev-key': if (S.prev) { track('Last match answers', gameInfo()); openModal(answerKeyHtml(S.prev.m, true, S.prev.got)); } break;
     case 'forfeit': track('Answer key opened', gameInfo({ round: S.round })); S.legOver = true; openModal(answerKeyHtml(), { dismissable: false }); break;
@@ -2161,7 +2129,6 @@ document.addEventListener('submit', e => {
   const f = e.target.dataset.form;
   if (f === 'throw' && S.cat) throwDart();
   if (f === 'guess') submitGuess();
-  if (f === 'bonus') resolveBonus($('[data-bonus]').value);
   if (f === 'new-league') {
     const name = ($('[data-new-league]') || {}).value || '';
     if (!name.trim()) return;
