@@ -1066,18 +1066,20 @@ function dailyOver() {
 }
 
 // ---------- Daily leaderboard (anonymous totals from /api/daily) ----------
+const BOARD_MIN = 3;   // players today (including you) before any shared numbers show
 const flag = cc => cc && cc !== 'XX' ? String.fromCodePoint(...[...cc].map(c => 127397 + c.charCodeAt(0))) : '🌍';
 function boardHtml(b, mine) {
-  if (!b || !b.count) return '';
+  // Quiet days look sad, so only show the card once a few people have played today
+  if (!b || b.count < BOARD_MIN) return '';
   const rows = [];
-  if (b.top) rows.push(`<div class="b-row"><span>🏆 Today’s top</span><b>${b.top.p} ${flag(b.top.cc)}</b></div>`);
+  if (b.top) rows.push(mine != null && mine >= b.top.p ? `<div class="b-row"><span>🏆 Today’s top</span><b>That’s you! 🔥</b></div>` : `<div class="b-row"><span>🏆 Today’s top</span><b>${b.top.p} ${flag(b.top.cc)}</b></div>`);
   if (b.count >= 5 && mine != null) {
     const below = Object.entries(b.hist).reduce((t, [p, c]) => t + (Number(p) < mine ? c : 0), 0);
     rows.push(`<div class="b-row"><span>📊 You beat</span><b>${Math.round(below / (b.count - 1) * 100)}% of players</b></div>`);
   }
   if (b.countries.length > 1) rows.push(`<div class="b-row b-cc">${b.countries.map((c, i) => `<span>${['🥇', '🥈', '🥉'][i]} ${flag(c.cc)} ${c.p}</span>`).join('')}</div>`);
   if (b.best && b.best.n !== b.n) rows.push(`<div class="b-row"><span>🌟 All-time best</span><b>${b.best.p} ${flag(b.best.cc)} <small>Daily #${b.best.n}</small></b></div>`);
-  return `<p class="b-head">Today’s Daily · ${b.count} ${b.count === 1 ? 'player' : 'players'}</p>${rows.join('')}`;
+  return `<p class="b-head">Today’s Daily${b.count >= 20 ? ` · ${b.count} players` : ''}</p>${rows.join('')}`;
 }
 function fillBoard(mine) {
   const el = () => $('[data-board]');
