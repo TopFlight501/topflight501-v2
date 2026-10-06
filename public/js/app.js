@@ -1,9 +1,9 @@
-import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=67';
-import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=67';
-import { sfx, setSoundEnabled } from './sound.js?v=67';
-import * as L from './leagues.js?v=67';
-import { initAnalytics, track } from './analytics.js?v=67';
-import { privacyHtml, termsHtml } from './legal.js?v=67';
+import { getSeasons, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=68';
+import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=68';
+import { sfx, setSoundEnabled } from './sound.js?v=68';
+import * as L from './leagues.js?v=68';
+import { initAnalytics, track } from './analytics.js?v=68';
+import { privacyHtml, termsHtml } from './legal.js?v=68';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
