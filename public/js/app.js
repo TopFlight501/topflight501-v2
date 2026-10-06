@@ -233,6 +233,17 @@ function render() {
 function renderHub() {
   app.innerHTML = `
   <section class="hub">
+    ${S.welcome ? `<div class="welcome" role="note">
+      <button type="button" class="welcome-x" data-act="welcome-x" aria-label="Close welcome message">✕</button>
+      <h3>👋 Welcome to Top Flight 501</h3>
+      <p>Thanks for coming in! A <b>free</b> game to test your Premier League knowledge, scored like darts.</p>
+      <ul>
+        <li><span>🙋</span>Play on your own</li>
+        <li><span>⚔️</span>Take on your mates</li>
+        <li><span>👥</span>Or go team v team, like a proper quiz night</li>
+      </ul>
+      <p class="welcome-small">No sign-up, no app to download. Just pick a game below.</p>
+    </div>` : ''}
     <p class="eyebrow">Premier League trivia, darts style</p>
     <h2>Pick your game</h2>
     <div class="games">
@@ -2063,7 +2074,7 @@ document.addEventListener('click', async e => {
   }
   const act = b.dataset.act, v = b.dataset.v;
   switch (act) {
-    case 'pick': if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } track('Game picked', { game: GAMES[v] ? GAMES[v].title : v }); S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
+    case 'pick': if (S.welcome) { S.welcome = false; store.set('welcomed', true); } if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } track('Game picked', { game: GAMES[v] ? GAMES[v].title : v }); S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
     case 'hub': goHub(); break;
     case 'daily':
       if (S.busy) break;
@@ -2098,6 +2109,7 @@ document.addEventListener('click', async e => {
       track('Pundit clue', gameInfo({ category: TARGET_INFO[S.cat].short }));
       renderPlay(); break;
     }
+    case 'welcome-x': S.welcome = false; store.set('welcomed', true); track('Welcome closed'); renderHub(); break;
     case 'coach-x': store.set('tipClassic', true); track('Tip dismissed'); renderPlay(); break;
     case 'diff': S.easy = v === 'easy'; S.hard = v === 'hard'; track('Setting changed', { setting: 'difficulty', value: v }); renderSetup(); break;
     case 'choose': throwDart(v); break;
@@ -2257,6 +2269,7 @@ document.addEventListener('keydown', e => {
 (async function boot() {
   initAnalytics();
   store.set('visits', store.get('visits', 0) + 1);
+  S.welcome = store.get('visits', 0) <= 1 && !store.get('welcomed', false);
   const saved = store.get('setup', null);
   if (saved) {
     Object.assign(S, {

@@ -683,3 +683,14 @@ select option { background: var(--card); color: var(--ink); }
 .clue-btn { display: block; margin: 8px 0 2px auto; background: none; border: 0; padding: 4px 2px; color: var(--teal); font: inherit; font-weight: 700; font-size: .92rem; cursor: pointer; }
 .clue-btn span { font-weight: 500; opacity: .7; font-size: .8rem; }
 .clue { margin: 0 0 10px; padding: 10px 13px; border-radius: 12px; background: rgba(245,197,24,.14); border: 1px solid rgba(245,197,24,.5); font-size: .92rem; line-height: 1.4; animation: pop180 .3s ease-out; }
+
+/* First-visit welcome card */
+.welcome { position: relative; margin: 0 0 18px; padding: 18px 44px 16px 18px; border-radius: 20px; background: linear-gradient(135deg, rgba(43,208,158,.16), rgba(43,208,158,.05)); border: 1px solid rgba(43,208,158,.45); animation: pop180 .35s ease-out; }
+.welcome h3 { margin: 0 0 6px; font-size: 1.2rem; }
+.welcome p { margin: 0; line-height: 1.45; }
+.welcome ul { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 6px; }
+.welcome li { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.welcome li span { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--card); border: 1px solid var(--line); }
+.welcome .welcome-small { font-size: .85rem; opacity: .75; }
+.welcome-x { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: inherit; opacity: .6; font-size: 1rem; cursor: pointer; }
+.welcome-x:hover { opacity: 1; background: rgba(0,0,0,.06); }
