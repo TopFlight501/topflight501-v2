@@ -1381,7 +1381,7 @@ const FOLLOW_LINKS = [
   ['X', 'https://x.com/topflight501_', `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.2 2.5h3.3l-7.2 8.3 8.5 11.2h-6.7l-5.2-6.8-6 6.8H1.6l7.7-8.8L1.2 2.5H8l4.7 6.2zm-1.2 17.5h1.8L7 4.4H5.1z"/></svg>`],
 ];
 function followRow(where) {
-  return `<div class="follow-row"><span>Follow for new quizzes</span>${FOLLOW_LINKS.map(([n, u, i]) => `<a href="${u}" target="_blank" rel="noopener" data-umami-event="Follow: ${n}" data-umami-event-from="${where}" aria-label="Follow us on ${n}" title="${n}">${i}</a>`).join('')}</div>`;
+  return `<div class="follow-row"><span>Follow us here</span>${FOLLOW_LINKS.map(([n, u, i]) => `<a href="${u}" target="_blank" rel="noopener" data-umami-event="Follow: ${n}" data-umami-event-from="${where}" aria-label="Follow us on ${n}" title="${n}">${i}</a>`).join('')}</div>`;
 }
 
 // ---------- "what next?": one link at the end of a game ----------
