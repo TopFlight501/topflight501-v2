@@ -729,3 +729,11 @@ select option { background: var(--card); color: var(--ink); }
 .quick-pill { flex: none; border: 1.5px solid rgba(43,208,158,.6); background: rgba(43,208,158,.1); color: inherit; font: inherit; font-weight: 700; font-size: .9rem; padding: 7px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
 .quick-pill:hover { background: rgba(43,208,158,.2); }
 
+
+/* follow-us row on end screens, welcome and achievements */
+.follow-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 14px auto 2px; padding-top: 12px; border-top: 1px solid var(--line); font-size: .82rem; color: var(--muted); }
+.follow-row span { margin-right: 2px; }
+.follow-row a { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); color: var(--teal); text-decoration: none; }
+.follow-row a svg { width: 16px; height: 16px; }
+.follow-row a:hover { border-color: var(--teal); }
+.welcome .follow-row { justify-content: flex-start; margin-top: 10px; }

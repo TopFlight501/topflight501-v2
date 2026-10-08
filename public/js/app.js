@@ -257,6 +257,7 @@ function renderHub() {
         <li><span>👥</span>Or go team v team, like a proper quiz night</li>
       </ul>
       <p class="welcome-small">No sign-up, no app to download. Just pick a game below.</p>
+      ${followRow('Welcome')}
     </div>` : ''}
     <p class="eyebrow">Premier League trivia, darts style</p>
     <div class="hub-head"><h2>Pick your game</h2><button type="button" class="quick-pill" data-act="quick" title="Solo, 301, straight in. No setup." aria-label="Quick play: solo 301, straight in">⚡ Quick play</button></div>
@@ -872,7 +873,8 @@ function sentOffWon(p) {
       <button class="btn primary" data-act="nextleg">Play again</button>
     </div>
     ${SHARE_BTN}
-    ${nextNudge('sentoff')}`, { dismissable: false });
+    ${nextNudge('sentoff')}
+    ${followRow('Sent Off')}`, { dismissable: false });
 }
 
 // ---------- sharing ----------
@@ -1157,7 +1159,8 @@ function showPastResult() {
     <p class="daily-emoji">${dailyEmoji(S.visit)}</p>
     <p class="hint center">${hits} of ${DAILY_DARTS} darts hit · replay, so no streak or leaderboard</p>
     <div class="row"><button class="btn ghost" data-act="past-key">Answers</button><button class="btn primary" data-act="past">Another past Daily</button></div>
-    <button class="btn link" data-act="daily-close">Back to games</button>`, { dismissable: false });
+    <button class="btn link" data-act="daily-close">Back to games</button>
+    ${followRow('Past Daily')}`, { dismissable: false });
 }
 
 // ---------- Daily leaderboard (anonymous totals from /api/daily) ----------
@@ -1206,6 +1209,7 @@ function showDailyResult() {
     <button class="btn link" data-act="past">📅 Play past Dailies</button>
     <button class="btn link" data-act="daily-close">Back to games</button>
     ${store.get('remindAdded', false) ? nextNudge('daily') : '<button class="btn link remind-link" data-act="reminder">⏰ Remind me every day</button>'}
+    ${followRow('Daily')}
     <p class="hint center small">Scores and streak are saved on this device. Playing elsewhere? Use Settings → Backup to move them.</p>`, { dismissable: false });
   fillBoard(saved.points);
 }
@@ -1366,7 +1370,18 @@ function achievementsHtml() {
   const n = ACHIEVEMENTS.filter(a => got[a.id]).length;
   return `<span class="label">Achievements <span class="opt">${n} of ${ACHIEVEMENTS.length}</span></span>
     <div class="ach-grid">${ACHIEVEMENTS.map(a => `<div class="ach ${got[a.id] ? 'got' : ''}" title="${esc(a.desc)}">
-      <span class="ach-i">${got[a.id] ? a.icon : '🔒'}</span><span class="ach-n">${esc(a.name)}</span><span class="ach-d">${esc(a.desc)}</span></div>`).join('')}</div>`;
+      <span class="ach-i">${got[a.id] ? a.icon : '🔒'}</span><span class="ach-n">${esc(a.name)}</span><span class="ach-d">${esc(a.desc)}</span></div>`).join('')}</div>
+    ${followRow('Achievements')}`;
+}
+
+// ---------- small "follow us" row for end screens, welcome and achievements ----------
+const FOLLOW_LINKS = [
+  ['Instagram', 'https://www.instagram.com/topflight501_/', `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.1" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.3" fill="currentColor"/></svg>`],
+  ['TikTok', 'https://www.tiktok.com/@topflight501', `<svg viewBox="-1.5 -1.5 27 27" aria-hidden="true"><path fill="currentColor" d="M12.53.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>`],
+  ['X', 'https://x.com/topflight501_', `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.2 2.5h3.3l-7.2 8.3 8.5 11.2h-6.7l-5.2-6.8-6 6.8H1.6l7.7-8.8L1.2 2.5H8l4.7 6.2zm-1.2 17.5h1.8L7 4.4H5.1z"/></svg>`],
+];
+function followRow(where) {
+  return `<div class="follow-row"><span>Follow for new quizzes</span>${FOLLOW_LINKS.map(([n, u, i]) => `<a href="${u}" target="_blank" rel="noopener" data-umami-event="Follow: ${n}" data-umami-event-from="${where}" aria-label="Follow us on ${n}" title="${n}">${i}</a>`).join('')}</div>`;
 }
 
 // ---------- "what next?": one link at the end of a game ----------
@@ -2053,7 +2068,8 @@ function legWon(p) {
       <button class="btn primary" data-act="nextleg">${solo ? 'Go again' : 'Play again'}</button>
     </div>
     ${shareBtn()}
-    ${nextNudge(S.game)}`, { dismissable: false });
+    ${nextNudge(S.game)}
+    ${followRow('Game won')}`, { dismissable: false });
 }
 
 function suddenOver() {
@@ -2079,7 +2095,8 @@ function suddenOver() {
       <button class="btn primary" data-act="nextleg">Go again</button>
     </div>
     <div class="row slim"><button class="btn link" data-act="newgame">Change game</button>${shareBtn()}</div>
-    ${nextNudge('sudden')}`, { dismissable: false });
+    ${nextNudge('sudden')}
+    ${followRow('Sudden death')}`, { dismissable: false });
 }
 
 function answerKey() {
