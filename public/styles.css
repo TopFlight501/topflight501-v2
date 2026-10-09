@@ -741,3 +741,13 @@ select option { background: var(--card); color: var(--ink); }
 /* Spin the Board card on the hub */
 a.game-card { text-decoration: none; color: inherit; }
 .new-tag { display: inline-block; vertical-align: middle; margin-left: 6px; background: #F5C518; color: #2a2100; font-size: .62rem; font-weight: 900; letter-spacing: .1em; padding: 3px 7px; border-radius: 20px; }
+
+/* Settings → Game order */
+.order-list { list-style: none; margin: 8px 0 6px; padding: 0; display: grid; gap: 6px; }
+.order-list li { display: flex; align-items: center; gap: 10px; background: var(--soft); border-radius: 12px; padding: 6px 6px 6px 12px; }
+.ord-n { width: 18px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ord-i { font-size: 1.15rem; }
+.ord-t { flex: 1; font-weight: 700; color: var(--ink); }
+.ord-b { width: 38px; height: 34px; border: 1px solid var(--line); background: var(--card); color: var(--teal); border-radius: 10px; font-size: .8rem; cursor: pointer; }
+.ord-b:disabled { opacity: .3; cursor: default; }
+.ord-b:not(:disabled):active { transform: scale(.94); }

@@ -194,6 +194,12 @@ function settingsHtml() {
   </div>
   <div class="field">${achievementsHtml()}</div>
   <div class="field">
+    <span class="label">Game order</span>
+    <p class="hint">Put your favourite games at the top of the home screen. The Daily Match always stays first.</p>
+    ${orderListHtml()}
+    <button class="linkish" data-act="order-reset">Reset to the usual order</button>
+  </div>
+  <div class="field">
     <span class="label">Daily Match reminder</span>
     <button class="btn ghost" data-act="reminder">⏰ Set a daily reminder</button>
   </div>
@@ -208,6 +214,44 @@ function settingsHtml() {
     <p class="hint">Only want to forget your saved names and club? <button class="linkish" data-act="clear-names">Clear names &amp; club</button></p>
   </div>
   <button class="btn primary big" data-act="close">Done</button>`;
+}
+
+// ---------- game order (Settings → Game order) ----------
+const SPIN_CARD = { title: 'Spin the Board', icon: '🌀', blurb: 'A spinning dartboard of 20 clubs. Tap to throw, then answer for the club you hit. Treble = scorer!', tags: ['Pick a season', '1–4 players'] };
+const ORDER_DEFAULT = ['spin', 'x01', 'killer', 'clock', 'sudden', 'sentoff'];
+function gameOrder() {
+  const all = ['spin', ...Object.keys(GAMES).filter(k => !GAMES[k].hidden)];
+  const saved = (store.get('gameOrder', []) || []).filter(k => all.includes(k));
+  const base = saved.length ? saved : ORDER_DEFAULT.filter(k => all.includes(k));
+  return [...base, ...all.filter(k => !base.includes(k))];
+}
+const gameMeta = k => (k === 'spin' ? SPIN_CARD : GAMES[k]);
+function gameCardHtml(k) {
+  const g = gameMeta(k);
+  const inner = `<span class="game-icon" aria-hidden="true">${g.icon}</span>
+          <span class="game-body">
+            <span class="game-title">${g.title}${k === 'spin' ? ' <span class="new-tag">NEW</span>' : ''}</span>
+            <span class="game-blurb">${g.blurb}</span>
+            <span class="game-tags">${g.tags.map(t => `<span>${t}</span>`).join('')}</span>
+          </span>
+          <span class="game-go" aria-hidden="true">›</span>`;
+  return k === 'spin'
+    ? `<a class="game-card spin-card" href="spin.html" data-umami-event="Game picked" data-umami-event-game="Spin the Board">${inner}</a>`
+    : `<button class="game-card" data-act="pick" data-v="${k}">${inner}</button>`;
+}
+function orderListHtml() {
+  const o = gameOrder();
+  return `<ol class="order-list">${o.map((k, i) => `<li><span class="ord-n">${i + 1}</span><span class="ord-i" aria-hidden="true">${gameMeta(k).icon}</span><span class="ord-t">${gameMeta(k).title}</span>
+    <button class="ord-b" data-act="order" data-v="${k}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move ${gameMeta(k).title} up">▲</button>
+    <button class="ord-b" data-act="order" data-v="${k}" data-d="1" ${i === o.length - 1 ? 'disabled' : ''} aria-label="Move ${gameMeta(k).title} down">▼</button></li>`).join('')}</ol>`;
+}
+function moveGame(k, d) {
+  const o = gameOrder(), i = o.indexOf(k), j = i + d;
+  if (i < 0 || j < 0 || j >= o.length) return;
+  [o[i], o[j]] = [o[j], o[i]]; store.set('gameOrder', o);
+  const el = document.querySelector('.order-list'); if (el) el.outerHTML = orderListHtml();
+  const btn = document.querySelector(`.order-list [data-v="${k}"][data-d="${d}"]`) || document.querySelector(`.order-list [data-v="${k}"]:not([disabled])`); if (btn) btn.focus({ preventScroll: true });
+  if (S.screen === 'hub') renderHub();
 }
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -263,26 +307,7 @@ function renderHub() {
     <div class="hub-head"><h2>Pick your game</h2><button type="button" class="quick-pill" data-act="quick" title="Solo, 301, straight in. No setup." aria-label="Quick play: solo 301, straight in">⚡ Quick play</button></div>
     <div class="games">
       ${dailyBanner()}
-      <a class="game-card spin-card" href="spin.html" data-umami-event="Game picked" data-umami-event-game="Spin the Board">
-        <span class="game-icon" aria-hidden="true">🌀</span>
-        <span class="game-body">
-          <span class="game-title">Spin the Board <span class="new-tag">NEW</span></span>
-          <span class="game-blurb">A spinning dartboard of 20 clubs. Tap to throw, then answer for the club you hit. Treble = scorer!</span>
-          <span class="game-tags"><span>Pick a season</span><span>1–4 players</span></span>
-        </span>
-        <span class="game-go" aria-hidden="true">›</span>
-      </a>
-
-      ${Object.entries(GAMES).filter(([, g]) => !g.hidden).map(([k, g]) => `
-        <button class="game-card" data-act="pick" data-v="${k}">
-          <span class="game-icon" aria-hidden="true">${g.icon}</span>
-          <span class="game-body">
-            <span class="game-title">${g.title}</span>
-            <span class="game-blurb">${g.blurb}</span>
-            <span class="game-tags">${g.tags.map(t => `<span>${t}</span>`).join('')}</span>
-          </span>
-          <span class="game-go" aria-hidden="true">›</span>
-        </button>`).join('')}
+      ${gameOrder().map(gameCardHtml).join('')}
     </div>
     ${LEAGUES_ENABLED ? `<button class="game-card league-card" data-act="leagues">
       <span class="game-icon" aria-hidden="true">🏆</span>
@@ -2266,6 +2291,8 @@ document.addEventListener('click', async e => {
     case 'begin': S.busy = true; renderSetup(); await begin(); break;
     case 'rules': openModal(rulesHtml()); break;
     case 'settings': openModal(settingsHtml()); break;
+    case 'order': moveGame(v, Number(b.dataset.d)); track('Game order changed'); break;
+    case 'order-reset': store.set('gameOrder', []); { const el = document.querySelector('.order-list'); if (el) el.outerHTML = orderListHtml(); } if (S.screen === 'hub') renderHub(); toast('Back to the usual order'); break;
     case 'set': {
       const k = b.dataset.k; settings[k] = k === 'theme' ? v : v === 'true';
       track('Setting changed', { setting: k, value: String(settings[k]) });
