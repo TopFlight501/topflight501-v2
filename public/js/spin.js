@@ -219,6 +219,8 @@ function renderSetup() {
     <p class="eyebrow"><a href="./" class="back">‹ All games</a></p>
     <h2>🌀 Spin the Board</h2>
     <p class="hint">A spinning dartboard of 20 Premier League clubs. <b>Tap the board</b> to throw. Where the dart lands picks the <b>club</b> and the <b>question</b>, from a real match they played.</p>
+    <button class="btn ghost watch-btn" data-act="watch">${G.watch ? '✕ Hide video' : '▶ Watch how to play (17s)'}</button>
+    ${G.watch ? `<video class="tut-video" poster="tutorials/spin.jpg?v=1" autoplay muted playsinline loop controls width="720" height="960"><source src="tutorials/spin.mp4?v=1" type="video/mp4"><source src="tutorials/spin.webm?v=1" type="video/webm"></video>` : ''}
     <div class="legend">
       <div><span class="sw s1"></span>Single · name anyone who played <b>20</b></div>
       <div><span class="sw s3"></span>Treble · name a scorer <b>60</b></div>
@@ -301,6 +303,7 @@ app.addEventListener('click', async e => {
   switch (b.dataset.act) {
     case 'n': G.n = +v; renderSetup(); break;
     case 'speed': G.speed = v; renderSetup(); break;
+    case 'watch': G.watch = !G.watch; if (G.watch) track('Tutorial watched', { game: 'Spin the Board' }); renderSetup(); break;
     case 'start': case 'again':
       if (b.dataset.act === 'start') document.querySelectorAll('[data-name]').forEach(i => { G.names[+i.dataset.name] = i.value.trim(); });
       G.players = Array.from({ length: G.n }, (_, i) => ({ name: G.n === 1 ? 'You' : (G.names[i] || `Player ${i + 1}`), pts: 0 }));
