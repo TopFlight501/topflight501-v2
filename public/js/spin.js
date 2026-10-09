@@ -4,6 +4,7 @@ import { getSeasons, getClubs, randomMatch, seasonLabel } from './data.js?v=75';
 import { checkDart } from './answers.js?v=75';
 const nm = p => p.web || p.full;
 import { sfx } from './sound.js?v=75';
+import { initAnalytics, track } from './analytics.js?v=75';
 
 const COLOURS = {
   'Arsenal': ['#EF0107', '#FFFFFF'], 'Aston Villa': ['#670E36', '#95BFE5'], 'Bournemouth': ['#DA291C', '#111111'], 'Brentford': ['#E30613', '#FFFFFF'],
@@ -154,7 +155,7 @@ function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch {}
 
 // ---------- questions ----------
 async function findMatch(club, ring) {
-  const seasons = G.clubSeasons[club] || G.seasons;
+  const seasons = [G.season];
   for (let i = 0; i < 25; i++) {
     const m = await randomMatch(seasons, [club]);
     const side = m.home === club ? 0 : 1;
@@ -205,14 +206,19 @@ function nextDart() {
   G.target = spinSpeed(); renderPlay();
 }
 
+function setSeason(se) {
+  G.season = se;
+  G.clubs = [...(G.map[se] || [])].sort().slice(0, 20);
+}
+
 // ---------- screens ----------
 function renderSetup() {
   G.screen = 'setup';
   app.innerHTML = `
   <section class="card">
-    <p class="eyebrow"><a href="./" class="back">‹ All games</a> · Preview</p>
-    <h2>🎡 Spin the Board</h2>
-    <p class="hint">A dartboard of the 20 clubs from this season, spinning. <b>Tap the board</b> to throw. Where the dart lands picks the <b>club</b> and the <b>question</b>, from a real match they played.</p>
+    <p class="eyebrow"><a href="./" class="back">‹ All games</a></p>
+    <h2>🌀 Spin the Board</h2>
+    <p class="hint">A spinning dartboard of 20 Premier League clubs. <b>Tap the board</b> to throw. Where the dart lands picks the <b>club</b> and the <b>question</b>, from a real match they played.</p>
     <div class="legend">
       <div><span class="sw s1"></span>Single · name anyone who played <b>20</b></div>
       <div><span class="sw s3"></span>Treble · name a scorer <b>60</b></div>
@@ -222,6 +228,9 @@ function renderSetup() {
     <p class="label">Players</p>
     <div class="seg count">${[1, 2, 3, 4].map(n => `<button class="seg-btn ${G.n === n ? 'on' : ''}" data-act="n" data-v="${n}">${n === 1 ? 'Solo' : n}</button>`).join('')}</div>
     ${G.n > 1 ? `<div class="names">${Array.from({ length: G.n }, (_, i) => `<input class="text" data-name="${i}" maxlength="16" placeholder="Player ${i + 1}" value="${esc(G.names[i])}">`).join('')}</div>` : ''}
+    <p class="label">Season</p>
+    <select class="text season-sel" data-season aria-label="Season">${[...G.seasons].reverse().map(se => `<option value="${se}" ${se === G.season ? 'selected' : ''}>${esc(seasonLabel(se))}${se === G.seasons[G.seasons.length - 1] ? ' (this season)' : ''}</option>`).join('')}</select>
+    <p class="hint small">The board fills with that season’s 20 clubs, and every question comes from that season.</p>
     <p class="label">Spin speed</p>
     <div class="seg">${[['normal', 'Normal'], ['hard', '🌪️ Fast']].map(([v, l]) => `<button class="seg-btn ${G.speed === v ? 'on' : ''}" data-act="speed" data-v="${v}">${l}</button>`).join('')}</div>
     <p class="hint small">${ROUNDS} rounds, ${DARTS} darts each. Most points wins.</p>
@@ -265,7 +274,7 @@ function renderPlay() {
   }
   const keep = $('.board-wrap');
   if (!keep) {
-    app.innerHTML = `<div class="topbar"><a href="./" class="back">‹ Quit</a><span>🎡 Spin the Board</span></div>${'<div id="sbw"></div>'}<div class="board-wrap">${boardSvg()}<div class="pointer" aria-hidden="true"></div></div><div id="panel"></div>`;
+    app.innerHTML = `<div class="topbar"><a href="./" class="back">‹ Quit</a><span>🌀 Spin the Board</span></div>${'<div id="sbw"></div>'}<div class="board-wrap">${boardSvg()}<div class="pointer" aria-hidden="true"></div></div><div id="panel"></div>`;
     $('.board').addEventListener('pointerdown', onBoardTap);
   }
   $('#sbw').innerHTML = scoreboard();
@@ -276,7 +285,7 @@ function renderEnd() {
   G.screen = 'end'; G.target = 0;
   const sorted = [...G.players].sort((a, b) => b.pts - a.pts);
   const solo = G.players.length === 1, w = sorted[0];
-  sfx.win();
+  sfx.win(); track('Game finished', { game: 'Spin the Board', players: G.players.length, points: w.pts, season: G.season });
   app.innerHTML = `<section class="card center">
     <p class="eyebrow">Full time</p>
     <h2>${solo ? `You scored ${w.pts}` : `🏆 ${esc(w.name)} wins!`}</h2>
@@ -296,6 +305,7 @@ app.addEventListener('click', async e => {
       if (b.dataset.act === 'start') document.querySelectorAll('[data-name]').forEach(i => { G.names[+i.dataset.name] = i.value.trim(); });
       G.players = Array.from({ length: G.n }, (_, i) => ({ name: G.n === 1 ? 'You' : (G.names[i] || `Player ${i + 1}`), pts: 0 }));
       Object.assign(G, { round: 1, dart: 0, turn: 0, q: null, last: null, handover: G.n > 1 });
+      track('Game started', { game: 'Spin the Board', players: G.n, season: G.season, speed: G.speed });
       app.innerHTML = ''; G.target = spinSpeed(); renderPlay(); break;
     case 'ready': G.handover = false; renderPlay(); break;
     case 'next': nextDart(); break;
@@ -303,17 +313,20 @@ app.addEventListener('click', async e => {
     case 'bull-club': { G.busy = true; $('#panel').innerHTML = '<div class="panel center"><p class="hint">Finding a match…</p></div>'; const found = await findMatch(v, 'bull'); G.q = found ? { ring: 'bull', club: v, ...found, claimed: new Map() } : null; G.busy = false; renderPlay(); break; }
   }
 });
+app.addEventListener('change', e => { if (e.target.matches('[data-season]')) { setSeason(e.target.value); track('Spin season', { season: e.target.value }); } });
 app.addEventListener('submit', e => { e.preventDefault(); if (G.q && !G.q.pickClub) answerQ(e.target); });
 
 document.body.insertAdjacentHTML('beforeend', '<svg id="fly" aria-hidden="true"><g id="fly-g"></g></svg>');
 // ---------- boot ----------
 window.__spinG = G; // preview only (used by the demo recording)
 (async () => {
+  initAnalytics();
   G.seasons = await getSeasons();
   const map = await getClubs();
   const latest = G.seasons[G.seasons.length - 1];
-  G.clubs = (map[latest] || []).slice(0, 20);
-  G.clubs.forEach(c => { G.clubSeasons[c] = G.seasons.filter(s => (map[s] || []).includes(c)); });
+  G.map = map;
+  const want = new URLSearchParams(location.search).get('season');
+  setSeason(G.seasons.includes(want) ? want : latest);
   renderSetup();
   requestAnimationFrame(tick);
 })();

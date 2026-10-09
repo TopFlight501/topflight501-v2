@@ -263,6 +263,15 @@ function renderHub() {
     <div class="hub-head"><h2>Pick your game</h2><button type="button" class="quick-pill" data-act="quick" title="Solo, 301, straight in. No setup." aria-label="Quick play: solo 301, straight in">⚡ Quick play</button></div>
     <div class="games">
       ${dailyBanner()}
+      <a class="game-card spin-card" href="spin.html" data-umami-event="Game picked" data-umami-event-game="Spin the Board">
+        <span class="game-icon" aria-hidden="true">🌀</span>
+        <span class="game-body">
+          <span class="game-title">Spin the Board <span class="new-tag">NEW</span></span>
+          <span class="game-blurb">A spinning dartboard of 20 clubs. Tap to throw, then answer for the club you hit. Treble = scorer!</span>
+          <span class="game-tags"><span>Pick a season</span><span>1–4 players</span></span>
+        </span>
+        <span class="game-go" aria-hidden="true">›</span>
+      </a>
 
       ${Object.entries(GAMES).filter(([, g]) => !g.hidden).map(([k, g]) => `
         <button class="game-card" data-act="pick" data-v="${k}">

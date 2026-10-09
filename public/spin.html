@@ -4,12 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Spin the Board | Top Flight 501</title>
-  <meta name="robots" content="noindex">
+  <meta name="description" content="Spin the Board: a spinning dartboard of Premier League clubs. Tap to throw, then answer a question about the club you hit. Free, no sign-up.">
+  <meta property="og:title" content="Spin the Board | Top Flight 501">
+  <meta property="og:image" content="https://topflight501.com/img/og.jpg">
   <link rel="icon" type="image/png" href="img/icon-192.png?v=2">
   <script>
     try { var s = JSON.parse(localStorage.getItem('tf501:settings') || '{}'); if (s.theme === 'light' || s.theme === 'dark') document.documentElement.setAttribute('data-theme', s.theme); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="styles.css?v=57">
+  <link rel="stylesheet" href="styles.css?v=58">
   <style>
     body { max-width: 520px; margin: 0 auto; padding: 12px 16px 40px; }
     #spin-app .card { padding: 18px; }
@@ -67,6 +69,7 @@
 </head>
 <body>
   <main id="spin-app"></main>
-  <script type="module" src="js/spin.js?v=3"></script>
+  <footer class="foot"><p class="disclaimer">A free fan-made game. Not affiliated with or endorsed by the Premier League.<br>Match data from Fantasy Premier League records.</p></footer>
+  <script type="module" src="js/spin.js?v=4"></script>
 </body>
 </html>

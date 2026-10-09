@@ -737,3 +737,7 @@ select option { background: var(--card); color: var(--ink); }
 .follow-row a svg { width: 16px; height: 16px; }
 .follow-row a:hover { border-color: var(--teal); }
 .welcome .follow-row { justify-content: flex-start; margin-top: 10px; }
+
+/* Spin the Board card on the hub */
+a.game-card { text-decoration: none; color: inherit; }
+.new-tag { display: inline-block; vertical-align: middle; margin-left: 6px; background: #F5C518; color: #2a2100; font-size: .62rem; font-weight: 900; letter-spacing: .1em; padding: 3px 7px; border-radius: 20px; }
