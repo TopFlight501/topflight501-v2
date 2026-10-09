@@ -1,5 +1,5 @@
 import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=74';
-import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=74';
+import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=76';
 import { sfx, setSoundEnabled } from './sound.js?v=74';
 import * as L from './leagues.js?v=74';
 import { initAnalytics, track } from './analytics.js?v=74';

@@ -1,7 +1,7 @@
 // Spin the Board (preview): a spinning dartboard of Premier League clubs.
 // Tap the board to throw; where the dart lands picks the club and the question.
 import { getSeasons, getClubs, randomMatch, seasonLabel } from './data.js?v=75';
-import { checkDart } from './answers.js?v=75';
+import { checkDart } from './answers.js?v=76';
 const nm = p => p.web || p.full;
 import { sfx } from './sound.js?v=75';
 import { initAnalytics, track } from './analytics.js?v=75';

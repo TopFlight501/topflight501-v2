@@ -72,6 +72,8 @@ export function nameDistance(guess, player) {
   let best = Infinity;
   for (const k of nameKeys(player.full, player.web)) {
     const d = lev(g, k);
+    // typos are fine, but not in the first letter: "Henderson" must not count as "Anderson"
+    if (d > 0 && g[0] !== k[0]) continue;
     if (d <= tolerance(Math.max(k.length, g.length)) && d < best) best = d;
   }
   return best;
