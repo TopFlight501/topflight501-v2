@@ -66,17 +66,30 @@ function boardSvg() {
   for (let i = 0; i < 20; i++) { const a = -Math.PI / 2 + (i - 0.5) * seg; s += `<line x1="${(R.bull * Math.cos(a)).toFixed(1)}" y1="${(R.bull * Math.sin(a)).toFixed(1)}" x2="${(R.dbl * Math.cos(a)).toFixed(1)}" y2="${(R.dbl * Math.sin(a)).toFixed(1)}" class="wire"/>`; }
   [R.in1, R.tre, R.out1, R.dbl].forEach(r => { s += `<circle r="${r}" class="wire ring"/>`; });
   s += `<circle r="${R.bull}" fill="#12B886"/><circle r="12" fill="#C8102E"/><circle r="${R.bull}" class="wire ring"/>`;
-  return `<svg class="board" viewBox="-200 -200 400 400" aria-label="Spinning dartboard of Premier League clubs">
-    <circle r="199" fill="#0d1d21"/>
-    <g id="rot">${s}<g id="darts"></g></g>
-    <g id="flying"></g>
+  return `<svg class="board" viewBox="-232 -232 464 464" aria-label="Spinning dartboard of Premier League clubs">
+    <defs>
+      <path id="arcTop" d="M -205 0 A 205 205 0 0 1 205 0"/>
+      <path id="arcBot" d="M -224 0 A 224 224 0 0 0 224 0"/>
+    </defs>
+    <circle r="230" fill="#1E4B57"/>
+    <circle r="228" fill="none" stroke="#F5C518" stroke-width="3"/>
+    <circle r="196" fill="none" stroke="#F5C518" stroke-width="1.2" opacity=".8"/>
+    <text class="brand"><textPath href="#arcTop" startOffset="50%">TOP FLIGHT 501</textPath></text>
+    <text class="brand sub"><textPath href="#arcBot" startOffset="50%">FOOTBALL · DARTS · TRIVIA</textPath></text>
+    <circle cx="-210" cy="0" r="3.2" fill="#F5C518"/><circle cx="210" cy="0" r="3.2" fill="#F5C518"/>
+    <g id="rot"><circle r="${R.edge + 3}" fill="#10292f"/>${s}<g id="darts"></g></g>
   </svg>`;
 }
-function dartSvg(x, y, rot = 0) {
-  return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(1.5)" class="dart">
-    <circle r="4.2" fill="#F5C518" stroke="#1a1a1a" stroke-width="1.4"/>
-    <path d="M0 0 L-3 -26 L3 -26 Z" fill="#E8F1EF" stroke="#1a1a1a" stroke-width="1"/>
-    <path d="M-9 -40 L0 -26 L9 -40 L0 -34 Z" fill="#12B886" stroke="#0a3d30" stroke-width="1"/></g>`;
+function dartBody() {
+  return `<line x1="0" y1="0" x2="0" y2="13" stroke="#cfd8dc" stroke-width="1.6" stroke-linecap="round"/>
+    <rect x="-3.4" y="12" width="6.8" height="20" rx="2.6" fill="#8a9aa0"/>
+    ${[15, 18, 21, 24, 27, 30].map(y => `<line x1="-3.4" x2="3.4" y1="${y}" y2="${y}" stroke="#55666c" stroke-width=".9"/>`).join('')}
+    <rect x="-1.6" y="31" width="3.2" height="14" fill="#F5C518"/>
+    <path d="M0 41 L-11 58 L-9 68 L0 62 L9 68 L11 58 Z" fill="#12B886" stroke="#0a3d30" stroke-width="1"/>
+    <path d="M0 43 L0 66" stroke="#1E4B57" stroke-width="3"/>`;
+}
+function dartSvg(x, y, rot = 0, sc = 0.95) {
+  return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${sc})" class="dart"><circle r="2.2" fill="#0b1416" opacity=".5"/>${dartBody()}</g>`;
 }
 
 // ---------- spin loop ----------
@@ -95,19 +108,24 @@ function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v 
 function onBoardTap(ev) {
   if (G.busy || G.q || G.screen !== 'play') return;
   const svg = $('.board'); const r = svg.getBoundingClientRect();
-  const k = 400 / r.width; let ax = (ev.clientX - r.left) * k - 200, ay = (ev.clientY - r.top) * k - 200;
+  const k = 464 / r.width; const ax = (ev.clientX - r.left) * k - 232, ay = (ev.clientY - r.top) * k - 232;
   const sd = G.speed === 'hard' ? 17 : 13;
   const x = ax + gauss() * sd, y = ay + gauss() * sd;
   G.busy = true; sfx.click();
-  // fly in from below
-  const fl = document.getElementById('flying'); const t0 = performance.now(), D = 260;
-  const fromX = x * 0.3, fromY = 240;
+  // the dart flies up from the bottom of the screen, shrinking as it travels away from you
+  const px = 1 / k, endX = r.left + (x + 232) * px, endY = r.top + (y + 232) * px;
+  const W = innerWidth, H = innerHeight, startX = W / 2 + (endX - W / 2) * 0.35 + 30, startY = H + 60;
+  const fly = document.getElementById('fly-g'); const t0 = performance.now(), D = 480;
   const step = now => {
-    const p = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - p, 2);
-    const cx = fromX + (x - fromX) * e, cy = fromY + (y - fromY) * e, sc = 1.9 - 0.9 * e;
-    fl.innerHTML = `<g transform="translate(${cx.toFixed(1)} ${cy.toFixed(1)}) scale(${sc.toFixed(2)})">${dartSvg(0, 0)}</g>`;
+    const p = Math.min(1, (now - t0) / D), e = p < 1 ? 1 - Math.pow(1 - p, 2.2) : 1;
+    const cx = startX + (endX - startX) * e, cy = startY + (endY - startY) * e - Math.sin(Math.PI * e) * 70;
+    const sc = px * (5 - 4.05 * e), tilt = (1 - e) * 18;
+    let trail = '';
+    for (let i = 1; i <= 3; i++) { const e2 = Math.max(0, e - i * 0.06); const tx = startX + (endX - startX) * e2, ty = startY + (endY - startY) * e2 - Math.sin(Math.PI * e2) * 70; trail += `<g transform="translate(${tx.toFixed(1)} ${ty.toFixed(1)}) rotate(${tilt}) scale(${(px * (5 - 4.05 * e2)).toFixed(3)})" opacity="${(0.18 / i).toFixed(2)}">${dartBody()}</g>`; }
+    fly.innerHTML = trail + `<g transform="translate(${cx.toFixed(1)} ${cy.toFixed(1)}) rotate(${tilt.toFixed(1)}) scale(${sc.toFixed(3)})">${dartBody()}</g>`;
     if (p < 1) return requestAnimationFrame(step);
-    fl.innerHTML = '';
+    fly.innerHTML = '';
+    const w = $('.board-wrap'); w.classList.remove('thunk'); void w.offsetWidth; w.classList.add('thunk');
     land(x, y);
   };
   requestAnimationFrame(step);
@@ -116,7 +134,7 @@ function land(x, y) {
   // convert to the board's own (rotating) frame so the dart sticks and spins with it
   const a = -G.angle * Math.PI / 180, lx = x * Math.cos(a) - y * Math.sin(a), ly = x * Math.sin(a) + y * Math.cos(a);
   const darts = document.getElementById('darts');
-  darts.insertAdjacentHTML('beforeend', dartSvg(lx, ly, -G.angle + (Math.random() * 16 - 8)));
+  darts.insertAdjacentHTML('beforeend', dartSvg(lx, ly, -G.angle + (Math.random() * 12 - 6)));
   G.target = 0; // board slows to a stop so you can see where it went
   const r = Math.hypot(lx, ly);
   let ang = Math.atan2(ly, lx) * 180 / Math.PI + 90; ang = (ang + 360 + 9) % 360;
@@ -287,6 +305,7 @@ app.addEventListener('click', async e => {
 });
 app.addEventListener('submit', e => { e.preventDefault(); if (G.q && !G.q.pickClub) answerQ(e.target); });
 
+document.body.insertAdjacentHTML('beforeend', '<svg id="fly" aria-hidden="true"><g id="fly-g"></g></svg>');
 // ---------- boot ----------
 window.__spinG = G; // preview only (used by the demo recording)
 (async () => {
