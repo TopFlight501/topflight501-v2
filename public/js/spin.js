@@ -314,6 +314,14 @@ app.addEventListener('click', async e => {
   }
 });
 app.addEventListener('change', e => { if (e.target.matches('[data-season]')) { setSeason(e.target.value); track('Spin season', { season: e.target.value }); } });
+// keep the question and answer box in view above the phone keyboard
+const showForm = () => { const f = $('#panel'); if (f) f.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
+let vh0 = innerHeight;
+app.addEventListener('focusin', e => { if (e.target.matches('[data-answer], [data-sl]')) document.body.classList.add('typing'); });
+app.addEventListener('pointerdown', e => { if (e.target.matches('[data-answer], [data-sl]')) setTimeout(showForm, 320); });
+addEventListener('resize', () => { if (document.body.classList.contains('typing') && innerHeight < vh0 * 0.85) showForm(); if (!document.body.classList.contains('typing')) vh0 = innerHeight; });
+app.addEventListener('focusout', () => setTimeout(() => { if (!app.contains(document.activeElement) || !document.activeElement.matches('[data-answer], [data-sl]')) document.body.classList.remove('typing'); }, 100));
+if (window.visualViewport) visualViewport.addEventListener('resize', () => { if (document.body.classList.contains('typing') && visualViewport.height < vh0 * 0.85) showForm(); });
 app.addEventListener('submit', e => { e.preventDefault(); if (G.q && !G.q.pickClub) answerQ(e.target); });
 
 document.body.insertAdjacentHTML('beforeend', '<svg id="fly" aria-hidden="true"><g id="fly-g"></g></svg>');

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Spin the Board | Top Flight 501</title>
   <meta name="description" content="Spin the Board: a spinning dartboard of Premier League clubs. Tap to throw, then answer a question about the club you hit. Free, no sign-up.">
   <meta property="og:title" content="Spin the Board | Top Flight 501">
@@ -30,7 +30,8 @@
     .sb-p b { font-size: 1.35rem; color: var(--ink); font-variant-numeric: tabular-nums; }
     .sb-p.on { border-color: var(--green); box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 35%, transparent); color: var(--ink); }
     .board-wrap { position: relative; width: min(100%, 420px); margin: 0 auto; aspect-ratio: 1; transition: opacity .25s, transform .25s; touch-action: manipulation; }
-    .board-wrap.dim { opacity: .55; transform: scale(.82); margin-top: -26px; margin-bottom: -30px; }
+    .board-wrap.dim { width: 44%; opacity: .9; }
+    .board-wrap { transition: width .3s ease, opacity .25s; }
     .board { width: 100%; height: 100%; display: block; cursor: crosshair; filter: drop-shadow(0 10px 22px rgba(0,0,0,.28)); -webkit-tap-highlight-color: transparent; user-select: none; }
     .board .lbl { fill: #fff; font: 800 15px Outfit, sans-serif; text-anchor: middle; dominant-baseline: central; letter-spacing: .02em; }
     .board .brand { fill: #fff; font: 900 21px Outfit, sans-serif; letter-spacing: .32em; text-anchor: middle; }
@@ -40,7 +41,8 @@
     @keyframes thunk { 30% { transform: translateY(3px) scale(.995); } }
     .board .wire { stroke: rgba(200,200,200,.55); stroke-width: .9; fill: none; }
     .pointer { position: absolute; left: 50%; top: -6px; width: 0; height: 0; transform: translateX(-50%); border: 9px solid transparent; border-top: 14px solid var(--green); display: none; }
-    #panel { margin-top: 12px; }
+    #panel { margin-top: 12px; scroll-margin-top: 10px; }
+    body.typing { padding-bottom: 45vh; }
     .panel { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; }
     .panel.center { text-align: center; }
     .panel h3 { margin: 4px 0 6px; color: var(--teal); }
@@ -70,6 +72,6 @@
 <body>
   <main id="spin-app"></main>
   <footer class="foot"><p class="disclaimer">A free fan-made game. Not affiliated with or endorsed by the Premier League.<br>Match data from Fantasy Premier League records.</p></footer>
-  <script type="module" src="js/spin.js?v=4"></script>
+  <script type="module" src="js/spin.js?v=5"></script>
 </body>
 </html>
