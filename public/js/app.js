@@ -195,7 +195,7 @@ function settingsHtml() {
   <div class="field">${achievementsHtml()}</div>
   <div class="field">
     <span class="label">Game order</span>
-    <p class="hint">Put your favourite games at the top of the home screen. The Daily Match always stays first.</p>
+    <p class="hint">Put your favourite games at the top of the home screen. The Daily Match and ⚡ Quick play always stay at the top.</p>
     ${orderListHtml()}
     <button class="linkish" data-act="order-reset">Reset to the usual order</button>
   </div>
@@ -218,11 +218,13 @@ function settingsHtml() {
 
 // ---------- game order (Settings → Game order) ----------
 const SPIN_CARD = { title: 'Spin the Board', icon: '🌀', blurb: 'A spinning dartboard of 20 clubs. Tap to throw, then answer for the club you hit. Treble = scorer!', tags: ['Pick a season', '1–4 players'] };
-const ORDER_DEFAULT = ['spin', 'x01', 'killer', 'clock', 'sudden', 'sentoff'];
+// Spin the Board leads while it's new; from Fri 16 Oct 2026 The Classic goes back on top (unless someone set their own order)
+const SPIN_LEADS_UNTIL = Date.UTC(2026, 9, 16);
+const orderDefault = () => (Date.now() < SPIN_LEADS_UNTIL ? ['spin', 'x01'] : ['x01', 'spin']).concat(['killer', 'clock', 'sudden', 'sentoff']);
 function gameOrder() {
   const all = ['spin', ...Object.keys(GAMES).filter(k => !GAMES[k].hidden)];
   const saved = (store.get('gameOrder', []) || []).filter(k => all.includes(k));
-  const base = saved.length ? saved : ORDER_DEFAULT.filter(k => all.includes(k));
+  const base = saved.length ? saved : orderDefault().filter(k => all.includes(k));
   return [...base, ...all.filter(k => !base.includes(k))];
 }
 const gameMeta = k => (k === 'spin' ? SPIN_CARD : GAMES[k]);
@@ -230,7 +232,7 @@ function gameCardHtml(k) {
   const g = gameMeta(k);
   const inner = `<span class="game-icon" aria-hidden="true">${g.icon}</span>
           <span class="game-body">
-            <span class="game-title">${g.title}${k === 'spin' ? ' <span class="new-tag">NEW</span>' : ''}</span>
+            <span class="game-title">${g.title}${k === 'spin' && Date.now() < Date.UTC(2026, 9, 23) ? ' <span class="new-tag">NEW</span>' : ''}</span>
             <span class="game-blurb">${g.blurb}</span>
             <span class="game-tags">${g.tags.map(t => `<span>${t}</span>`).join('')}</span>
           </span>
