@@ -1096,7 +1096,7 @@ function dailyBanner() {
   const prev = dailyBest(true);
   const sub = done ? `Today <b>${saved.points}</b>${best !== null && best > saved.points ? ` · Best <b>${best}</b>` : prev !== null && saved.points > prev ? ' · 🏆 New best' : ''} · New in ${untilTomorrow()}`
     : saved ? `In progress: ${saved.darts.length} of ${DAILY_DARTS} darts thrown`
-    : streak ? `🔥 Play today to keep your ${streak}-day streak`
+    : streak ? `🔥 Play today for a ${streak + 1}-day streak`
     : best !== null ? `Your best: <b>${best}</b> · can you beat it?`
     : S.todayTop ? `🏆 Today’s top: <b>${S.todayTop.p}</b> ${flag(S.todayTop.cc)} · beat it?`
     : 'Same match for everyone today';
