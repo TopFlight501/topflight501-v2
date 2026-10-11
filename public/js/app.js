@@ -1417,8 +1417,6 @@ function updateAchBadge() {
   const btn = document.querySelector('.ach-btn'); if (!btn) return;
   const got = store.get('ach', {});
   const n = ACHIEVEMENTS.filter(a => got[a.id]).length, all = n === ACHIEVEMENTS.length;
-  const badge = btn.querySelector('.ach-badge');
-  badge.textContent = n; badge.hidden = n === 0;
   btn.classList.toggle('some', n > 0 && !all);
   btn.classList.toggle('gold', all);
   btn.setAttribute('aria-label', `Achievements, ${n} of ${ACHIEVEMENTS.length} unlocked`);

@@ -760,9 +760,6 @@ a.game-card { text-decoration: none; color: inherit; }
 .ach-btn.some { border: 1.5px solid var(--green); }
 .ach-btn.gold { background: var(--yellow); border: 1.5px solid #C9A10F; color: #15262B; }
 .ach-btn.gold .ach-eye, .ach-logo.gold .ach-eye { fill: currentColor; }
-.ach-badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--green); color: #fff; font-size: 11px; font-weight: 800; line-height: 14px; text-align: center; border: 2px solid var(--bg); }
-.ach-badge[hidden] { display: none; }
-.ach-btn.gold .ach-badge { background: var(--teal); }
 .ach-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .ach-head h2 { margin: 0; }
 .ach-head .hint { margin: 0; }
