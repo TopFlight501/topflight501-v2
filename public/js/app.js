@@ -192,7 +192,6 @@ function settingsHtml() {
     ${bests.length ? `<p class="hint">${bests.join('<br>')}</p>
       <button class="btn ghost" data-act="reset-bests">Reset personal bests</button>` : '<p class="hint">No personal bests yet.</p>'}
   </div>
-  <div class="field">${achievementsHtml()}</div>
   <div class="field">
     <span class="label">Game order</span>
     <p class="hint">Put your favourite games at the top of the home screen. The Daily Match and ⚡ Quick play always stay at the top.</p>
@@ -1390,6 +1389,7 @@ function unlock(id) {
   const a = ACHIEVEMENTS.find(x => x.id === id); if (!a) return;
   got[id] = new Date().toISOString().slice(0, 10); store.set('ach', got);
   track('Achievement', { name: a.name });
+  updateAchBadge();
   achQueue.push(a); if (achQueue.length === 1) showNextAch();
 }
 const achQueue = [];
@@ -1401,10 +1401,32 @@ function showNextAch() {
   setTimeout(() => t.classList.add('out'), 2600);
   setTimeout(() => { t.remove(); achQueue.shift(); showNextAch(); }, 3100);
 }
-function achievementsHtml() {
+const TROPHY_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h10v5.5a5 5 0 0 1-10 0z"/><path d="M7 5.5H4.6a2.6 2.6 0 0 0 2.7 3.9"/><path d="M17 5.5h2.4a2.6 2.6 0 0 1-2.7 3.9"/><path d="M12 14v3.5"/><path d="M8.5 20.5h7"/><path d="M10 17.5h4l.6 3h-5.2z"/><circle class="ach-eye" cx="12" cy="8.4" r="1.7" stroke="none"/></svg>`;
+function achievementsPanelHtml() {
+  const got = store.get('ach', {});
+  const n = ACHIEVEMENTS.filter(a => got[a.id]).length, all = n === ACHIEVEMENTS.length;
+  return `<div class="ach-head">
+      <span class="ach-logo${all ? ' gold' : ''}">${TROPHY_SVG}</span>
+      <div><h2>Achievements</h2><p class="hint">${n} of ${ACHIEVEMENTS.length} unlocked</p></div>
+    </div>
+    <div class="ach-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${ACHIEVEMENTS.length}" aria-valuenow="${n}"><span style="width:${Math.round(n / ACHIEVEMENTS.length * 100)}%"></span></div>
+    ${achievementsHtml(true)}
+    <button class="btn link" data-act="close">Close</button>`;
+}
+function updateAchBadge() {
+  const btn = document.querySelector('.ach-btn'); if (!btn) return;
+  const got = store.get('ach', {});
+  const n = ACHIEVEMENTS.filter(a => got[a.id]).length, all = n === ACHIEVEMENTS.length;
+  const badge = btn.querySelector('.ach-badge');
+  badge.textContent = n; badge.hidden = n === 0;
+  btn.classList.toggle('some', n > 0 && !all);
+  btn.classList.toggle('gold', all);
+  btn.setAttribute('aria-label', `Achievements, ${n} of ${ACHIEVEMENTS.length} unlocked`);
+}
+function achievementsHtml(inPanel = false) {
   const got = store.get('ach', {});
   const n = ACHIEVEMENTS.filter(a => got[a.id]).length;
-  return `<span class="label">Achievements <span class="opt">${n} of ${ACHIEVEMENTS.length}</span></span>
+  return `${inPanel ? '' : `<span class="label">Achievements <span class="opt">${n} of ${ACHIEVEMENTS.length}</span></span>`}
     <div class="ach-grid">${ACHIEVEMENTS.map(a => `<div class="ach ${got[a.id] ? 'got' : ''}" title="${esc(a.desc)}">
       <span class="ach-i">${got[a.id] ? a.icon : '🔒'}</span><span class="ach-n">${esc(a.name)}</span><span class="ach-d">${esc(a.desc)}</span></div>`).join('')}</div>
     ${followRow('Achievements')}`;
@@ -1660,6 +1682,7 @@ function openModal(html, { onClose, dismissable = true } = {}) {
 function closeModal() {
   modalRoot.hidden = true;
   modalRoot.innerHTML = '';
+  updateAchBadge();
   const cb = modalRoot._onClose; modalRoot._onClose = null;
   if (cb) cb();
 }
@@ -2293,6 +2316,7 @@ document.addEventListener('click', async e => {
     case 'begin': S.busy = true; renderSetup(); await begin(); break;
     case 'rules': openModal(rulesHtml()); break;
     case 'settings': openModal(settingsHtml()); break;
+    case 'achievements': openModal(achievementsPanelHtml()); track('Achievements opened'); break;
     case 'order': moveGame(v, Number(b.dataset.d)); track('Game order changed'); break;
     case 'order-reset': store.set('gameOrder', []); { const el = document.querySelector('.order-list'); if (el) el.outerHTML = orderListHtml(); } if (S.screen === 'hub') renderHub(); toast('Back to the usual order'); break;
     case 'set': {
@@ -2404,6 +2428,7 @@ document.addEventListener('keydown', e => {
 // ---------- boot ----------
 (async function boot() {
   initAnalytics();
+  updateAchBadge();
   store.set('visits', store.get('visits', 0) + 1);
   S.welcome = store.get('visits', 0) <= 1 && !store.get('welcomed', false);
   const saved = store.get('setup', null);

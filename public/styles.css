@@ -751,3 +751,27 @@ a.game-card { text-decoration: none; color: inherit; }
 .ord-b { width: 38px; height: 34px; border: 1px solid var(--line); background: var(--card); color: var(--teal); border-radius: 10px; font-size: .8rem; cursor: pointer; }
 .ord-b:disabled { opacity: .3; cursor: default; }
 .ord-b:not(:disabled):active { transform: scale(.94); }
+
+/* achievements button in the header, next to Settings */
+.top-actions { display: flex; gap: 8px; align-items: center; }
+.ach-btn { position: relative; display: grid; place-items: center; padding: 0; }
+.ach-btn svg { width: 22px; height: 22px; }
+.ach-eye { fill: var(--green); }
+.ach-btn.some { border: 1.5px solid var(--green); }
+.ach-btn.gold { background: var(--yellow); border: 1.5px solid #C9A10F; color: #15262B; }
+.ach-btn.gold .ach-eye, .ach-logo.gold .ach-eye { fill: currentColor; }
+.ach-badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--green); color: #fff; font-size: 11px; font-weight: 800; line-height: 14px; text-align: center; border: 2px solid var(--bg); }
+.ach-badge[hidden] { display: none; }
+.ach-btn.gold .ach-badge { background: var(--teal); }
+.ach-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.ach-head h2 { margin: 0; }
+.ach-head .hint { margin: 0; }
+.ach-logo { flex: none; width: 48px; height: 48px; border-radius: 14px; background: var(--soft); color: var(--teal); display: grid; place-items: center; }
+.ach-logo svg { width: 28px; height: 28px; }
+.ach-logo.gold { background: var(--yellow); color: #15262B; }
+.ach-bar { height: 8px; border-radius: 4px; background: var(--soft); overflow: hidden; margin-bottom: 12px; }
+.ach-bar span { display: block; height: 100%; background: var(--green); border-radius: 4px; }
+/* keep the tagline on one line now the header has three buttons */
+.brand-tag { white-space: nowrap; }
+@media (max-width: 430px) { .top-actions { gap: 6px; } .brand-tag { letter-spacing: .1em; font-size: .64rem; } .brand-name { font-size: 1.25rem; } }
+@media (max-width: 370px) { .top-actions .icon-btn { width: 36px; height: 36px; } .brand img { height: 36px; } .brand { gap: 7px; } }
