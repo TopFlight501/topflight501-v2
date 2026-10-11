@@ -65,16 +65,34 @@ export function nameKeys(full, web) {
   return [...keys].filter(k => k.replace(/ /g, '').length >= 3);
 }
 
+// Middle names, for Spanish/Portuguese double surnames where the first one is the name people use
+// ("Darwin Núñez Ribeiro" -> "Núñez", "Darwin Núñez"). Kept separate so they rank just below
+// a real surname: "Silva" should find Willian Borges da Silva before Diego da Silva Costa.
+export function middleKeys(full) {
+  const ft = norm(full).split(' ').filter(Boolean);
+  const keys = [];
+  for (let i = 1; i < ft.length - 1; i++) {
+    if (PARTICLES.has(ft[i]) || ft[i].length < 4) continue;
+    keys.push(ft[i], ft[0] + ' ' + ft[i]);
+  }
+  return keys;
+}
+const MIDDLE_PENALTY = 0.5;
+
 // How well does the guess match this player? Returns a distance (lower is better) or Infinity.
 export function nameDistance(guess, player) {
   const g = norm(guess);
   if (g.replace(/ /g, '').length < 3) return Infinity;
   let best = Infinity;
-  for (const k of nameKeys(player.full, player.web)) {
-    const d = lev(g, k);
-    // typos are fine, but not in the first letter: "Henderson" must not count as "Anderson"
-    if (d > 0 && g[0] !== k[0]) continue;
-    if (d <= tolerance(Math.max(k.length, g.length)) && d < best) best = d;
+  const main = nameKeys(player.full, player.web);
+  const middle = middleKeys(player.full).filter(k => !main.includes(k));
+  for (const [keys, penalty] of [[main, 0], [middle, MIDDLE_PENALTY]]) {
+    for (const k of keys) {
+      const d = lev(g, k);
+      // typos are fine, but not in the first letter: "Henderson" must not count as "Anderson"
+      if (d > 0 && g[0] !== k[0]) continue;
+      if (d <= tolerance(Math.max(k.length, g.length)) && d + penalty < best) best = d + penalty;
+    }
   }
   return best;
 }
