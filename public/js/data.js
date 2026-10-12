@@ -30,7 +30,7 @@ export async function getPeople() {
 
 async function loadSeason(season) {
   if (!cache.has(season)) {
-    const res = await fetch(`data/${season}.json?v=2`);
+    const res = await fetch(`data/${season}.json?v=3`);
     if (!res.ok) throw new Error(`Could not load ${season}`);
     cache.set(season, await res.json());
   }

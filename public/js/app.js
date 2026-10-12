@@ -1,9 +1,9 @@
-import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=74';
-import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=77';
+import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=76';
+import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=78';
 import { sfx, setSoundEnabled } from './sound.js?v=74';
 import * as L from './leagues.js?v=74';
 import { initAnalytics, track } from './analytics.js?v=74';
-import { privacyHtml, termsHtml } from './legal.js?v=74';
+import { privacyHtml, termsHtml } from './legal.js?v=75';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -1068,10 +1068,10 @@ function dailySaved() {
   return d && d.key === dailyKey() ? d : null;
 }
 function dailyLog() { return store.get('dailyLog', {}); }
-// best Daily Match score on this device (optionally ignoring today)
-function dailyBest(skipToday = false) {
-  const log = dailyLog(), today = dailyKey();
-  const vals = Object.entries(log).filter(([k]) => !(skipToday && k === today)).map(([, v]) => v);
+// best Daily Match score on this device (optionally ignoring one day)
+function dailyBest(skipKey = null) {
+  const log = dailyLog();
+  const vals = Object.entries(log).filter(([k]) => k !== skipKey).map(([, v]) => v);
   return vals.length ? Math.max(...vals) : null;
 }
 function dailyStreak() {
@@ -1093,7 +1093,7 @@ function dailyBanner() {
   const done = saved && saved.done;
   const streak = dailyStreak();
   const best = dailyBest();
-  const prev = dailyBest(true);
+  const prev = dailyBest(dailyKey());
   const sub = done ? `Today <b>${saved.points}</b>${best !== null && best > saved.points ? ` · Best <b>${best}</b>` : prev !== null && saved.points > prev ? ' · 🏆 New best' : ''} · New in ${untilTomorrow()}`
     : saved ? `In progress: ${saved.darts.length} of ${DAILY_DARTS} darts thrown`
     : streak ? `🔥 Play today for a ${streak + 1}-day streak`
@@ -1139,15 +1139,19 @@ function saveDaily() {
   if (S.past) return;   // replays of past Dailies aren't saved as today's
   const p = S.players[0];
   store.set('daily', {
-    key: dailyKey(), n: S.dailyN, points: p.points, done: S.visit.length >= DAILY_DARTS,
+    key: dailyKeyFor(S.dailyN), n: S.dailyN, points: p.points, done: S.visit.length >= DAILY_DARTS,
     claimed: [...S.claimed[0]],
     darts: S.visit.map(d => ({ cat: d.cat, answer: d.answer, extra: '', res: { correct: d.res.correct, points: d.res.points || 0, message: d.res.message } })),
   });
 }
+// the date key for Daily #n (same as dailyKey() on that day), so a Daily started before midnight
+// and finished after it still counts for the day it was played, not the next one
+function dailyKeyFor(n) { const d = dailyDate(n); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`; }
 function dailyEmoji(darts) { return darts.map(d => (d.res.correct ? '🎯' : '⬜')).join(''); }
 function dailyOver() {
   if (S.past) return pastOver();
-  const saved = dailySaved();
+  const saved = store.get('daily', null);
+  if (!saved) return;
   const log = dailyLog(); log[saved.key] = saved.points; store.set('dailyLog', log);
   unlock('first');
   if (saved.darts.every(d => d.res.correct)) unlock('perfect');
@@ -1155,12 +1159,14 @@ function dailyOver() {
   track('Game finished', { game: 'Daily Match', day: saved.n, points: saved.points, hits: saved.darts.filter(d => d.res.correct).length });
   L.recordGame({ game: 'daily', players: ['You'], winner: null, solo: true, league: null, detail: `#${saved.n}, ${saved.points} pts` });
   if (saved.points > 0) { confetti(); sfx.win(); } else sfx.miss();
-  if (!store.get('boardSent:' + saved.n, false)) {
-    store.set('boardSent:' + saved.n, true);
-    S.board = fetch('/api/daily', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ n: saved.n, p: saved.points }) })
-      .then(r => r.ok ? r.json() : null).catch(() => null);
-  }
-  showDailyResult();
+  showDailyResult(saved);
+}
+// Add a finished Daily to the leaderboard. Only marked as sent once the server has it,
+// so a failed send (bad signal, busy server) is tried again the next time the result opens.
+function sendDailyScore(saved) {
+  if (!saved || !saved.done || store.get('boardSent:' + saved.n, false) || saved.n < dailyNumber() - 1) return;
+  S.board = fetch('/api/daily', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ n: saved.n, p: saved.points }) })
+    .then(r => { if (!r.ok) return null; store.set('boardSent:' + saved.n, true); return r.json(); }).catch(() => null);
 }
 
 // ---------- Past Dailies: replay any earlier day (no streak, no leaderboard) ----------
@@ -1170,7 +1176,7 @@ function pastHtml() {
   const today = dailyNumber(), live = dailyLog(), past = store.get('pastLog', {});
   const rows = [];
   for (let n = today - 1; n >= 1; n--) {
-    const d = dailyDate(n), key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    const d = dailyDate(n), key = dailyKeyFor(n);
     const score = live[key] != null ? live[key] : past[n];
     rows.push(`<button class="past-row" data-act="past-play" data-v="${n}"><span><b>Daily #${n}</b><small>${d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}</small></span><span class="past-score">${score != null ? `${score} pts` : 'Play ›'}</span></button>`);
   }
@@ -1216,16 +1222,17 @@ function boardHtml(b, mine) {
 }
 function fillBoard(mine) {
   const el = () => $('[data-board]');
-  (S.board || fetch('/api/daily?n=' + (dailySaved() || {}).n).then(r => r.ok ? r.json() : null).catch(() => null))
+  (S.board || fetch('/api/daily?n=' + (S.dailyShown || dailySaved() || {}).n).then(r => r.ok ? r.json() : null).catch(() => null))
     .then(b => { const e = el(); if (e && b) { const h = boardHtml(b, mine); if (h) { e.innerHTML = h; e.hidden = false; } } });
   S.board = null;
 }
-function showDailyResult() {
-  const saved = dailySaved();
+function showDailyResult(saved = dailySaved()) {
   if (!saved) return;
+  S.dailyShown = saved;
+  sendDailyScore(saved);
   const hits = saved.darts.filter(d => d.res.correct).length;
   const streak = dailyStreak();
-  const prevBest = dailyBest(true);
+  const prevBest = dailyBest(saved.key);
   const newBest = prevBest !== null && saved.points > prevBest;
   const bestLine = newBest ? `🏆 Previous best: ${prevBest}` : prevBest !== null ? `🏆 Your best: <b>${Math.max(prevBest, saved.points)}</b>` : '';
   S.shareText = `⭐ Top Flight 501 Daily #${saved.n}\n${dailyEmoji(saved.darts)} ${saved.points} pts${streak > 1 ? ` · 🔥 ${streak} days` : ''}\nCan you beat me? Today's match 👇`;
@@ -1305,7 +1312,7 @@ async function makeStoryImage(saved) {
   return new Promise(ok => c.toBlob(ok, 'image/png'));
 }
 async function shareStory() {
-  const saved = dailySaved(); if (!saved) return;
+  const saved = S.dailyShown || dailySaved(); if (!saved) return;
   track('Story image', { day: saved.n });
   // copy the link first, so it's ready to paste into Instagram's Link sticker
   let copied = false;
@@ -2220,8 +2227,8 @@ document.addEventListener('click', async e => {
       if (dailySaved() && dailySaved().done) { S.game = 'daily'; S.dailyN = dailyNumber(); showDailyResult(); }
       else await startDaily();
       break;
-    case 'daily-key': try { S.match = await dailyMatch(dailySaved().n); } catch { break; } openModal(answerKeyHtml(), { dismissable: false }); break;
-    case 'daily-result': showDailyResult(); break;
+    case 'daily-key': try { S.match = await dailyMatch((S.dailyShown || dailySaved()).n); } catch { break; } openModal(answerKeyHtml(), { dismissable: false }); break;
+    case 'daily-result': showDailyResult(S.dailyShown || dailySaved()); break;
     case 'daily-close': modalRoot._onClose = null; closeModal(); goHub(); break;
     case 'share': shareResult(b); break;
     case 'story': shareStory(); break;

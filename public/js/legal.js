@@ -1,5 +1,5 @@
 // Privacy notice and terms of use. Plain English, kept short.
-const UPDATED = '6 October 2026';
+const UPDATED = '12 October 2026';
 const CONTACT = 'topflight501@outlook.com';
 
 export const privacyHtml = `
@@ -20,10 +20,10 @@ export const privacyHtml = `
     <h3>Fonts and images</h3>
     <p>All fonts and images are served from this site. Apart from the anonymous visit counter above, nothing is loaded from Google or other third parties while you play.</p>
     <h3>Links to other sites</h3>
-    <p>Links to X, Instagram and Buy Me a Coffee take you to those services, which have their own privacy policies.</p>
-    <h3>Contacting us</h3>
+    <p>Links to X, Instagram, TikTok and Buy Me a Coffee take you to those services, which have their own privacy policies.</p>
     <h3>Daily Match leaderboard</h3>
     <p>When you finish the Daily Match, your score is added to anonymous daily totals so we can show today’s top score and how you compare. Our host, Cloudflare, tells us which country the score came from. We keep only the score, the day and the country: no names, IP addresses or device IDs.</p>
+    <h3>Contacting us</h3>
     <p>If you email us at <b>${CONTACT}</b> (for example to report a match), we use your email only to reply and don’t share it.</p>
     <h3>Your rights</h3>
     <p>Because we don’t hold personal data about you, there’s normally nothing for us to access or delete. Visit counts are anonymous totals and can’t be traced back to you. If you have a question, email <b>${CONTACT}</b>. You also have the right to complain to the Data Protection Commission in Ireland (dataprotection.ie).</p>

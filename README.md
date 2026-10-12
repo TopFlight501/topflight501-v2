@@ -6,14 +6,15 @@ Premier League trivia played like darts. Every match, scorer, assist, card, play
 
 | Folder | What it is |
 |---|---|
-| `public/` | The website itself. This is all Render serves. |
+| `public/` | The website itself. This is what Cloudflare Pages serves. |
 | `public/data/` | The match database: one file per season, 2016/17 to 2025/26 (3,799 matches). |
 | `public/js/answers.js` | Points values and spelling-tolerant answer checking. Change the points here. |
 | `public/js/app.js` | The games (501 Checkout, Killer, Round the Grounds, Sudden Death, Sent Off), setup, settings, answer key. |
 | `public/js/analytics.js` | Anonymous, cookie-free visit and game counting with Umami (dashboard at cloud.umami.is). |
 | `public/js/sound.js` | Sound effects (generated in the browser, no audio files). |
 | `tools/` | Scripts that rebuild the database (only needed when adding a new season). |
-| `render.yaml` | Tells Render to host `public/` as a static site. |
+| `functions/api/daily.js` | The Daily Match leaderboard (a Cloudflare Pages Function, scores kept in Cloudflare KV). |
+| `public/_headers` | Caching rules for Cloudflare Pages. |
 
 ## Where the data comes from
 

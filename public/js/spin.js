@@ -1,7 +1,7 @@
 // Spin the Board (preview): a spinning dartboard of Premier League clubs.
 // Tap the board to throw; where the dart lands picks the club and the question.
-import { getSeasons, getClubs, randomMatch, seasonLabel } from './data.js?v=75';
-import { checkDart } from './answers.js?v=77';
+import { getSeasons, getClubs, randomMatch, seasonLabel } from './data.js?v=76';
+import { checkDart } from './answers.js?v=78';
 const nm = p => p.web || p.full;
 import { sfx } from './sound.js?v=75';
 import { initAnalytics, track } from './analytics.js?v=75';
@@ -107,7 +107,8 @@ const spinSpeed = () => (G.speed === 'hard' ? 95 : 48);
 // ---------- throwing ----------
 function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 function onBoardTap(ev) {
-  if (G.busy || G.q || G.screen !== 'play') return;
+  // only between darts: not while a question or result is showing, nor before the next player taps "Throw darts"
+  if (G.busy || G.q || G.last || G.handover || G.screen !== 'play' || G.dart >= DARTS) return;
   const svg = $('.board'); const r = svg.getBoundingClientRect();
   const k = 464 / r.width; const ax = (ev.clientX - r.left) * k - 232, ay = (ev.clientY - r.top) * k - 232;
   const sd = G.speed === 'hard' ? 17 : 13;
@@ -256,7 +257,7 @@ function renderPlay() {
     panel = `<div class="panel">
       <div class="q-club" style="--c1:${(COLOURS[q.club] || ['#2e5f6b'])[0]};--c2:${(COLOURS[q.club] || ['', '#fff'])[1]}"><span class="q-badge">${esc(CODE[q.club] || '')}</span><b>${esc(q.club)}</b></div>
       <div class="q-tag">${esc(info.label)} · <b>${info.pts} pts</b></div>
-      <div class="q-match"><span class="q-season">${esc(seasonLabel(m.season))}</span><b>${esc(m.home)}</b> v <b>${esc(m.away)}</b><span class="q-date">${new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
+      <div class="q-match"><span class="q-season">${esc(seasonLabel(m.season))}</span><b>${esc(m.home)}</b> v <b>${esc(m.away)}</b><span class="q-date">${new Date(m.date + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}</span></div>
       <p class="q-ask">${info.ask(q.club)}</p>
       <form class="q-form" data-form>
         ${info.cat === 'scoreline'
@@ -329,7 +330,6 @@ app.addEventListener('submit', e => { e.preventDefault(); if (G.q && !G.q.pickCl
 
 document.body.insertAdjacentHTML('beforeend', '<svg id="fly" aria-hidden="true"><g id="fly-g"></g></svg>');
 // ---------- boot ----------
-window.__spinG = G; // preview only (used by the demo recording)
 (async () => {
   initAnalytics();
   G.seasons = await getSeasons();

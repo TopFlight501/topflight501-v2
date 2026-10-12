@@ -78,15 +78,22 @@ export function middleKeys(full) {
   return keys;
 }
 const MIDDLE_PENALTY = 0.5;
+// Tie-breaks when two players in the same match share a name: the one who is actually known by it wins.
+// "Jesus" finds Gabriel Jesus (known as Jesus) before João Pedro (Jesus only in his legal name),
+// and "White" finds Ben White (known as White) before Morgan Gibbs-White.
+const LEGAL_ONLY_PENALTY = 0.1, KNOWN_AS_BONUS = 0.05;
 
 // How well does the guess match this player? Returns a distance (lower is better) or Infinity.
 export function nameDistance(guess, player) {
   const g = norm(guess);
   if (g.replace(/ /g, '').length < 3) return Infinity;
   let best = Infinity;
-  const main = nameKeys(player.full, player.web);
-  const middle = middleKeys(player.full).filter(k => !main.includes(k));
-  for (const [keys, penalty] of [[main, 0], [middle, MIDDLE_PENALTY]]) {
+  const all = nameKeys(player.full, player.web);
+  const fromWeb = new Set(player.web ? nameKeys('', player.web).concat(nameKeys(player.web, '')) : []);
+  const main = all.filter(k => fromWeb.has(k)), legal = all.filter(k => !fromWeb.has(k));
+  const middle = middleKeys(player.full).filter(k => !all.includes(k));
+  if (player.web && norm(player.web) === g) best = -KNOWN_AS_BONUS;
+  for (const [keys, penalty] of [[main, 0], [legal, LEGAL_ONLY_PENALTY], [middle, MIDDLE_PENALTY]]) {
     for (const k of keys) {
       const d = lev(g, k);
       // typos are fine, but not in the first letter: "Henderson" must not count as "Anderson"
