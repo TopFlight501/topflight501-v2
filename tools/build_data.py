@@ -59,6 +59,12 @@ for season in sorted(os.listdir(SRC)):
         nh = sum(1 for _, p in P if p['side']=='h'); na = sum(1 for _, p in P if p['side']=='a')
         ok = (gh == hs and ga == as_ and nh >= 11 and na >= 11)
         if not ok: bad += 1; continue
+        # FPL's 'starts' column exists but is all 0 for some gameweeks (early 2022/23):
+        # if a side has nobody marked as starting, treat the whole team sheet as unknown
+        for sd in ('h', 'a'):
+            if not any(p['st'] for _, p in P if p['side'] == sd):
+                for _, p in P:
+                    if p['side'] == sd: p['st'] = None
         rec = dict(id=f"{season}-{fid}", d=str(m['k'])[:10], h=m['home'], a=m['away'], s=[hs, as_], p=[])
         for pid, p in sorted(P, key=lambda x: (x[1]['side'], -(x[1]['st'] or (1 if x[1]['min']>=45 else 0)), -x[1]['min'])):
             full, web = players.get(pid, (str(pid), ''))
