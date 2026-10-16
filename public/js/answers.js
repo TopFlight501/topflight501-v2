@@ -78,6 +78,33 @@ export function middleKeys(full) {
   return keys;
 }
 const MIDDLE_PENALTY = 0.5;
+
+// Players fans call by a first name, nickname or initials that the official data doesn't have.
+// `who` lists words that must all be in the player's full name (so it works whatever middle
+// names a season's data uses), `names` is what people actually type. Add more here as they come up.
+const KNOWN_AS = [
+  { who: 'bruno fernandes',          names: ['bruno'] },
+  { who: 'trent alexander arnold',   names: ['trent', 'taa'] },
+  { who: 'kevin de bruyne',          names: ['kdb'] },
+  { who: 'heung min son',            names: ['sonny'] },
+  { who: 'mohamed salah',            names: ['mo salah'] },
+  { who: 'cristiano ronaldo',        names: ['cristiano', 'cr7'] },
+  { who: 'alexis sanchez',           names: ['alexis'] },
+  { who: 'raheem sterling',          names: ['raheem'] },
+  { who: 'golo kante',               names: ['ngolo', 'ngolo kante'] },
+  { who: 'roberto firmino',          names: ['bobby'] },
+  { who: 'andrew robertson',         names: ['robbo'] },
+  { who: 'pierre emerick aubameyang', names: ['auba'] },
+  { who: 'aleksandar mitrovic',      names: ['mitro'] },
+  { who: 'dominic calvert lewin',    names: ['dcl'] },
+  { who: 'emile smith rowe',         names: ['esr'] },
+  { who: 'aaron wan bissaka',        names: ['awb'] },
+].map(e => ({ who: e.who.split(' '), names: e.names }));
+
+export function knownAsKeys(full) {
+  const words = new Set(norm(full).split(' '));
+  return KNOWN_AS.filter(e => e.who.every(w => words.has(w))).flatMap(e => e.names);
+}
 // Tie-breaks when two players in the same match share a name: the one who is actually known by it wins.
 // "Jesus" finds Gabriel Jesus (known as Jesus) before João Pedro (Jesus only in his legal name),
 // and "White" finds Ben White (known as White) before Morgan Gibbs-White.
@@ -90,7 +117,7 @@ export function nameDistance(guess, player) {
   let best = Infinity;
   const all = nameKeys(player.full, player.web);
   const fromWeb = new Set(player.web ? nameKeys('', player.web).concat(nameKeys(player.web, '')) : []);
-  const main = all.filter(k => fromWeb.has(k)), legal = all.filter(k => !fromWeb.has(k));
+  const main = all.filter(k => fromWeb.has(k)).concat(knownAsKeys(player.full)), legal = all.filter(k => !fromWeb.has(k));
   const middle = middleKeys(player.full).filter(k => !all.includes(k));
   if (player.web && norm(player.web) === g) best = -KNOWN_AS_BONUS;
   for (const [keys, penalty] of [[main, 0], [legal, LEGAL_ONLY_PENALTY], [middle, MIDDLE_PENALTY]]) {
