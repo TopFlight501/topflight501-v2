@@ -1,0 +1,7 @@
+# Short share links. Each one opens the game and tells Umami where the visitor came from.
+/x    /?utm_source=x_reply          302
+/x/   /?utm_source=x_reply          302
+/tt   /?utm_source=tiktok           302
+/tt/  /?utm_source=tiktok           302
+/ig   /?utm_source=instagram        302
+/ig/  /?utm_source=instagram        302

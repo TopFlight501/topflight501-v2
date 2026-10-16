@@ -15,6 +15,7 @@ Premier League trivia played like darts. Every match, scorer, assist, card, play
 | `tools/` | Scripts that rebuild the database (only needed when adding a new season). |
 | `functions/api/daily.js` | The Daily Match leaderboard (a Cloudflare Pages Function, scores kept in Cloudflare KV). |
 | `public/_headers` | Caching rules for Cloudflare Pages. |
+| `public/_redirects` | Short share links (topflight501.com/x, /tt, /ig) that add a tracking tag for Umami. |
 
 ## Where the data comes from
 
