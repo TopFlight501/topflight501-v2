@@ -29,7 +29,7 @@ const GAMES = {
     tags: ['501 · 301 · 101', '1–4 players'],
   },
   killer: {
-    title: 'Killer', icon: '🔪', min: 2, max: 4,
+    title: 'Killer', icon: '💔', min: 2, max: 4,
     blurb: 'Name a scorer or the scoreline to become a Killer, then knock lives off your mates. Last one standing wins.',
     tags: ['2–4 players', '3 lives each'],
   },
@@ -495,7 +495,7 @@ function boardCell(p, i) {
   switch (S.game) {
     case 'killer':
       return `<div class="pl-lives">${p.out ? '<span class="out-tag">OUT</span>' : hearts(p)}</div>
-        <div class="pl-sub">${p.out ? 'Knocked out' : p.armed ? '🔪 Killer' : 'Needs a scorer or scoreline'}</div>`;
+        <div class="pl-sub">${p.out ? 'Knocked out' : p.armed ? '💔 Killer' : 'Needs a scorer or scoreline'}</div>`;
     case 'clock': {
       const t = CLOCK_TARGETS[p.prog];
       return `<div class="pl-target">${t ? TARGET_INFO[t].icon + ' ' + TARGET_INFO[t].short : '🏁 Done'}</div>
@@ -616,7 +616,7 @@ function chipPoints(k, c) {
 
 function turnHeadRight(p) {
   if (S.game === 'x01') return `Needs ${p.score}`;
-  if (S.game === 'killer') return p.armed ? '🔪 Killer' : 'Not armed yet';
+  if (S.game === 'killer') return p.armed ? '💔 Killer' : 'Not armed yet';
   if (S.game === 'clock') return p.prog >= CLOCK_TARGETS.length ? '🏁 Finished' : `Target ${p.prog + 1} of ${CLOCK_TARGETS.length}`;
   if (S.game === 'sudden' || S.game === 'daily') return `${p.points} pts`;
   return '';
@@ -998,7 +998,7 @@ function shareLine(p) {
     case 'x01': return solo ? `🎯 Checked out from ${S.start} in ${p.darts} darts on Top Flight 501${easy}. Beat that 👇` : `🎯 ${p.name} beat ${vs()} at ${S.start} on Top Flight 501${easy}.`;
     case 'clock': return solo ? `🏟️ Round the Grounds in ${p.darts} darts on Top Flight 501${easy}. Beat that 👇` : `🏟️ ${p.name} beat ${vs()} round the grounds on Top Flight 501${easy}.`;
     case 'sudden': return `⚡ ${p.points} points, ${p.streak} in a row in Sudden Death on Top Flight 501${easy}. Beat that 👇`;
-    case 'killer': return `🔪 ${p.name} won Killer against ${vs()} on Top Flight 501${easy}.`;
+    case 'killer': return `💔 ${p.name} won Killer against ${vs()} on Top Flight 501${easy}.`;
     case 'sentoff': return `🟥 ${p.name} was last one on the pitch in Sent Off on Top Flight 501.`;
     default: return 'Top Flight 501: Premier League trivia, darts style.';
   }
@@ -1386,7 +1386,7 @@ const ACHIEVEMENTS = [
   { id: 'streak3', icon: '📅', name: 'Hat-trick', desc: 'A 3-day Daily Match streak' },
   { id: 'streak7', icon: '🗓️', name: 'Week warrior', desc: 'A 7-day Daily Match streak' },
   { id: 'nerves', icon: '⚡', name: 'Nerves of steel', desc: '10 in a row in Sudden Death' },
-  { id: 'killer', icon: '🔪', name: 'Serial killer', desc: 'Win a game of Killer' },
+  { id: 'killer', icon: '💔', name: 'Serial killer', desc: 'Win a game of Killer' },
   { id: 'grounds', icon: '🏟️', name: 'Groundhopper', desc: 'Make it round the grounds' },
   { id: 'sentoff', icon: '🟥', name: 'Last one standing', desc: 'Win a game of Sent Off' },
 ];
@@ -1454,11 +1454,11 @@ function nextNudge(game) {
   const solo = S.players.length === 1;
   const next = {
     daily: ['sudden', '⚡ Warm up for tomorrow: try Sudden Death'],
-    x01: solo ? ['sudden', '⚡ Try Sudden Death next: one miss and you’re out'] : ['killer', '🔪 Fancy a change? Try Killer with your mates'],
+    x01: solo ? ['sudden', '⚡ Try Sudden Death next: one miss and you’re out'] : ['killer', '💔 Fancy a change? Try Killer with your mates'],
     killer: ['sentoff', '🟥 Try Sent Off next: guess the score, dodge the fouls'],
     clock: ['x01', '🎯 Try The Classic next: race to zero from 501'],
     sudden: ['clock', '🏟️ Try Round the Grounds next: six targets, one race'],
-    sentoff: ['killer', '🔪 Try Killer next: knock your mates out'],
+    sentoff: ['killer', '💔 Try Killer next: knock your mates out'],
   }[game];
   return next ? `<button class="btn link daily-nudge" data-act="pick" data-v="${next[0]}">${next[1]}</button>` : '';
 }
@@ -1529,7 +1529,7 @@ async function installApp() {
 }
 
 // ---------- leagues & history ----------
-const GAME_ICON = { x01: '🎯', killer: '🔪', clock: '🏟️', sudden: '⚡', sentoff: '🟥', daily: '⭐' };
+const GAME_ICON = { x01: '🎯', killer: '💔', clock: '🏟️', sudden: '⚡', sentoff: '🟥', daily: '⭐' };
 const shortDate = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 function resultRow(g) {
@@ -1960,7 +1960,7 @@ function applyThrow(answer, res) {
     case 'killer':
       if (res.correct) {
         if (!p.armed) {
-          if (ARMING.includes(dart.cat)) { p.armed = true; dart.extra = ' You’re a Killer! 🔪'; }
+          if (ARMING.includes(dart.cat)) { p.armed = true; dart.extra = ' You’re a Killer! 💔'; }
           else dart.extra = ' Correct, but you need a scorer or the scoreline to become a Killer.';
         } else {
           after.pick = true;
@@ -2037,7 +2037,7 @@ function pickVictim() {
   const p = current();
   const rivals = S.players.map((x, i) => ({ x, i })).filter(({ x, i }) => i !== currentIdx() && !x.out);
   openModal(`
-    <p class="eyebrow">🔪 Killer strike</p>
+    <p class="eyebrow">💔 Killer strike</p>
     <h2>Who loses a life?</h2>
     <div class="victims">
       ${rivals.map(({ x, i }) => `
@@ -2098,7 +2098,7 @@ function legWon(p) {
     }
   } else if (S.game === 'killer') {
     eyebrow = 'Last one standing';
-    title = `🔪 ${esc(p.name)} wins Killer`;
+    title = `💔 ${esc(p.name)} wins Killer`;
     big = `<p class="big-hearts">${hearts(p)}</p>`;
   } else if (S.game === 'clock') {
     eyebrow = 'Round the ground!';
