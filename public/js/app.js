@@ -892,7 +892,7 @@ function submitGuess() {
 function sentOffWon(p) {
   p.legs += 1;
   unlock('first'); unlock('sentoff');
-  track('Game finished', gameInfo({ result: 'Winner', rounds: S.round }));
+  store.set('finishedOnce', true); track('Game finished', gameInfo({ result: 'Winner', rounds: S.round }));
   L.recordGame({ game: 'sentoff', players: S.players.map(x => x.name), winner: p.name, solo: false, league: null, detail: `${p.fouls} ${p.fouls === 1 ? 'foul' : 'fouls'}` });
   confetti(); sfx.win(); buzz([80, 60, 80, 60, 160]);
   S.legStarter = (S.legStarter + 1) % S.players.length;
@@ -1156,7 +1156,7 @@ function dailyOver() {
   unlock('first');
   if (saved.darts.every(d => d.res.correct)) unlock('perfect');
   const st = dailyStreak(); if (st >= 3) unlock('streak3'); if (st >= 7) unlock('streak7');
-  track('Game finished', { game: 'Daily Match', day: saved.n, points: saved.points, hits: saved.darts.filter(d => d.res.correct).length });
+  store.set('finishedOnce', true); track('Game finished', { game: 'Daily Match', day: saved.n, points: saved.points, hits: saved.darts.filter(d => d.res.correct).length });
   L.recordGame({ game: 'daily', players: ['You'], winner: null, solo: true, league: null, detail: `#${saved.n}, ${saved.points} pts` });
   if (saved.points > 0) { confetti(); sfx.win(); } else sfx.miss();
   showDailyResult(saved);
@@ -1188,7 +1188,7 @@ function pastHtml() {
 function pastOver() {
   const p = S.players[0], hits = S.visit.filter(d => d.res.correct).length;
   const past = store.get('pastLog', {}); past[S.dailyN] = Math.max(past[S.dailyN] || 0, p.points); store.set('pastLog', past);
-  track('Game finished', { game: 'Past Daily', day: S.dailyN, points: p.points, hits });
+  store.set('finishedOnce', true); track('Game finished', { game: 'Past Daily', day: S.dailyN, points: p.points, hits });
   if (p.points > 0) { confetti(); sfx.win(); } else sfx.miss();
   showPastResult();
 }
@@ -1503,7 +1503,7 @@ let installEvent = null;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; if (S.screen === 'hub' && !modalRoot.innerHTML) renderHub(); });
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 function installBar() {
-  if (isStandalone() || store.get('installDone', false) || store.get('visits', 0) < 2) return '';
+  if (isStandalone() || store.get('installDone', false) || !store.get('finishedOnce', false)) return '';   // only after they've finished a game
   if (!installEvent && !matchMedia('(pointer: coarse)').matches) return '';
   return `<div class="install" role="region" aria-label="Add to home screen">
     <img src="img/icon-192.png" alt="" width="28" height="28">
@@ -2084,7 +2084,7 @@ function legWon(p) {
   if (S.game === 'x01') unlock('checkout');
   if (S.game === 'killer') unlock('killer');
   if (S.game === 'clock') unlock('grounds');
-  track('Game finished', gameInfo({ result: S.players.length === 1 ? 'Solo finish' : 'Winner', rounds: S.round }));
+  store.set('finishedOnce', true); track('Game finished', gameInfo({ result: S.players.length === 1 ? 'Solo finish' : 'Winner', rounds: S.round }));
   const solo = S.players.length === 1;
   let extra = '', big = '', eyebrow = 'Game shot!', title = `🎯 ${esc(p.name)} wins`;
   if (S.game === 'x01') {
@@ -2139,7 +2139,7 @@ function legWon(p) {
 function suddenOver() {
   const p = current();
   unlock('first');
-  track('Game finished', gameInfo({ result: 'Sudden death over', points: p.points, streak: p.streak }));
+  store.set('finishedOnce', true); track('Game finished', gameInfo({ result: 'Sudden death over', points: p.points, streak: p.streak }));
   const best = store.get('best:sudden', null);
   const isBest = !easyOn() && p.points > 0 && (!best || p.points > best.points);
   if (isBest) store.set('best:sudden', { points: p.points, streak: p.streak });
@@ -2476,9 +2476,11 @@ document.addEventListener('keydown', e => {
     openModal(challengeHtml(vsOffer));
   }
   // a shared Daily Match link (topflight501.com/?daily) opens today's match straight away
-  if (new URLSearchParams(location.search).has('daily') && S.allSeasons.length) {
-    history.replaceState(null, '', location.pathname);
-    track('Opened shared Daily link');
+  const dq = new URLSearchParams(location.search);
+  if (dq.has('daily') && S.allSeasons.length) {
+    const from = dq.get('utm_source');
+    if (from) track('Opened Daily from social', { source: from });   // /x, /tt, /ig short links
+    else { history.replaceState(null, '', location.pathname); track('Opened shared Daily link'); }
     if (dailySaved() && dailySaved().done) { S.game = 'daily'; S.dailyN = dailyNumber(); showDailyResult(); }
     else await startDaily();
   }

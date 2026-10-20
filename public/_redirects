@@ -1,7 +1,7 @@
-# Short share links. Each one opens the game and tells Umami where the visitor came from.
-/x    /?utm_source=x_reply          302
-/x/   /?utm_source=x_reply          302
-/tt   /?utm_source=tiktok           302
-/tt/  /?utm_source=tiktok           302
-/ig   /?utm_source=instagram        302
-/ig/  /?utm_source=instagram        302
+# Short share links. Each one opens today's Daily Match and tells Umami where the visitor came from.
+/x    /?daily&utm_source=x_reply          302
+/x/   /?daily&utm_source=x_reply          302
+/tt   /?daily&utm_source=tiktok           302
+/tt/  /?daily&utm_source=tiktok           302
+/ig   /?daily&utm_source=instagram        302
+/ig/  /?daily&utm_source=instagram        302
