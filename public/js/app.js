@@ -2302,6 +2302,7 @@ document.addEventListener('click', async e => {
     case 'clear-names':
       S.names = ['', '', '', '']; S.clubs = ['', '']; saveSetup(); toast('Names and club cleared'); if (S.screen === 'hub') renderHub(); break;
     case 'confirm-wipe': wipeAll(); openModal(`<h2>All deleted</h2><p>Everything Top Flight 501 had saved on this device has been removed.</p><button class="btn primary big" data-act="close">OK</button>`); goHub(); break;
+    case 'share-site': track('Site shared'); shareText('⚽🎯 Top Flight 501: free Premier League trivia, scored like darts. Who knows their football best? 👇\nhttps://topflight501.com', b); break;
     case 'privacy': openModal(privacyHtml); break;
     case 'terms': openModal(termsHtml); break;
     case 'count': S.nPlayers = Number(v); renderSetup(); break;
