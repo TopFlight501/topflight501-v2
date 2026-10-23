@@ -5,9 +5,10 @@ import { checkName, nameKey } from '../../lib/names.js';
 const pub = p => ({ id: p.id, nick: p.nick, club: p.club || '' });
 
 async function myLeagues(DB, id) {
-  const r = await DB.prepare(`SELECT l.code, l.name, l.owner, (SELECT COUNT(*) FROM members x WHERE x.league = l.id) AS n
+  const r = await DB.prepare(`SELECT l.code, l.name, l.owner, l.format, l.weeks, l.club, l.status, l.start_n, l.season, (SELECT COUNT(*) FROM members x WHERE x.league = l.id) AS n
     FROM members m JOIN leagues l ON l.id = m.league WHERE m.player = ? ORDER BY m.joined`).bind(id).all();
-  return (r.results || []).map(l => ({ code: showLeague(l.code), name: l.name, members: l.n, mine: l.owner === id }));
+  return (r.results || []).map(l => ({ code: showLeague(l.code), name: l.name, members: l.n, mine: l.owner === id,
+    format: l.format || 'open', weeks: l.weeks || 0, club: l.club || '', status: l.status || 'open', start: l.start_n || 0, season: l.season || 1 }));
 }
 
 export const onRequestGet = handle(async ({ request, env }) => {

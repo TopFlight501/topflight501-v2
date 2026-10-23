@@ -34,12 +34,23 @@ const kv = new Map();
 const KV = { async get(k, t) { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, async put(k, v) { kv.set(k, v); } };
 const env = { DB: D1, SCORES: KV, ADMIN_KEY: process.env.ADMIN_KEY || 'dev-admin-key-123' };
 
+// Testing only: POST /__dev/clock {"days": 3} moves this server's clock forward, to play out gameweeks quickly
+let shift = 0;
+const realNow = Date.now.bind(Date);
+Date.now = () => realNow() + shift;
+
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff': 'font/woff', '.mp4': 'video/mp4', '.webm': 'video/webm', '.ics': 'text/calendar' };
 const redirects = fs.readFileSync(path.join(ROOT, 'public', '_redirects'), 'utf8').split('\n').filter(l => l.trim() && !l.startsWith('#')).map(l => l.trim().split(/\s+/));
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   try {
+    if (url.pathname === '/__dev/clock') {
+      const chunks = []; for await (const c of req) chunks.push(c);
+      const b = chunks.length ? JSON.parse(Buffer.concat(chunks)) : {};
+      if (b.reset) shift = 0; else shift += (Number(b.days) || 0) * 864e5;
+      res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ now: new Date(Date.now()).toISOString() }));
+    }
     const m = url.pathname.match(/^\/api\/([a-z]+)$/);
     if (m) {
       const file = path.join(ROOT, 'functions', 'api', m[1] + '.js');
