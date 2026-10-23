@@ -1659,13 +1659,13 @@ function renderLeagues() {
       : '<p class="hint">You’re not in a league yet. Start one and send your mates the code, or join theirs.</p>'}
     <form class="lg-form" data-form="new-league" autocomplete="off">
       <label class="label" for="new-league-name">Start a league</label>
-      <div class="lg-inline"><input class="text" id="new-league-name" data-new-league maxlength="30" placeholder="Friday night lads"><button class="btn primary" type="submit">Create</button></div>
+      <div class="lg-inline"><input class="text" id="new-league-name" data-new-league maxlength="30" placeholder="League name, e.g. Friday night lads"><button class="btn primary" type="submit">Create</button></div>
     </form>
     <form class="lg-form" data-form="join-league" autocomplete="off">
       <label class="label" for="join-code">Join with a code</label>
       <div class="lg-inline"><input class="text code-in" id="join-code" data-join-code maxlength="12" placeholder="TF-K7Q2M" autocapitalize="characters" spellcheck="false"><button class="btn ghost" type="submit">Join</button></div>
     </form>
-    ${S.lgFormErr ? `<p class="error">${esc(S.lgFormErr)}</p>` : ''}
+    ${S.lgFormErr ? `<p class="error" role="alert">${esc(S.lgFormErr)}</p>` : ''}
     <p class="hint small">Your nickname and league scores are saved online so your mates can see them. Your other scores stay on this phone.</p>
   </section>`;
 }
@@ -2657,13 +2657,17 @@ document.addEventListener('submit', e => {
   if (f === 'guess') submitGuess();
   if (f === 'new-league') {
     const name = ($('[data-new-league]') || {}).value || '';
-    if (!name.trim()) return;
-    S.lgFormErr = null;
-    O.createLeague(name).then(v => { track('League created'); S.league = v; S.lgTab = 'daily'; S.myLeagues = null; openLeague(v.code); })
+    if (S.screen !== 'leagues') return;
+    if (!name.trim()) { S.lgFormErr = 'Type a name for your league first.'; renderLeagues(); const i = $('[data-new-league]'); if (i) i.focus(); return; }
+    if (S.busyOnline) return;
+    S.busyOnline = true; S.lgFormErr = null;
+    const btn = $('form[data-form="new-league"] button[type=submit]'); if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+    O.createLeague(name).finally(() => { S.busyOnline = false; }).then(v => { track('League created'); S.league = v; S.lgTab = 'daily'; S.myLeagues = null; openLeague(v.code); })
       .catch(err => { S.lgFormErr = onlineErr(err); renderLeagues(); const i = $('[data-new-league]'); if (i) i.value = name; });
   }
   if (f === 'join-league') {
     const raw = ($('[data-join-code]') || {}).value || '';
+    if (!raw.trim()) { S.lgFormErr = 'Type the league code your mate sent you, like TF-K7Q2M.'; renderLeagues(); const i = $('[data-join-code]'); if (i) i.focus(); return; }
     const code = O.cleanCode(raw);
     if (!code) { S.lgFormErr = 'League codes look like TF-K7Q2M. Check it and try again.'; renderLeagues(); const i = $('[data-join-code]'); if (i) i.value = raw; return; }
     S.lgFormErr = null; joinLeague(code);
