@@ -329,7 +329,7 @@ function leagueTile() {
       <span class="game-icon" aria-hidden="true">🏆</span>
       <span class="game-body">
         <span class="game-title">Leagues${Date.now() < Date.UTC(2026, 10, 20) ? ' <span class="new-tag">NEW</span>' : ''}</span>
-        <span class="game-blurb">${m ? `Your league tables, ${esc(m.nick)}: Daily Match points and head-to-heads.` : 'Your mates in a table: Daily Match points and head-to-heads. Just a nickname.'}</span>
+        <span class="game-blurb">${m ? `Your league tables, ${esc(m.nick)}: Daily Match points and head-to-heads.` : 'Start a league with your mates. Daily Match points and head-to-heads, just a nickname.'}</span>
         <span class="lg-go">${m ? 'Open' : 'Start a league'}</span>
       </span>
       <span class="game-go" aria-hidden="true">›</span>
