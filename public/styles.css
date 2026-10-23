@@ -838,3 +838,8 @@ a.game-card { text-decoration: none; color: inherit; }
 .lg-cta { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 4px; }
 .lg-cta .btn { padding: 12px 22px; }
 .lg-cta .linkish { color: var(--muted); font-weight: 600; font-size: .92rem; }
+
+.lg-how { margin: 12px 0 14px; }
+.lg-how-links { justify-content: flex-start; gap: 16px; }
+.lg-how-links .btn { width: auto; flex: none; padding-left: 0; padding-right: 0; }
+.nowrap { white-space: nowrap; }

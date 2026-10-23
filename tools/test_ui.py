@@ -41,7 +41,7 @@ with sync_playwright() as p:
     a.click('.league-card')
     check('Play your mates in a league' in a.inner_text('#app'), 'intro screen without a nickname')
     shot(a, '01-intro')
-    a.click('text=Pick a nickname')
+    a.click('button[data-act=nick-new]')
     a.fill('#nick-in', 'sh1te lad')
     a.click('button[type=submit]')
     a.wait_for_selector('[data-nick-err]:not([hidden])')
@@ -81,7 +81,7 @@ with sync_playwright() as p:
     # third player via the code box, no club
     c_ctx, c = phone(br, 'C')
     ready(c)
-    c.click('.league-card'); c.click('text=Pick a nickname')
+    c.click('.league-card'); c.click('button[data-act=nick-new]')
     c.fill('#nick-in', f'Claret_{tag}'); c.click('.club-opt:has-text("Burnley")'); c.click('button[type=submit]')
     c.wait_for_selector('.rec-code'); code_c = c.inner_text('.rec-code').strip(); c.click('text=I’ve saved it')
     c.wait_for_selector('#join-code')

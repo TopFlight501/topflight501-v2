@@ -1587,6 +1587,24 @@ function h2hBlock(games, scope) {
 }
 
 // ---------- online leagues (nicknames, Daily tables, head-to-head) ----------
+const LEAGUE_RULES = `
+      <li><b>Pick a nickname</b> and your club colours. No email, no password, no real names. Save your <b>recovery code</b>: it’s how you get back in on a new phone.</li>
+      <li><b>Start a league</b> and send your mates the invite link or the join code (like <span class="nowrap">TF-K7Q2M</span>). Up to 50 players in a league.</li>
+      <li><b>⭐ Daily table.</b> Your first go at each day’s Daily Match scores your points. See this week (Monday to Sunday) or all time since the league started.</li>
+      <li><b>⚔️ Head-to-head.</b> Play The Classic on your own, Round the Grounds or Sudden Death, then tap <b>Challenge a mate</b>. They play the same matches on their phone and only their first go counts. Fewer darts wins (most points in Sudden Death).</li>
+      <li><b>Run the league.</b> Whoever starts it can rename it or remove players. Spot a rude name? Tap <b>Report a name</b>.</li>`;
+function leagueHow() {
+  if (store.get('hideRules:leagues', false)) {
+    return `<div class="row slim lg-how-links"><button class="btn link show-rules" data-act="lg-rules-toggle">📋 How it works</button><button class="btn link watch-link" data-act="lg-tutorial">▶ Watch (15s)</button></div>`;
+  }
+  return `<div class="how lg-how">
+      <div class="how-head">
+        <span class="label">How it works</span>
+        <span class="how-actions"><button class="how-watch" data-act="lg-tutorial">▶ Watch</button><button class="how-hide" data-act="lg-rules-toggle" aria-label="Hide how it works">Hide ✕</button></span>
+      </div>
+      <ul class="how-list">${LEAGUE_RULES}</ul>
+    </div>`;
+}
 // A league row painted in the player's club colours: main colour behind, second colour as a stripe.
 function rowVars(club) {
   const k = CLUB_COLOURS[club];
@@ -1631,11 +1649,8 @@ function renderLeagues() {
       <button class="back" data-act="hub">‹ All games</button>
       <p class="eyebrow">🏆 Leagues</p>
       <h2>Play your mates in a league</h2>
-      <ul class="lg-points">
-        <li><span>⭐</span><span><b>Daily table.</b> Everyone’s Daily Match points, this week and all time.</span></li>
-        <li><span>⚔️</span><span><b>Head-to-head.</b> Send a challenge link, play the same matches on your own phones, and the result counts.</span></li>
-        <li><span>🔒</span><span><b>Just a nickname.</b> No email, no password, no real names.</span></li>
-      </ul>
+      <p class="hint">Daily Match points and head-to-head challenges with your mates, each on your own phone.</p>
+      ${leagueHow()}
       <div class="lg-cta">
         <button class="btn primary" data-act="nick-new">Pick a nickname</button>
         <button class="linkish" data-act="nick-restore">I have a recovery code</button>
@@ -1650,6 +1665,7 @@ function renderLeagues() {
     <p class="eyebrow">🏆 Leagues</p>
     <div class="me-row">${nickChip(m.nick, m.club)}<button class="btn ghost small-btn" data-act="me-edit">Edit</button></div>
     <h2>Your leagues</h2>
+    ${leagueHow()}
     ${S.myLeaguesErr ? `<p class="error">${esc(S.myLeaguesErr)}</p><button class="btn ghost" data-act="leagues">Try again</button>`
       : !ls ? '<p class="hint">Loading your leagues…</p>'
       : ls.length ? `<ul class="league-list">${ls.map(l => `<li><button class="league-row" data-act="open-league" data-v="${esc(l.code)}">
@@ -1736,6 +1752,7 @@ function renderLeague() {
       <button class="btn ghost" data-act="lg-report">Report a name</button>
       <button class="btn ghost danger-text" data-act="lg-leave">Leave league</button>
     </div>
+    <div class="row slim lg-how-links"><button class="btn link show-rules" data-act="lg-rules">📋 How it works</button><button class="btn link watch-link" data-act="lg-tutorial">▶ Watch (15s)</button></div>
   </section>`;
 }
 
@@ -2498,6 +2515,16 @@ document.addEventListener('click', async e => {
     case 'leagues-home': S.openLeague = null; S.league = null; S.lgFormErr = null; renderLeagues(); window.scrollTo(0, 0); loadMyLeagues(); break;
     case 'open-league': if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } openLeague(v); break;
     case 'lg-tab': S.lgTab = v; renderLeague(); break;
+    case 'lg-rules-toggle': store.set('hideRules:leagues', !store.get('hideRules:leagues', false)); renderLeagues(); break;
+    case 'lg-rules': openModal(`<h2>🏆 How leagues work</h2><ul class="how-list">${LEAGUE_RULES}</ul><div class="row"><button class="btn ghost" data-act="lg-tutorial">▶ Watch (15s)</button><button class="btn primary" data-act="close">Got it</button></div>`); break;
+    case 'lg-tutorial':
+      track('Tutorial watched', { game: 'Leagues' });
+      openModal(`<h2>🏆 How leagues work</h2>
+        <video class="tut-video" poster="tutorials/leagues.jpg?v=1" autoplay muted playsinline loop controls preload="none" width="720" height="960">
+          <source src="tutorials/leagues.mp4?v=1" type="video/mp4"><source src="tutorials/leagues.webm?v=1" type="video/webm">
+        </video>
+        <button class="btn primary big" data-act="close">Got it</button>`);
+      break;
     case 'lg-range': S.lgRange = v; renderLeague(); break;
     case 'lg-join': await joinLeague(v); break;
     case 'lg-invite': {
