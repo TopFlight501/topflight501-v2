@@ -121,7 +121,9 @@ export function exportData() {
   try { daily = { log: JSON.parse(localStorage.getItem('tf501:dailyLog') || '{}'), today: JSON.parse(localStorage.getItem('tf501:daily') || 'null') }; } catch { /* ignore */ }
   let ach = {};
   try { ach = JSON.parse(localStorage.getItem('tf501:ach') || '{}'); } catch { /* ignore */ }
-  return { app: 'topflight501', version: 1, exported: new Date().toISOString(), leagues: getLeagues(), history: getHistory(), bests, daily, ach };
+  let me = null;   // leagues nickname and recovery code, so restoring a backup brings your nickname back
+  try { me = JSON.parse(localStorage.getItem('tf501:me') || 'null'); } catch { /* ignore */ }
+  return { app: 'topflight501', version: 1, exported: new Date().toISOString(), leagues: getLeagues(), history: getHistory(), bests, daily, ach, me };
 }
 
 export function importData(data) {
@@ -176,6 +178,10 @@ export function importData(data) {
       for (const [k, v] of Object.entries(data.ach)) if (!cur[k] && typeof v === 'string') cur[k] = v;
       localStorage.setItem('tf501:ach', JSON.stringify(cur));
     }
+  } catch { /* ignore */ }
+  try {
+    const m = data.me;
+    if (m && typeof m.code === 'string' && typeof m.nick === 'string' && !localStorage.getItem('tf501:me')) localStorage.setItem('tf501:me', JSON.stringify({ id: String(m.id || ''), nick: m.nick.slice(0, 16), club: String(m.club || ''), code: m.code.slice(0, 20) }));
   } catch { /* ignore */ }
   return { addedLeagues, addedGames, addedDays };
 }

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Top Flight 501 admin</title>
+  <style>
+    :root { --bg:#F3F6F5; --card:#fff; --teal:#1E4B57; --muted:#5F7378; --ink:#15262B; --green:#12B886; --line:#DCE5E3; --red:#E03131; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 16px; }
+    h1 { color: var(--teal); font-size: 1.4rem; }
+    h2 { color: var(--teal); font-size: 1.1rem; margin: 26px 0 8px; }
+    .card { background: var(--card); border-radius: 14px; padding: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    input { font: inherit; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; width: 100%; box-sizing: border-box; }
+    button { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 8px 12px; cursor: pointer; background: #EAF1EF; color: var(--teal); }
+    button.go { background: var(--green); color: #fff; margin-top: 8px; padding: 10px 16px; }
+    button.bad { color: var(--red); }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    td, th { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    th { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+    td.acts { white-space: nowrap; text-align: right; }
+    td.acts button { margin-left: 4px; padding: 6px 9px; font-size: .82rem; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .err { color: var(--red); font-weight: 600; }
+    .totals { display: flex; gap: 10px; flex-wrap: wrap; }
+    .totals div { background: var(--card); border-radius: 12px; padding: 10px 14px; }
+    .totals b { display: block; font-size: 1.4rem; color: var(--teal); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Top Flight 501 admin</h1>
+  <div id="login" class="card">
+    <p class="muted">Enter the admin key you saved in Cloudflare (ADMIN_KEY). It's kept only until you close this tab.</p>
+    <form id="login-form"><input id="key" type="password" autocomplete="current-password" placeholder="Admin key"><button class="go" type="submit">Open</button></form>
+    <p class="err" id="login-err" hidden></p>
+  </div>
+  <div id="panel" hidden>
+    <div class="totals" id="totals"></div>
+    <h2>Reports</h2>
+    <div class="card" id="reports"></div>
+    <h2>Newest nicknames</h2>
+    <div class="card" id="players"></div>
+    <h2>Newest leagues</h2>
+    <div class="card" id="leagues"></div>
+    <p class="muted">“Rename” swaps the name for a plain one (Player A1B2 or League K7Q2M). “Remove” deletes it completely.</p>
+  </div>
+</main>
+<script>
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const day = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  let key = sessionStorage.getItem('tf501-admin') || '';
+
+  async function api(method, body) {
+    const r = await fetch('/api/admin', { method, headers: { 'x-admin-key': key, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'Something went wrong');
+    return j;
+  }
+  async function load() {
+    try {
+      const d = await api('GET');
+      sessionStorage.setItem('tf501-admin', key);
+      $('#login').hidden = true; $('#panel').hidden = false;
+      $('#totals').innerHTML = `<div><b>${d.totals.players}</b>nicknames</div><div><b>${d.totals.leagues}</b>leagues</div><div><b>${d.totals.challenges}</b>challenges played</div>`;
+      $('#reports').innerHTML = d.reports.length ? `<table><tr><th>Name</th><th>Type</th><th>Reports</th><th></th></tr>${d.reports.map(r => `<tr>
+        <td><b>${esc(r.name || '(already gone)')}</b></td><td>${r.kind}</td><td>${r.n}</td>
+        <td class="acts"><button data-a="rename-${r.kind}" data-id="${esc(r.target)}">Rename</button><button class="bad" data-a="remove-${r.kind}" data-id="${esc(r.target)}">Remove</button><button data-a="dismiss" data-kind="${r.kind}" data-id="${esc(r.target)}">It's fine</button></td></tr>`).join('')}</table>` : '<p class="muted">No reports. 👍</p>';
+      $('#players').innerHTML = `<table><tr><th>Nickname</th><th>Club</th><th>Joined</th><th></th></tr>${d.players.map(p => `<tr>
+        <td><b>${esc(p.nick)}</b></td><td class="muted">${esc(p.club || '–')}</td><td class="muted">${day(p.created)}</td>
+        <td class="acts"><button data-a="rename-player" data-id="${esc(p.id)}">Rename</button><button class="bad" data-a="remove-player" data-id="${esc(p.id)}">Remove</button></td></tr>`).join('')}</table>`;
+      $('#leagues').innerHTML = `<table><tr><th>League</th><th>Code</th><th>Players</th><th></th></tr>${d.leagues.map(l => `<tr>
+        <td><b>${esc(l.name)}</b></td><td class="muted">${esc(l.code)}</td><td>${l.members}</td>
+        <td class="acts"><button data-a="rename-league" data-id="${esc(l.code)}">Rename</button><button class="bad" data-a="remove-league" data-id="${esc(l.code)}">Remove</button></td></tr>`).join('')}</table>`;
+    } catch (e) {
+      $('#login').hidden = false; $('#panel').hidden = true;
+      if (key) { $('#login-err').textContent = e.message; $('#login-err').hidden = false; }
+    }
+  }
+  $('#login-form').addEventListener('submit', e => { e.preventDefault(); key = $('#key').value.trim(); load(); });
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-a]'); if (!b) return;
+    const a = b.dataset.a, id = b.dataset.id;
+    if (a.startsWith('remove') && !confirm('Remove this completely? It can’t be undone.')) return;
+    const body = { action: a };
+    if (a.endsWith('league') || (a === 'dismiss' && b.dataset.kind === 'league')) body.code = id; else body.id = id;
+    if (a === 'dismiss') body.kind = b.dataset.kind;
+    try { await api('POST', body); load(); } catch (err) { alert(err.message); }
+  });
+  if (key) load();
+</script>
+</main>
+</body>
+</html>

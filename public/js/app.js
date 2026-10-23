@@ -1,16 +1,17 @@
 import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=76';
 import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=78';
 import { sfx, setSoundEnabled } from './sound.js?v=74';
-import * as L from './leagues.js?v=74';
+import * as L from './leagues.js?v=75';
 import { initAnalytics, track } from './analytics.js?v=74';
-import { privacyHtml, termsHtml } from './legal.js?v=75';
+import { privacyHtml, termsHtml } from './legal.js?v=76';
+import * as O from './online.js?v=1';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
 const modalRoot = $('#modal');
 
 const FEEDBACK_EMAIL = 'topflight501@outlook.com';
-// Leagues are paused until accounts exist. Set to true to bring them back.
+// The old pass-the-phone leagues (saved on one device) stay switched off; online leagues replace them.
 const LEAGUES_ENABLED = false;
 
 // ---------- games ----------
@@ -203,8 +204,13 @@ function settingsHtml() {
     <button class="btn ghost" data-act="reminder">⏰ Set a daily reminder</button>
   </div>
   <div class="field">
+    <span class="label">Leagues nickname</span>
+    ${O.me() ? `<p class="hint">You play in leagues as ${nickChip(O.me().nick, O.me().club)}</p><button class="btn ghost" data-act="me-edit">Manage nickname</button>`
+      : '<p class="hint">Leagues use a nickname. No email or password.</p><button class="btn ghost" data-act="nick-new">Pick a nickname</button> <button class="linkish" data-act="nick-restore">I have a recovery code</button>'}
+  </div>
+  <div class="field">
     <span class="label">Your data</span>
-    <p class="hint">Everything is saved on this device only. Make a backup to keep your personal bests, Daily Match scores and streak, or to move them to another phone or computer.</p>
+    <p class="hint">Apart from your leagues nickname and league scores, everything is saved on this device only. Make a backup to keep your personal bests, Daily Match scores and streak, or to move them to another phone or computer.</p>
     <div class="row wrap">
       <button class="btn ghost" data-act="backup">⬇️ Backup</button>
       <button class="btn ghost" data-act="restore">⬆️ Restore</button>
@@ -310,14 +316,14 @@ function renderHub() {
       ${dailyBanner()}
       ${gameOrder().map(gameCardHtml).join('')}
     </div>
-    ${LEAGUES_ENABLED ? `<button class="game-card league-card" data-act="leagues">
+    <button class="game-card league-card" data-act="leagues">
       <span class="game-icon" aria-hidden="true">🏆</span>
       <span class="game-body">
-        <span class="game-title">Leagues &amp; history</span>
-        <span class="game-blurb">League tables, results and head-to-head records for you and your mates. Saved on this device.</span>
+        <span class="game-title">Leagues${Date.now() < Date.UTC(2026, 10, 20) ? ' <span class="new-tag">NEW</span>' : ''}</span>
+        <span class="game-blurb">${O.me() ? `Your league tables, ${esc(O.me().nick)}. Daily Match points and head-to-head challenges.` : 'Start a league with your mates: Daily Match points and head-to-head challenges. Just a nickname, no sign-up.'}</span>
       </span>
       <span class="game-go" aria-hidden="true">›</span>
-    </button>` : ''}
+    </button>
     ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
   </section>
   ${installBar()}`;
@@ -929,7 +935,8 @@ const shortId = id => id.replace(/^20(\d\d)-(\d\d)-/, '$1$2-');
 const longId = id => id.replace(/^(\d\d)(\d\d)-/, '20$1-$2-');
 function challengeLink() {
   const me = S.players[0].name, named = me && me !== 'Player';
-  return `https://topflight501.com/?vs=${S.game}${S.game === 'x01' ? `&s=${S.start}` : ''}${easyOn() ? '&e=1' : ''}&r=${vsMine()}${named ? `&n=${encodeURIComponent(me)}` : ''}&m=${S.played.map(shortId).join('.')}`;
+  const nick = O.me() ? O.me().nick : (named ? me : '');
+  return `https://topflight501.com/?vs=${S.game}${S.game === 'x01' ? `&s=${S.start}` : ''}${easyOn() ? '&e=1' : ''}&r=${vsMine()}${nick ? `&n=${encodeURIComponent(nick)}` : ''}${S.chalId ? `&c=${S.chalId}` : ''}&m=${S.played.map(shortId).join('.')}`;
 }
 function parseChallenge() {
   const q = new URLSearchParams(location.search);
@@ -937,7 +944,8 @@ function parseChallenge() {
   const g = q.get('vs'), r = parseInt(q.get('r'), 10), s = parseInt(q.get('s'), 10) || 501;
   const m = (q.get('m') || '').split('.').filter(x => /^\d{4}-\d{1,3}$/.test(x)).slice(0, 80).map(longId);
   if (!VS_GAMES.includes(g) || !Number.isFinite(r) || !m.length || ![101, 301, 501].includes(s)) return null;
-  return { g, s, e: q.get('e') === '1', r, n: (q.get('n') || '').trim().slice(0, 20), m };
+  const c = /^[2-9A-Z]{10}$/.test(q.get('c') || '') ? q.get('c') : null;
+  return { g, s, e: q.get('e') === '1', r, n: (q.get('n') || '').trim().slice(0, 20), m, c };
 }
 function vsWhat(c) {
   return c.g === 'x01' ? `${vsUnit(c.g, c.r)} to check out from ${c.s}` : c.g === 'clock' ? `${vsUnit(c.g, c.r)} to get round the grounds` : `${vsUnit(c.g, c.r)} in Sudden Death`;
@@ -949,8 +957,8 @@ function challengeHtml(c) {
     <p class="vs-game">${g.icon} <b>${g.title}</b>${c.g === 'x01' ? ` · ${c.s}` : ''}${c.e ? ' · Easy mode' : ''}</p>
     <p class="big-score">${c.r}</p>
     <p>${vsWhat(c)}. You get the exact same matches, on your phone. Can you beat it?</p>
-    <label class="vs-name"><span class="label">Your name <span class="opt">optional</span></span>
-      <input class="text" id="vs-name" maxlength="20" placeholder="So they know who beat them" autocomplete="off" value="${esc(S.names[0] || '')}"></label>
+    ${O.me() ? `<p class="hint">Playing as ${nickChip(O.me().nick, O.me().club)}${c.c ? '. The result goes in your head-to-head record.' : ''}</p>` : `<label class="vs-name"><span class="label">Your name <span class="opt">optional</span></span>
+      <input class="text" id="vs-name" maxlength="20" placeholder="So they know who beat them" autocomplete="off" value="${esc(S.names[0] || '')}"></label>`}
     <div class="row">
       <button class="btn ghost" data-act="close">Not now</button>
       <button class="btn primary" data-act="vs-accept">Accept</button>
@@ -959,7 +967,7 @@ function challengeHtml(c) {
 }
 async function acceptChallenge() {
   const c = S.vsOffer; if (!c) return;
-  const name = (($('#vs-name') || {}).value || '').trim();
+  const name = O.me() ? O.me().nick : (($('#vs-name') || {}).value || '').trim();
   closeModal();
   track('Challenge accepted', { game: GAMES[c.g].title });
   S.game = c.g; S.start = c.s; S.easy = c.e; S.nPlayers = 1; S.teamGame = false;
@@ -975,9 +983,15 @@ function vsLine() {
   const c = S.vs, mine = vsMine(), them = c.n || 'Your mate';
   const better = vsLower(c.g) ? mine < c.r : mine > c.r;
   const verdict = mine === c.r ? 'Dead level 🤝' : better ? 'You win! 🏆' : `${esc(them)} wins this one`;
+  let saveLine = '';
+  if (c.c) {
+    S.vsDone = { c: c.c, mine };
+    if (O.me()) { saveLine = '<p class="hint vs-saved" data-vs-saved>Saving to your head-to-head record…</p>'; setTimeout(saveVsResult, 0); }
+    else saveLine = `<p class="hint vs-saved" data-vs-saved>Want this on a head-to-head record? <button class="linkish" data-act="nick-new" data-vs="1">Pick a nickname</button></p>`;
+  }
   return `<div class="vs-result ${better ? 'won' : mine === c.r ? '' : 'lost'}">
     <span>You <b>${mine}</b></span><span class="vs-v">v</span><span>${esc(them)} <b>${c.r}</b></span>
-    <small>${verdict}</small></div>`;
+    <small>${verdict}</small></div>${saveLine}`;
 }
 function vsReply() {
   const c = S.vs, mine = vsMine(), them = c.n || 'you';
@@ -1230,6 +1244,7 @@ function showDailyResult(saved = dailySaved()) {
   if (!saved) return;
   S.dailyShown = saved;
   sendDailyScore(saved);
+  postDailyToLeagues(saved);
   const hits = saved.darts.filter(d => d.res.correct).length;
   const streak = dailyStreak();
   const prevBest = dailyBest(saved.key);
@@ -1248,6 +1263,7 @@ function showDailyResult(saved = dailySaved()) {
       <button class="btn ghost story-btn" data-act="story">📸 Story</button>
       <button class="btn primary" data-act="share">↗ Share</button>
     </div>
+    <button class="btn link lg-nudge" data-act="leagues">🏆 ${O.me() ? 'See your league tables' : 'Start a league with your mates'}</button>
     <button class="btn link" data-act="past">📅 Play past Dailies</button>
     <button class="btn link" data-act="daily-close">Back to games</button>
     ${store.get('remindAdded', false) ? nextNudge('daily') : '<button class="btn link remind-link" data-act="reminder">⏰ Remind me every day</button>'}
@@ -1563,77 +1579,269 @@ function h2hBlock(games, scope) {
     </div>`;
 }
 
+// ---------- online leagues (nicknames, Daily tables, head-to-head) ----------
+// A league row painted in the player's club colours: main colour behind, second colour as a stripe.
+function rowVars(club) {
+  const k = CLUB_COLOURS[club];
+  if (!k) return '';
+  const bg = k[0], fg = lum(bg) > 0.3 ? '#111111' : '#FFFFFF';
+  const stripe = k[1].toUpperCase() === bg.toUpperCase() ? fg : k[1];
+  return `--rb:${bg};--rf:${fg};--rs:${stripe}`;
+}
+function nickChip(nick, club, you = false) {
+  return `<span class="nick-chip ${club ? 'clubbed' : ''}" style="${rowVars(club)}">${esc(nick)}${you ? ' <small>(you)</small>' : ''}</span>`;
+}
+const onlineErr = e => (e && e.message) || 'Something went wrong. Try again in a minute.';
+
+async function loadMyLeagues() {
+  if (!O.me()) return;
+  S.myLeaguesErr = null;
+  try { const r = await O.refresh(); S.myLeagues = r.leagues; S.today = r.day; }
+  catch (e) { S.myLeaguesErr = onlineErr(e); }
+  if (S.screen === 'leagues' && !S.openLeague) renderLeagues();
+}
+async function loadLeague(code) {
+  S.leagueErr = null;
+  try {
+    const v = await O.league(code);
+    if (v.preview) { S.openLeague = null; S.league = null; offerJoin(v); renderLeagues(); return; }
+    S.league = v;
+  } catch (e) { S.leagueErr = onlineErr(e); }
+  if (S.screen === 'leagues' && S.openLeague === code) renderLeagues();
+}
+function openLeague(code) {
+  S.screen = 'leagues'; S.openLeague = code; S.league = S.league && S.league.code === code ? S.league : null;
+  renderLeagues(); window.scrollTo(0, 0);
+  loadLeague(code);
+}
+
 function renderLeagues() {
-  const lg = S.openLeague ? L.getLeague(S.openLeague) : null;
-  if (lg) return renderLeague(lg);
-  const leagues = L.getLeagues();
-  const history = L.getHistory();
-  const multi = history.filter(g => !g.solo);
+  if (S.openLeague) return renderLeague();
+  const m = O.me();
+  if (!m) {
+    app.innerHTML = `
+    <section class="card leagues">
+      <button class="back" data-act="hub">‹ All games</button>
+      <p class="eyebrow">🏆 Leagues</p>
+      <h2>Play your mates in a league</h2>
+      <ul class="lg-points">
+        <li><span>⭐</span><span><b>Daily table.</b> Everyone’s Daily Match points, this week and all time.</span></li>
+        <li><span>⚔️</span><span><b>Head-to-head.</b> Send a challenge link, play the same matches on your own phones, and the result counts.</span></li>
+        <li><span>🔒</span><span><b>Just a nickname.</b> No email, no password, no real names.</span></li>
+      </ul>
+      <button class="btn primary big" data-act="nick-new">Pick a nickname</button>
+      <button class="btn link" data-act="nick-restore">I have a recovery code</button>
+    </section>`;
+    return;
+  }
+  const ls = S.myLeagues;
   app.innerHTML = `
   <section class="card leagues">
     <button class="back" data-act="hub">‹ All games</button>
-    <p class="eyebrow">🏆 Leagues &amp; history</p>
+    <p class="eyebrow">🏆 Leagues</p>
+    <div class="me-row">${nickChip(m.nick, m.club)}<button class="btn ghost small-btn" data-act="me-edit">Edit</button></div>
     <h2>Your leagues</h2>
-    ${leagues.length ? `<ul class="league-list">${leagues.map(l => {
-      const t = L.table(L.leagueGames(l.id));
-      const n = L.leagueGames(l.id).length;
-      return `<li><button class="league-row" data-act="open-league" data-v="${l.id}">
-        <span class="lr-name">${esc(l.name)}</span>
-        <span class="lr-meta">${n} ${n === 1 ? 'game' : 'games'}${t[0] && t[0].w ? ` · Top: ${esc(t[0].name)} (${t[0].w})` : ''}</span>
-        <span class="game-go" aria-hidden="true">›</span>
-      </button></li>`;
-    }).join('')}</ul>` : '<p class="hint">No leagues yet. Create one, then pick it on the setup screen before a game.</p>'}
-    ${S.creatingLeague ? `
-    <form class="new-league" data-form="new-league" autocomplete="off">
-      <input class="text" id="new-league-name" data-new-league maxlength="40" placeholder="League name, e.g. Friday night lads">
-      <div class="row">
-        <button class="btn ghost" type="button" data-act="cancel-league">Cancel</button>
-        <button class="btn primary" type="submit">Create league</button>
-      </div>
-    </form>` : `<button class="btn ghost big" data-act="new-league">＋ Create a league</button>`}
-
-    <h3 class="sec">Head-to-head (all games)</h3>
-    ${h2hBlock(multi, 'all')}
-
-    <h3 class="sec">Recent games</h3>
-    ${history.length ? `<ul class="results">${history.slice(0, 25).map(resultRow).join('')}</ul>` : '<p class="hint">Finished games will show up here.</p>'}
-
-    <p class="hint small">Saved on this device only. Use Settings → Backup to keep a copy or move to another phone.</p>
+    ${S.myLeaguesErr ? `<p class="error">${esc(S.myLeaguesErr)}</p><button class="btn ghost" data-act="leagues">Try again</button>`
+      : !ls ? '<p class="hint">Loading your leagues…</p>'
+      : ls.length ? `<ul class="league-list">${ls.map(l => `<li><button class="league-row" data-act="open-league" data-v="${esc(l.code)}">
+          <span class="lr-name">${esc(l.name)}</span>
+          <span class="lr-meta">${l.members} ${l.members === 1 ? 'player' : 'players'} · ${esc(l.code)}${l.mine ? ' · you run it' : ''}</span>
+          <span class="game-go" aria-hidden="true">›</span></button></li>`).join('')}</ul>`
+      : '<p class="hint">You’re not in a league yet. Start one and send your mates the code, or join theirs.</p>'}
+    <form class="lg-form" data-form="new-league" autocomplete="off">
+      <label class="label" for="new-league-name">Start a league</label>
+      <div class="lg-inline"><input class="text" id="new-league-name" data-new-league maxlength="30" placeholder="Friday night lads"><button class="btn primary" type="submit">Create</button></div>
+    </form>
+    <form class="lg-form" data-form="join-league" autocomplete="off">
+      <label class="label" for="join-code">Join with a code</label>
+      <div class="lg-inline"><input class="text code-in" id="join-code" data-join-code maxlength="12" placeholder="TF-K7Q2M" autocapitalize="characters" spellcheck="false"><button class="btn ghost" type="submit">Join</button></div>
+    </form>
+    ${S.lgFormErr ? `<p class="error">${esc(S.lgFormErr)}</p>` : ''}
+    <p class="hint small">Your nickname and league scores are saved online so your mates can see them. Your other scores stay on this phone.</p>
   </section>`;
 }
 
-function renderLeague(lg) {
-  const games = L.leagueGames(lg.id);
-  const t = L.table(games);
+function dailyRows(v) {
+  const range = S.lgRange || 'week';
+  const by = id => v.members.find(x => x.id === id) || { nick: '?', club: '' };
+  return v.daily.map(d => ({ ...d, ...by(d.id), r: d[range] }))
+    .sort((a, b) => b.r.pts - a.r.pts || b.r.played - a.r.played || a.nick.localeCompare(b.nick));
+}
+function h2hRows(v) {
+  const by = id => v.members.find(x => x.id === id) || { nick: '?', club: '' };
+  return v.h2h.map(h => ({ ...h, ...by(h.id) }))
+    .sort((a, b) => b.w - a.w || b.d - a.d || a.l - b.l || b.p - a.p || a.nick.localeCompare(b.nick));
+}
+const GAME_SHORT = { x01: 'Classic', clock: 'Round the Grounds', sudden: 'Sudden Death' };
+
+function renderLeague() {
+  const v = S.league;
+  const head = `<button class="back" data-act="leagues-home">‹ Your leagues</button><p class="eyebrow">🏆 League</p>`;
+  if (!v) {
+    app.innerHTML = `<section class="card leagues">${head}${S.leagueErr ? `<p class="error">${esc(S.leagueErr)}</p><button class="btn ghost" data-act="open-league" data-v="${esc(S.openLeague)}">Try again</button>` : '<p class="hint">Loading the table…</p>'}</section>`;
+    return;
+  }
+  const tab = S.lgTab || 'daily', range = S.lgRange || 'week';
+  const done = dailySaved() && dailySaved().done;
+  const rowAttrs = (r, i) => `class="${r.club ? 'club-row' : ''} ${r.id === v.me ? 'me' : ''}" style="${rowVars(r.club)}"`;
+  const daily = dailyRows(v);
+  const h2h = h2hRows(v);
+  const name = id => { const m = v.members.find(x => x.id === id); return m ? esc(m.nick) : 'Old player'; };
   app.innerHTML = `
   <section class="card leagues">
-    <button class="back" data-act="leagues-home">‹ All leagues</button>
-    <p class="eyebrow">🏆 League</p>
-    <h2>${esc(lg.name)}</h2>
-    ${t.length ? `
-    <div class="table-wrap">
-      <table class="ltable">
-        <thead><tr><th>#</th><th class="l">Player</th><th>P</th><th>W</th><th>%</th><th class="l">Form</th></tr></thead>
-        <tbody>${t.map((r, i) => `<tr>
-          <td>${i + 1}</td><td class="l"><b>${esc(r.name)}</b></td><td>${r.p}</td><td>${r.w}</td><td>${r.pct}</td>
-          <td class="l form">${r.form.map(f => `<span class="f ${f}">${f}</span>`).join('')}</td></tr>`).join('')}
-        </tbody>
-      </table>
-    </div>` : '<p class="hint">No games yet. Start a game with 2 or more players and pick this league on the setup screen.</p>'}
-
-    <button class="btn primary big" data-act="play-league" data-v="${lg.id}">Play a game in this league</button>
-
-    <h3 class="sec">Head-to-head</h3>
-    ${h2hBlock(games, lg.id)}
-
-    <h3 class="sec">Results</h3>
-    ${games.length ? `<ul class="results">${games.slice(0, 50).map(resultRow).join('')}</ul>` : '<p class="hint">Results will show up here.</p>'}
-
+    ${head}
+    <h2>${esc(v.name)}</h2>
+    <div class="lg-code"><span>Join code <b>${esc(v.code)}</b></span><button class="btn primary" data-act="lg-invite">↗ Invite mates</button></div>
+    <div class="seg lg-tabs">
+      <button class="seg-btn ${tab === 'daily' ? 'on' : ''}" data-act="lg-tab" data-v="daily">⭐ Daily table</button>
+      <button class="seg-btn ${tab === 'h2h' ? 'on' : ''}" data-act="lg-tab" data-v="h2h">⚔️ Head-to-head</button>
+    </div>
+    ${tab === 'daily' ? `
+      <div class="lg-range">${[['week', 'This week'], ['all', 'All time']].map(([k, t]) => `<button class="pill-btn ${range === k ? 'on' : ''}" data-act="lg-range" data-v="${k}">${t}</button>`).join('')}</div>
+      <div class="table-wrap"><table class="ltable lg-table">
+        <thead><tr><th>#</th><th class="l">Player</th><th title="Dailies played">P</th><th title="Points">Pts</th><th title="Today's Daily">Today</th></tr></thead>
+        <tbody>${daily.map((r, i) => `<tr ${rowAttrs(r, i)}><td>${i + 1}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</td><td>${r.r.played}</td><td><b>${r.r.pts}</b></td><td>${r.today == null ? '–' : r.today}</td></tr>`).join('')}</tbody>
+      </table></div>
+      <p class="hint">${range === 'week' ? 'This week runs Monday to Sunday.' : 'Every Daily since the league started.'} Your first go at each day’s Daily Match counts.</p>
+      ${done ? '' : '<button class="btn ghost big" data-act="daily">⭐ Play today’s Daily</button>'}
+    ` : `
+      ${h2h.some(r => r.p) ? `<div class="table-wrap"><table class="ltable lg-table">
+        <thead><tr><th>#</th><th class="l">Player</th><th>P</th><th>W</th><th>D</th><th>L</th></tr></thead>
+        <tbody>${h2h.map((r, i) => `<tr ${rowAttrs(r, i)}><td>${i + 1}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</td><td>${r.p}</td><td><b>${r.w}</b></td><td>${r.d}</td><td>${r.l}</td></tr>`).join('')}</tbody>
+      </table></div>
+      <h3 class="sec">Latest results</h3>
+      <ul class="results">${v.results.map(g => {
+        const o = g.ar === g.br ? 0 : (g.g === 'sudden' ? g.ar > g.br : g.ar < g.br) ? 1 : -1;
+        const unit = g.g === 'sudden' ? 'pts' : 'darts';
+        return `<li class="res"><span class="res-icon" aria-hidden="true">⚔️</span><span class="res-body">
+          <span class="res-who">${o > 0 ? `<b>${name(g.a)}</b>` : name(g.a)} ${g.ar} v ${g.br} ${o < 0 ? `<b>${name(g.b)}</b>` : name(g.b)}</span>
+          <span class="res-meta">${GAME_SHORT[g.g]}${g.g === 'x01' ? ` ${g.s}` : ''} · ${unit} · ${shortDate(new Date(g.at).toISOString())}</span></span></li>`;
+      }).join('')}</ul>` : '<p class="hint">No challenges between league players yet.</p>'}
+      <p class="hint">Play The Classic on your own, Round the Grounds or Sudden Death, then tap <b>⚔️ Challenge a mate</b>. When someone in this league plays your link, the result lands here.</p>
+    `}
+    <h3 class="sec">Players (${v.members.length})</h3>
+    <ul class="lg-members">${v.members.map(mm => `<li>${nickChip(mm.nick, mm.club, mm.id === v.me)}${mm.id === v.owner ? '<small class="lg-owner">runs the league</small>' : ''}
+      ${v.mine && mm.id !== v.me ? `<button class="linkish" data-act="lg-remove" data-v="${esc(mm.id)}">Remove</button>` : ''}</li>`).join('')}</ul>
     <div class="row wrap league-tools">
-      <button class="btn ghost" data-act="rename-league">Rename</button>
-      <button class="btn ghost danger-text" data-act="delete-league">Delete league</button>
+      ${v.mine ? '<button class="btn ghost" data-act="lg-rename">Rename</button>' : ''}
+      <button class="btn ghost" data-act="lg-report">Report a name</button>
+      <button class="btn ghost danger-text" data-act="lg-leave">Leave league</button>
     </div>
   </section>`;
+}
+
+// ---------- nickname set-up ----------
+function nickHtml(edit = false) {
+  const m = O.me();
+  const club = S.nickClub ?? (m ? m.club : '');
+  return `<h2>${edit ? 'Your nickname' : 'Pick a nickname'}</h2>
+    <p class="hint">${edit ? 'Shown in your leagues.' : 'This is how your mates will see you in league tables.'} Don’t use your real name.</p>
+    <form data-form="${edit ? 'nick-edit' : 'nick'}" autocomplete="off">
+      <input class="text" id="nick-in" maxlength="16" placeholder="BullseyeBarry" value="${esc(S.nickDraft ?? (m && edit ? m.nick : ''))}" autocapitalize="words" spellcheck="false">
+      <p class="error" data-nick-err ${S.nickErr ? '' : 'hidden'}>${esc(S.nickErr || '')}</p>
+      <span class="label nick-colour-label">Your colours</span>
+      <p class="hint">Your row in league tables is painted in your club’s colours.</p>
+      <div class="club-list nick-clubs">
+        <button type="button" class="club-opt ${!club ? 'on' : ''}" data-act="nick-club" data-v="">🎯 No club</button>
+        ${Object.keys(CLUB_COLOURS).map(c => `<button type="button" class="club-opt ${c === club ? 'on' : ''}" data-act="nick-club" data-v="${esc(c)}" style="${clubVars(c)}"><span class="club-sw" aria-hidden="true"></span>${esc(c)}</button>`).join('')}
+      </div>
+      <button class="btn primary big" type="submit" ${S.busyOnline ? 'disabled' : ''}>${S.busyOnline ? 'Saving…' : edit ? 'Save' : 'Save nickname'}</button>
+    </form>
+    ${edit ? `<div class="stack lg-me-tools">
+      <button class="btn ghost" data-act="me-code">🔑 Show my recovery code</button>
+      <button class="btn ghost danger-text" data-act="me-delete">Delete my nickname</button>
+    </div>` : ''}
+    <button class="btn link" data-act="close">${edit ? 'Close' : 'Not now'}</button>`;
+}
+function codeHtml(first) {
+  const m = O.me();
+  return `<p class="eyebrow">🔑 ${first ? `You’re in, ${esc(m.nick)}` : 'Recovery code'}</p>
+    <h2>Save your recovery code</h2>
+    <p class="rec-code" aria-label="Recovery code">${esc(m.code)}</p>
+    <button class="btn ghost big" data-act="me-copy">📋 Copy code</button>
+    <p class="hint">Screenshot it or write it down. It’s the only way to get your nickname and leagues back on a new phone, or if your browser’s data gets cleared.</p>
+    <p class="hint"><b>Keep it to yourself:</b> anyone with this code can play as you.</p>
+    <button class="btn primary big" data-act="${first ? 'nick-done' : 'close'}">${first ? 'I’ve saved it' : 'Done'}</button>`;
+}
+function restoreHtml() {
+  return `<h2>Enter your recovery code</h2>
+    <p class="hint">The 12-character code you saved when you picked your nickname.</p>
+    <form data-form="restore" autocomplete="off">
+      <input class="text code-in" id="restore-in" maxlength="20" placeholder="K7QM-2XDR-9PWA" autocapitalize="characters" spellcheck="false">
+      <p class="error" data-nick-err ${S.nickErr ? '' : 'hidden'}>${esc(S.nickErr || '')}</p>
+      <button class="btn primary big" type="submit" ${S.busyOnline ? 'disabled' : ''}>${S.busyOnline ? 'Checking…' : 'Continue'}</button>
+    </form>
+    <button class="btn link" data-act="close">Cancel</button>`;
+}
+function nickError(msg) {
+  S.nickErr = msg;
+  const el = $('[data-nick-err]'); if (el) { el.textContent = msg; el.hidden = false; }
+}
+// what to do once someone has a nickname: join the league they were invited to, save a challenge result, or show their leagues
+async function afterNick() {
+  const next = S.afterNick; S.afterNick = null;
+  postDailyToLeagues(dailySaved());
+  if (next && next.join) { await joinLeague(next.join); return; }
+  if (next && next.vs) { closeModal(); await saveVsResult(); return; }
+  closeModal();
+  S.screen = 'leagues'; S.openLeague = null; S.myLeagues = null; renderLeagues(); window.scrollTo(0, 0);
+  loadMyLeagues();
+}
+async function joinLeague(code) {
+  try {
+    const v = await O.joinLeague(code);
+    track('League joined');
+    closeModal();
+    S.league = v; S.lgTab = 'daily'; S.myLeagues = null;
+    openLeague(v.code);
+    toast(`You’re in ${v.name} 🏆`);
+  } catch (e) {
+    S.lgFormErr = onlineErr(e);
+    if (!modalRoot.hidden) closeModal();
+    S.screen = 'leagues'; S.openLeague = null; renderLeagues(); loadMyLeagues();
+  }
+}
+// someone opened an invite link
+function offerJoin(p) {
+  const m = O.me();
+  openModal(`<p class="eyebrow">🏆 League invite</p>
+    <h2>Join ${esc(p.name)}?</h2>
+    <p>${p.members} ${p.members === 1 ? 'player is' : 'players are'} in already. You’ll be in the Daily table and the head-to-head table.</p>
+    ${m ? `<p class="hint">You’ll join as ${nickChip(m.nick, m.club)}</p>
+      <div class="row"><button class="btn ghost" data-act="close">Not now</button><button class="btn primary" data-act="lg-join" data-v="${esc(p.code)}">Join</button></div>`
+      : `<button class="btn primary big" data-act="nick-new" data-v="${esc(p.code)}">Pick a nickname and join</button>
+      <button class="btn link" data-act="nick-restore" data-v="${esc(p.code)}">I already have a nickname (recovery code)</button>`}`);
+}
+
+// ---------- scores into leagues ----------
+// A finished Daily goes to the league tables once. Tried again next time if the signal drops.
+function postDailyToLeagues(saved) {
+  if (!O.me() || !saved || !saved.done || store.get('lgSent:' + saved.n, false) || saved.n < dailyNumber() - 1) return;
+  O.postDaily(saved.n, saved.points).then(() => store.set('lgSent:' + saved.n, true)).catch(() => {});
+}
+// a challenge sent by someone with a nickname: save how you did against them
+async function saveVsResult() {
+  const c = S.vsDone;
+  if (!c || !c.c) return;
+  const el = () => $('[data-vs-saved]');
+  if (!O.me()) return;
+  try {
+    const r = await O.postResult(c.c, c.mine);
+    S.vsDone = null;
+    const e = el();
+    if (r.own) { if (e) e.innerHTML = ''; return; }
+    if (e) e.innerHTML = `✓ Saved to your head-to-head record against ${nickChip(r.them.nick, r.them.club)}${r.first ? '' : ' (your first go is the one that counts)'}`;
+    else toast('Saved to your head-to-head record ⚔️');
+  } catch (e) {
+    const x = el(); if (x) x.textContent = onlineErr(e);
+  }
+}
+// your own result: make a challenge your mates' results can be saved against
+function startOnlineChallenge() {
+  S.chalId = null;
+  if (!O.me() || !challengeable()) return;
+  const c = { g: S.game, s: S.game === 'x01' ? S.start : 501, e: easyOn(), r: vsMine(), m: S.played.map(shortId).join('.') };
+  O.createChallenge(c).then(id => { S.chalId = id; }).catch(() => {});
 }
 
 function backup() {
@@ -1851,7 +2059,7 @@ function resetPlayer(p) {
 async function startLeg() {
   // a challenge only lasts one game; "Go again" afterwards is a normal game
   S.vs = S.vsPending || null; S.vsPending = null;
-  S.played = [];
+  S.played = []; S.chalId = null;
   S.players.forEach(resetPlayer);
   track('Game started', gameInfo());
   S.legOver = false;
@@ -2122,6 +2330,7 @@ function legWon(p) {
   sfx.win(); buzz([80, 60, 80, 60, 160]);
   S.legStarter = (S.legStarter + 1) % S.players.length;
   S.shareText = shareLine(p);
+  startOnlineChallenge();
   openModal(`
     <p class="eyebrow">${eyebrow}</p>
     <h2>${title}</h2>
@@ -2147,6 +2356,7 @@ function suddenOver() {
   L.recordGame({ game: 'sudden', players: [p.name], winner: null, solo: true, league: null, detail: `${p.points} pts, ${p.streak} in a row` });
   if (isBest) { confetti(); sfx.win(); } else { sfx.miss(); }
   S.shareText = shareLine(p);
+  startOnlineChallenge();
   openModal(`
     <p class="eyebrow">⚡ Sudden death</p>
     <h2>${isBest ? 'New personal best!' : 'That’s the end of the road'}</h2>
@@ -2273,21 +2483,71 @@ document.addEventListener('click', async e => {
     case 'install': installApp(); break;
     case 'install-x': store.set('installDone', true); track('Install prompt', { action: 'Dismissed' }); renderHub(); break;
     case 'install-ok': store.set('installDone', true); closeModal(); renderHub(); break;
-    case 'leagues': S.screen = 'leagues'; S.openLeague = null; S.creatingLeague = false; renderLeagues(); window.scrollTo(0, 0); break;
-    case 'leagues-home': S.openLeague = null; renderLeagues(); window.scrollTo(0, 0); break;
-    case 'open-league': modalRoot._onClose = null; closeModal(); S.screen = 'leagues'; S.openLeague = v; S.h2h = ['', '']; renderLeagues(); window.scrollTo(0, 0); break;
-    case 'new-league': S.creatingLeague = true; render(); setTimeout(() => { const i = $('[data-new-league]'); if (i) i.focus(); }, 0); break;
-    case 'cancel-league': S.creatingLeague = false; render(); break;
-    case 'play-league': S.leagueId = v; if (G().max < 2) S.game = 'killer'; if (S.nPlayers < 2) S.nPlayers = 2; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
-    case 'rename-league': {
-      const lg = L.getLeague(S.openLeague);
-      openModal(`<h2>Rename league</h2><form data-form="rename-league" autocomplete="off"><input class="text" id="rename-league" data-rename value="${esc(lg ? lg.name : '')}" maxlength="40"><div class="row"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save</button></div></form>`);
+    case 'leagues':
+      if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); }
+      track('Leagues opened'); S.screen = 'leagues'; S.openLeague = null; S.lgFormErr = null; S.myLeagues = null; renderLeagues(); window.scrollTo(0, 0); loadMyLeagues(); break;
+    case 'leagues-home': S.openLeague = null; S.league = null; S.lgFormErr = null; renderLeagues(); window.scrollTo(0, 0); loadMyLeagues(); break;
+    case 'open-league': if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } openLeague(v); break;
+    case 'lg-tab': S.lgTab = v; renderLeague(); break;
+    case 'lg-range': S.lgRange = v; renderLeague(); break;
+    case 'lg-join': await joinLeague(v); break;
+    case 'lg-invite': {
+      const lv = S.league; if (!lv) break;
+      track('League invite');
+      shareText(`🏆 Join my Top Flight 501 league "${lv.name}"! Daily Match points and head-to-head challenges. Code ${lv.code} 👇\nhttps://topflight501.com/j/${lv.code}`, b);
       break;
     }
-    case 'delete-league':
-      openModal(`<h2>Delete this league?</h2><p>The league table goes. The games stay in your overall history.</p><div class="row"><button class="btn ghost" data-act="close">Keep it</button><button class="btn danger" data-act="confirm-delete-league">Delete league</button></div>`);
+    case 'lg-rename':
+      openModal(`<h2>Rename league</h2><form data-form="lg-rename" autocomplete="off"><input class="text" id="lg-rename-in" maxlength="30" value="${esc(S.league ? S.league.name : '')}"><p class="error" data-nick-err hidden></p><div class="row"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save</button></div></form>`);
       break;
-    case 'confirm-delete-league': L.deleteLeague(S.openLeague); if (S.leagueId === S.openLeague) S.leagueId = ''; S.openLeague = null; closeModal(); renderLeagues(); break;
+    case 'lg-remove': {
+      const mm = S.league && S.league.members.find(x => x.id === v); if (!mm) break;
+      openModal(`<h2>Remove ${esc(mm.nick)}?</h2><p>They come off this league’s tables. They could rejoin if they still have the code.</p><div class="row"><button class="btn ghost" data-act="close">Keep them</button><button class="btn danger" data-act="lg-remove-yes" data-v="${esc(v)}">Remove</button></div>`);
+      break;
+    }
+    case 'lg-remove-yes':
+      try { S.league = await O.removeMember(S.league.code, v); closeModal(); renderLeague(); } catch (err) { closeModal(); toast(onlineErr(err)); }
+      break;
+    case 'lg-leave':
+      openModal(`<h2>Leave ${esc(S.league ? S.league.name : 'this league')}?</h2><p>You come off its tables. You can join again with the code.${S.league && S.league.mine ? ' Someone else in the league will take over running it.' : ''}</p><div class="row"><button class="btn ghost" data-act="close">Stay</button><button class="btn danger" data-act="lg-leave-yes">Leave</button></div>`);
+      break;
+    case 'lg-leave-yes':
+      try { await O.leaveLeague(S.league.code); closeModal(); track('League left'); S.openLeague = null; S.league = null; S.myLeagues = null; renderLeagues(); loadMyLeagues(); }
+      catch (err) { closeModal(); toast(onlineErr(err)); }
+      break;
+    case 'lg-report': {
+      const lv = S.league; if (!lv) break;
+      openModal(`<h2>Report a name</h2><p class="hint">Rude or nasty name got through? Tell us and we’ll change or remove it.</p>
+        <div class="stack">${!lv.mine ? `<button class="btn ghost" data-act="report" data-k="league" data-v="${esc(lv.code)}">League name: ${esc(lv.name)}</button>` : ''}
+        ${lv.members.filter(x => x.id !== lv.me).map(x => `<button class="btn ghost" data-act="report" data-k="player" data-v="${esc(x.id)}">${esc(x.nick)}</button>`).join('')}</div>
+        <button class="btn link" data-act="close">Cancel</button>`);
+      break;
+    }
+    case 'report':
+      try { await O.report(b.dataset.k, v); closeModal(); toast('Thanks, we’ll take a look'); } catch (err) { closeModal(); toast(onlineErr(err)); }
+      break;
+    case 'nick-new':
+      S.nickErr = null; S.nickDraft = null; S.nickClub = S.clubs[0] || '';
+      if (b.dataset.vs) S.afterNick = { vs: true };
+      else if (v) S.afterNick = { join: v };
+      track('Nickname started');
+      openModal(nickHtml());
+      setTimeout(() => { const i = $('#nick-in'); if (i && !isTouch()) i.focus(); }, 50);
+      break;
+    case 'nick-restore': S.nickErr = null; if (v) S.afterNick = { join: v }; openModal(restoreHtml()); break;
+    case 'nick-club': S.nickDraft = ($('#nick-in') || {}).value; S.nickClub = v; { const y = $('.nick-clubs') ? $('.nick-clubs').scrollTop : 0; openModal(nickHtml(b.closest('[data-form="nick-edit"]') !== null)); const l = $('.nick-clubs'); if (l) l.scrollTop = y; } break;
+    case 'nick-done': await afterNick(); break;
+    case 'me-edit': S.nickErr = null; S.nickDraft = null; S.nickClub = null; openModal(nickHtml(true)); break;
+    case 'me-code': openModal(codeHtml(false)); break;
+    case 'me-copy': await copyText(O.me().code); break;
+    case 'me-delete':
+      openModal(`<h2>Delete your nickname?</h2><p>This deletes <b>${esc(O.me().nick)}</b>, your league scores and head-to-head results from our server, straight away. It can’t be undone.</p><p class="hint">Your scores and bests on this phone stay.</p>
+        <div class="stack"><button class="btn primary big" data-act="close">Keep it</button><button class="btn ghost danger-text" data-act="me-delete-yes">Yes, delete my nickname</button></div>`);
+      break;
+    case 'me-delete-yes':
+      try { await O.deleteMe(); track('Nickname deleted'); closeModal(); S.myLeagues = null; S.openLeague = null; if (S.screen === 'leagues') renderLeagues(); else if (S.screen === 'hub') renderHub(); toast('Nickname deleted'); }
+      catch (err) { closeModal(); toast(onlineErr(err)); }
+      break;
     case 'backup': backup(); break;
     case 'restore': closeModal(); restore(); break;
     case 'wipe': {
@@ -2295,13 +2555,18 @@ document.addEventListener('click', async e => {
       const li = (n, t) => n ? `<li>${t}</li>` : '';
       openModal(`<h2>Are you sure you want to delete everything?</h2>
         <p>This permanently deletes <b>all</b> of this from this device:</p>
-        <ul class="wipe-list">${li(days, `🗓️ Daily Match scores and streak (${days} ${days === 1 ? 'day' : 'days'})`)}${li(nb, `🏆 Personal bests (${nb})`)}${li(na, `🎖️ Achievements (${na} of 12)`)}${li(nl, `👥 Leagues and match history (${nl})`)}<li>✏️ Saved names, club and settings</li></ul>
+        <ul class="wipe-list">${li(days, `🗓️ Daily Match scores and streak (${days} ${days === 1 ? 'day' : 'days'})`)}${li(nb, `🏆 Personal bests (${nb})`)}${li(na, `🎖️ Achievements (${na} of 12)`)}${li(nl, `👥 Leagues and match history (${nl})`)}<li>✏️ Saved names, club and settings</li>${O.me() ? `<li>🌐 Your nickname <b>${esc(O.me().nick)}</b>, its league scores and head-to-head results (deleted from our server too)</li>` : ''}</ul>
         <p class="hint">It can’t be undone. Only want to forget names and club? Use <b>Clear names &amp; club</b> instead.</p>
         <div class="stack"><button class="btn primary big" data-act="close">Keep my data</button><button class="btn ghost" data-act="backup">⬇️ Back up first</button><button class="btn ghost danger-text" data-act="confirm-wipe">Yes, delete everything</button></div>`);
       break; }
     case 'clear-names':
       S.names = ['', '', '', '']; S.clubs = ['', '']; saveSetup(); toast('Names and club cleared'); if (S.screen === 'hub') renderHub(); break;
-    case 'confirm-wipe': wipeAll(); openModal(`<h2>All deleted</h2><p>Everything Top Flight 501 had saved on this device has been removed.</p><button class="btn primary big" data-act="close">OK</button>`); goHub(); break;
+    case 'confirm-wipe':
+      if (O.me()) {
+        try { await O.deleteMe(); }
+        catch (err) { openModal(`<h2>Couldn’t delete your nickname</h2><p>${esc(onlineErr(err))}</p><p class="hint">Nothing has been deleted yet. Try again when you have signal.</p><button class="btn primary big" data-act="close">OK</button>`); break; }
+      }
+      wipeAll(); openModal(`<h2>All deleted</h2><p>Everything Top Flight 501 had saved on this device has been removed.</p><button class="btn primary big" data-act="close">OK</button>`); goHub(); break;
     case 'share-site': track('Site shared'); shareText('⚽🎯 Top Flight 501: free Premier League trivia, scored like darts. Who knows their football best? 👇\nhttps://topflight501.com', b); break;
     case 'privacy': openModal(privacyHtml); break;
     case 'terms': openModal(termsHtml); break;
@@ -2384,20 +2649,50 @@ document.addEventListener('submit', e => {
   if (f === 'new-league') {
     const name = ($('[data-new-league]') || {}).value || '';
     if (!name.trim()) return;
-    const lg = L.createLeague(name);
-    S.creatingLeague = false;
-    if (S.screen === 'setup') { S.leagueId = lg.id; renderSetup(); }
-    else { S.openLeague = lg.id; renderLeagues(); }
+    S.lgFormErr = null;
+    O.createLeague(name).then(v => { track('League created'); S.league = v; S.lgTab = 'daily'; S.myLeagues = null; openLeague(v.code); })
+      .catch(err => { S.lgFormErr = onlineErr(err); renderLeagues(); const i = $('[data-new-league]'); if (i) i.value = name; });
   }
-  if (f === 'rename-league') {
-    L.renameLeague(S.openLeague, ($('[data-rename]') || {}).value || '');
-    closeModal(); renderLeagues();
+  if (f === 'join-league') {
+    const raw = ($('[data-join-code]') || {}).value || '';
+    const code = O.cleanCode(raw);
+    if (!code) { S.lgFormErr = 'League codes look like TF-K7Q2M. Check it and try again.'; renderLeagues(); const i = $('[data-join-code]'); if (i) i.value = raw; return; }
+    S.lgFormErr = null; joinLeague(code);
+  }
+  if (f === 'nick' || f === 'nick-edit') {
+    const nick = ($('#nick-in') || {}).value || '';
+    const club = S.nickClub ?? (O.me() ? O.me().club : '');
+    if (S.busyOnline) return;
+    S.busyOnline = true; S.nickDraft = nick;
+    const edit = f === 'nick-edit';
+    (edit ? O.updateMe({ nick, club }) : O.createMe(nick, club))
+      .then(() => {
+        S.busyOnline = false; S.nickErr = null;
+        if (edit) { closeModal(); toast('Saved'); if (S.screen === 'leagues') { S.openLeague ? loadLeague(S.openLeague) : renderLeagues(); } else if (S.screen === 'hub') renderHub(); return; }
+        track('Nickname created', { club: club || 'No club' });
+        openModal(codeHtml(true), { dismissable: false });
+      })
+      .catch(err => { S.busyOnline = false; S.nickErr = onlineErr(err); openModal(nickHtml(edit)); });
+  }
+  if (f === 'restore') {
+    const code = ($('#restore-in') || {}).value || '';
+    if (S.busyOnline) return;
+    S.busyOnline = true;
+    O.restoreMe(code)
+      .then(() => { S.busyOnline = false; S.nickErr = null; track('Nickname restored'); toast(`Welcome back, ${O.me().nick}`); afterNick(); })
+      .catch(err => { S.busyOnline = false; S.nickErr = onlineErr(err); openModal(restoreHtml()); const i = $('#restore-in'); if (i) i.value = code; });
+  }
+  if (f === 'lg-rename') {
+    const name = ($('#lg-rename-in') || {}).value || '';
+    O.renameLeague(S.league.code, name).then(v => { S.league = v; closeModal(); renderLeague(); })
+      .catch(err => nickError(onlineErr(err)));
   }
 });
 
 document.addEventListener('input', e => {
   const t = e.target;
   if (t.dataset.name !== undefined) S.names[Number(t.dataset.name)] = t.value;
+  if ((t.id === 'nick-in' || t.id === 'restore-in' || t.id === 'lg-rename-in') && S.nickErr !== undefined) { S.nickErr = null; const er = $('[data-nick-err]'); if (er) er.hidden = true; }
   if (t.dataset.member !== undefined) { const [i, j] = t.dataset.member.split('-').map(Number); S.members[i][j] = t.value; }
 });
 document.addEventListener('change', async e => {
@@ -2475,6 +2770,18 @@ document.addEventListener('keydown', e => {
     S.vsOffer = vsOffer;
     track('Opened challenge link', { game: GAMES[vsOffer.g].title });
     openModal(challengeHtml(vsOffer));
+  }
+  // a league invite link opens that league, or offers to join it
+  const jq = new URLSearchParams(location.search).get('join');
+  if (jq) {
+    history.replaceState(null, '', location.pathname);
+    const code = O.cleanCode(jq);
+    track('Opened league invite');
+    if (code) {
+      S.screen = 'leagues'; S.openLeague = null;
+      if (O.me()) openLeague(code);
+      else { renderLeagues(); O.league(code).then(offerJoin).catch(err => toast(onlineErr(err))); }
+    }
   }
   // a shared Daily Match link (topflight501.com/?daily) opens today's match straight away
   const dq = new URLSearchParams(location.search);

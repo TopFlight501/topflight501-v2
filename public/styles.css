@@ -776,3 +776,41 @@ a.game-card { text-decoration: none; color: inherit; }
 .brand-tag { white-space: nowrap; }
 @media (max-width: 430px) { .top-actions { gap: 6px; } .brand-tag { letter-spacing: .1em; font-size: .64rem; } .brand-name { font-size: 1.25rem; } }
 @media (max-width: 370px) { .top-actions .icon-btn { width: 36px; height: 36px; } .brand img { height: 36px; } .brand { gap: 7px; } }
+
+/* ---------- online leagues ---------- */
+.lg-points { list-style: none; padding: 0; margin: 10px 0 18px; display: grid; gap: 10px; }
+.lg-points li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.35; }
+.lg-points li > span:first-child { font-size: 1.2rem; line-height: 1.2; }
+.me-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 4px; }
+.small-btn { padding: 7px 14px; font-size: .9rem; }
+.nick-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 999px; font-weight: 800; background: var(--soft); color: var(--teal); border: 1.5px solid var(--line); max-width: 100%; overflow-wrap: anywhere; }
+.nick-chip.clubbed { background: var(--rb); color: var(--rf); border-color: var(--rb); box-shadow: inset 6px 0 0 var(--rs); padding-left: 16px; }
+.nick-chip small { font-weight: 600; opacity: .85; }
+.lg-form { margin-top: 18px; }
+.lg-inline { display: flex; gap: 8px; }
+.lg-inline .text { flex: 1; min-width: 0; }
+.lg-inline .btn { flex: none; }
+.code-in { text-transform: uppercase; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+.code-in::placeholder { letter-spacing: .04em; }
+.lg-code { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: var(--soft); border-radius: 14px; padding: 10px 12px; margin: 4px 0 14px; }
+.lg-code b { letter-spacing: .06em; color: var(--teal); }
+.lg-tabs { margin-bottom: 10px; }
+.lg-range { display: flex; gap: 6px; margin: 4px 0 8px; }
+.pill-btn { border: 1.5px solid var(--line); background: none; color: var(--muted); border-radius: 999px; padding: 6px 14px; font: inherit; font-weight: 700; font-size: .85rem; cursor: pointer; }
+.pill-btn.on { border-color: var(--teal); color: var(--teal); background: var(--soft); }
+.lg-table td small { font-weight: 600; opacity: .8; }
+.lg-table tbody tr.me td { font-weight: 700; }
+.ltable tbody tr.club-row td { background: var(--rb); color: var(--rf); border-bottom: 2px solid var(--card); }
+.ltable tbody tr.club-row td:first-child { box-shadow: inset 6px 0 0 var(--rs); border-radius: 10px 0 0 10px; padding-left: 12px; }
+.ltable tbody tr.club-row td:last-child { border-radius: 0 10px 10px 0; }
+.lg-members { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.lg-members li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lg-owner { color: var(--muted); font-size: .8rem; }
+.lg-members .linkish { margin-left: auto; font-size: .85rem; color: var(--muted); }
+.nick-colour-label { margin-top: 14px; }
+.nick-clubs { max-height: 34vh; }
+.rec-code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 1.6rem; font-weight: 800; letter-spacing: .08em; text-align: center; color: var(--teal); background: var(--soft); border: 2px dashed var(--line); border-radius: 14px; padding: 14px 8px; margin: 8px 0 10px; user-select: all; }
+.lg-me-tools { margin-top: 14px; }
+.vs-saved { text-align: center; margin-top: 8px; }
+.vs-saved .nick-chip { font-size: .85rem; padding-top: 2px; padding-bottom: 2px; }
+.lg-nudge { color: var(--green-deep); }
