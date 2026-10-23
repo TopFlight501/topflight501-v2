@@ -1636,8 +1636,10 @@ function renderLeagues() {
         <li><span>⚔️</span><span><b>Head-to-head.</b> Send a challenge link, play the same matches on your own phones, and the result counts.</span></li>
         <li><span>🔒</span><span><b>Just a nickname.</b> No email, no password, no real names.</span></li>
       </ul>
-      <button class="btn primary big" data-act="nick-new">Pick a nickname</button>
-      <button class="btn link" data-act="nick-restore">I have a recovery code</button>
+      <div class="lg-cta">
+        <button class="btn primary" data-act="nick-new">Pick a nickname</button>
+        <button class="linkish" data-act="nick-restore">I have a recovery code</button>
+      </div>
     </section>`;
     return;
   }

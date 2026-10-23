@@ -834,3 +834,7 @@ a.game-card { text-decoration: none; color: inherit; }
   .league-tile .game-title { font-size: 1.15rem; }
   .lg-go { display: inline-block; align-self: flex-start; margin-top: 8px; padding: 6px 16px; border-radius: 999px; background: var(--teal); color: var(--on-strong); font-weight: 800; font-size: .8rem; }
 }
+
+.lg-cta { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 4px; }
+.lg-cta .btn { padding: 12px 22px; }
+.lg-cta .linkish { color: var(--muted); font-weight: 600; font-size: .92rem; }
