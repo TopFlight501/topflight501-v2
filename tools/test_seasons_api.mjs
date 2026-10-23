@@ -75,6 +75,8 @@ ok(r.status === 400 && r.why === 'alone', 'can’t kick off alone');
 // ---------- club-only open league ----------
 let cl = await post('/api/leagues', { action: 'create', name: 'Blues Only', format: 'open', club: 'Chelsea' }, key(A));
 ok(cl.club === 'Chelsea', 'club-only league created');
+r = await post('/api/leagues', { action: 'create', name: 'Bluebirds', club: 'Cardiff City' }, key(A));
+ok(r.status === 400 && r.why === 'club', 'one-season club can’t have a club-only league');
 await post('/api/leagues', { action: 'join', code: cl.code }, key(C));
 const today = (await get('/api/me', key(A))).day;
 await post('/api/scores', { n: today, p: 155, club: 'Chelsea' }, key(A));

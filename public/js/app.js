@@ -2797,8 +2797,8 @@ document.addEventListener('click', async e => {
     case 'lg-tutorial':
       track('Tutorial watched', { game: 'Leagues' });
       openModal(`<h2>🏆 How leagues work</h2>
-        <video class="tut-video" poster="tutorials/leagues.jpg?v=1" autoplay muted playsinline loop controls preload="none" width="720" height="960">
-          <source src="tutorials/leagues.mp4?v=1" type="video/mp4"><source src="tutorials/leagues.webm?v=1" type="video/webm">
+        <video class="tut-video" poster="tutorials/leagues.jpg?v=2" autoplay muted playsinline loop controls preload="none" width="720" height="960">
+          <source src="tutorials/leagues.mp4?v=2" type="video/mp4"><source src="tutorials/leagues.webm?v=2" type="video/webm">
         </video>
         <button class="btn primary big" data-act="close">Got it</button>`);
       break;

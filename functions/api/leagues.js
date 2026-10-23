@@ -153,6 +153,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
     const format = FORMATS[b.format] ? b.format : 'open';
     const weeks = format === 'sprint' ? (SPRINT_WEEKS.includes(Number(b.weeks)) ? Number(b.weeks) : 6) : 0;
     const club = cleanClubDaily(b.club);
+    if (b.club && !club) return fail('Club-only leagues are for clubs with three or more Premier League seasons, so there’s a fresh match every day.', 400, 'club');
     const counts = await DB.prepare(`SELECT (SELECT COUNT(*) FROM leagues WHERE owner = ?) AS owned, (SELECT COUNT(*) FROM members WHERE player = ?) AS joined`).bind(me.id, me.id).first();
     if (counts.owned >= MAX_OWNED) return fail(`You can run up to ${MAX_OWNED} leagues.`, 400, 'limit');
     if (counts.joined >= MAX_LEAGUES) return fail(`You can be in up to ${MAX_LEAGUES} leagues. Leave one first.`, 400, 'limit');
