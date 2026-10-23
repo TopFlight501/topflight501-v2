@@ -313,20 +313,27 @@ function renderHub() {
     <p class="eyebrow">Premier League trivia, darts style</p>
     <div class="hub-head"><h2>Pick your game</h2><button type="button" class="quick-pill" data-act="quick" title="Solo, 301, straight in. No setup." aria-label="Quick play: solo 301, straight in">⚡ Quick play</button></div>
     <div class="games">
-      ${dailyBanner()}
+      <div class="hub-pair">${dailyBanner()}${leagueTile()}</div>
       ${gameOrder().map(gameCardHtml).join('')}
     </div>
-    <button class="game-card league-card" data-act="leagues">
-      <span class="game-icon" aria-hidden="true">🏆</span>
-      <span class="game-body">
-        <span class="game-title">Leagues${Date.now() < Date.UTC(2026, 10, 20) ? ' <span class="new-tag">NEW</span>' : ''}</span>
-        <span class="game-blurb">${O.me() ? `Your league tables, ${esc(O.me().nick)}. Daily Match points and head-to-head challenges.` : 'Start a league with your mates: Daily Match points and head-to-head challenges. Just a nickname, no sign-up.'}</span>
-      </span>
-      <span class="game-go" aria-hidden="true">›</span>
-    </button>
+
     ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
   </section>
   ${installBar()}`;
+}
+
+// Leagues sit next to the Daily Match: league tables are built from Daily scores
+function leagueTile() {
+  const m = O.me();
+  return `<button class="game-card league-card league-tile" data-act="leagues">
+      <span class="game-icon" aria-hidden="true">🏆</span>
+      <span class="game-body">
+        <span class="game-title">Leagues${Date.now() < Date.UTC(2026, 10, 20) ? ' <span class="new-tag">NEW</span>' : ''}</span>
+        <span class="game-blurb">${m ? `Your league tables, ${esc(m.nick)}: Daily Match points and head-to-heads.` : 'Your mates in a table: Daily Match points and head-to-heads. Just a nickname.'}</span>
+        <span class="lg-go">${m ? 'Open' : 'Start a league'}</span>
+      </span>
+      <span class="game-go" aria-hidden="true">›</span>
+    </button>`;
 }
 
 function renderSetup() {
