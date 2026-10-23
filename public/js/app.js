@@ -1986,7 +1986,7 @@ function clubDailyBanners() {
   return clubDailies().map(c => {
     const saved = dailySaved(c);
     const state = saved && saved.done ? `Today <b>${saved.points}</b>` : saved ? 'Resume' : 'Play';
-    return `<button class="club-daily" data-act="club-daily" data-v="${esc(c)}" style="${rowVars(c)}"><span>🏟️ <b>${esc(c)} Daily</b><small>For your club-only league</small></span><span class="club-daily-go">${state}</span></button>`;
+    return `<button class="club-daily" data-act="club-daily" data-v="${esc(c)}" style="${rowVars(c)}"><span><b>🏟️ ${esc(c)} Daily</b><small>For your club-only league</small></span><span class="club-daily-go">${state}</span></button>`;
   }).join('');
 }
 
