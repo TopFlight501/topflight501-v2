@@ -1,10 +1,10 @@
-import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, dailyNumber, dailyKey } from './data.js?v=76';
+import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, clubDailyMatch, dailyNumber, dailyKey } from './data.js?v=77';
 import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=78';
 import { sfx, setSoundEnabled } from './sound.js?v=74';
 import * as L from './leagues.js?v=75';
 import { initAnalytics, track } from './analytics.js?v=74';
-import { privacyHtml, termsHtml } from './legal.js?v=76';
-import * as O from './online.js?v=1';
+import { privacyHtml, termsHtml } from './legal.js?v=77';
+import * as O from './online.js?v=2';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -314,6 +314,7 @@ function renderHub() {
     <div class="hub-head"><h2>Pick your game</h2><button type="button" class="quick-pill" data-act="quick" title="Solo, 301, straight in. No setup." aria-label="Quick play: solo 301, straight in">⚡ Quick play</button></div>
     <div class="games">
       <div class="hub-pair">${dailyBanner()}${leagueTile()}</div>
+      ${clubDailies().length ? `<div class="club-dailies">${clubDailyBanners()}</div>` : ''}
       ${gameOrder().map(gameCardHtml).join('')}
     </div>
 
@@ -532,7 +533,7 @@ function scoreboard() {
   const n = S.players.length;
   return `<div class="gamebar">
     <button type="button" class="back quit" data-act="home" aria-label="Quit game and go back to all games">‹ Quit game</button>
-    ${S.game === 'daily' && !S.past ? `<button type="button" class="back invite" data-act="daily-invite">${SHARE_ICON} Invite mates</button>` : `<span class="gamebar-t">${G().icon} ${esc(G().title)}${easyOn() ? ' · Easy' : hardOn() ? ' · Hard' : ''}</span>`}
+    ${S.game === 'daily' && !S.past && !S.dailyClub ? `<button type="button" class="back invite" data-act="daily-invite">${SHARE_ICON} Invite mates</button>` : S.dailyClub ? `<span class="gamebar-t">🏟️ ${esc(S.dailyClub)} Daily</span>` : `<span class="gamebar-t">${G().icon} ${esc(G().title)}${easyOn() ? ' · Easy' : hardOn() ? ' · Hard' : ''}</span>`}
   </div>
   <div class="stage-side">
   <div class="board ${n === 1 ? 'solo' : ''} ${n > 2 ? 'many' : ''}">
@@ -1035,7 +1036,7 @@ async function shareResult(anchor) {
     track(S.vs ? 'Challenge replied' : 'Challenge sent', { game: G().title });
     return shareText(`${S.vs ? vsReply() : S.shareText}\n${challengeLink()}`, anchor);
   }
-  const text = `${S.shareText}\n${S.game === 'daily' ? DAILY_LINK : SITE}`;
+  const text = `${S.shareText}\n${S.game === 'daily' && !S.dailyClub ? DAILY_LINK : SITE}`;
   track('Result shared', { game: GAMES[S.game] ? GAMES[S.game].title : S.game });
   return shareText(text, anchor);
 }
@@ -1084,19 +1085,21 @@ function toast(msg) {
 }
 
 // ---------- Daily Match ----------
-function dailySaved() {
-  const d = store.get('daily', null);
+// S.dailyClub is set while playing a club's own Daily (club-only leagues); its progress is saved separately
+const dk = (k, club) => (club ? `${k}@${club}` : k);
+function dailySaved(club = S.dailyClub) {
+  const d = store.get(dk('daily', club), null);
   return d && d.key === dailyKey() ? d : null;
 }
-function dailyLog() { return store.get('dailyLog', {}); }
+function dailyLog(club = S.dailyClub) { return store.get(dk('dailyLog', club), {}); }
 // best Daily Match score on this device (optionally ignoring one day)
-function dailyBest(skipKey = null) {
-  const log = dailyLog();
+function dailyBest(skipKey = null, club = S.dailyClub) {
+  const log = dailyLog(club);
   const vals = Object.entries(log).filter(([k]) => k !== skipKey).map(([, v]) => v);
   return vals.length ? Math.max(...vals) : null;
 }
-function dailyStreak() {
-  const log = dailyLog(); let n = 0;
+function dailyStreak(club = S.dailyClub) {
+  const log = dailyLog(club); let n = 0;
   const d = new Date();
   if (!log[dailyKey(d)]) d.setDate(d.getDate() - 1);   // today not played yet: count up to yesterday
   while (log[dailyKey(d)] !== undefined) { n += 1; d.setDate(d.getDate() - 1); }
@@ -1110,11 +1113,11 @@ function loadTodayTop() {
 }
 function dailyBanner() {
   loadTodayTop();
-  const n = dailyNumber(), saved = dailySaved();
+  const n = dailyNumber(), saved = dailySaved(null);
   const done = saved && saved.done;
-  const streak = dailyStreak();
-  const best = dailyBest();
-  const prev = dailyBest(dailyKey());
+  const streak = dailyStreak(null);
+  const best = dailyBest(null, null);
+  const prev = dailyBest(dailyKey(), null);
   const sub = done ? `Today <b>${saved.points}</b>${best !== null && best > saved.points ? ` · Best <b>${best}</b>` : prev !== null && saved.points > prev ? ' · 🏆 New best' : ''} · New in ${untilTomorrow()}`
     : saved ? `In progress: ${saved.darts.length} of ${DAILY_DARTS} darts thrown`
     : streak ? `🔥 Play today for a ${streak + 1}-day streak`
@@ -1135,10 +1138,10 @@ function untilTomorrow() {
   const m = Math.max(1, Math.round((t - now) / 60000));
   return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
 }
-async function startDaily(pastN) {
-  S.game = 'daily'; S.busy = true; S.past = !!pastN;
+async function startDaily(pastN, club = null) {
+  S.game = 'daily'; S.busy = true; S.past = !!pastN; S.dailyClub = club;
   S.dailyN = pastN || dailyNumber();
-  try { S.match = await dailyMatch(S.dailyN); }
+  try { S.match = club ? await clubDailyMatch(S.dailyN, club) : await dailyMatch(S.dailyN); }
   catch { S.busy = false; S.error = 'Couldn’t load today’s match. Check your connection and try again.'; goHub(); return; }
   S.busy = false;
   const saved = S.past ? null : dailySaved();
@@ -1152,14 +1155,14 @@ async function startDaily(pastN) {
     S.visit = saved.darts;
     S.players[0].points = saved.points;
     S.players[0].darts = saved.darts.length;
-  } else track('Game started', { game: S.past ? 'Past Daily' : 'Daily Match', day: S.dailyN });
+  } else track('Game started', { game: S.past ? 'Past Daily' : S.dailyClub ? 'Club Daily' : 'Daily Match', day: S.dailyN, ...(S.dailyClub ? { club: S.dailyClub } : {}) });
   S.screen = 'play';
   render(); window.scrollTo(0, 0);
 }
 function saveDaily() {
   if (S.past) return;   // replays of past Dailies aren't saved as today's
   const p = S.players[0];
-  store.set('daily', {
+  store.set(dk('daily', S.dailyClub), {
     key: dailyKeyFor(S.dailyN), n: S.dailyN, points: p.points, done: S.visit.length >= DAILY_DARTS,
     claimed: [...S.claimed[0]],
     darts: S.visit.map(d => ({ cat: d.cat, answer: d.answer, extra: '', res: { correct: d.res.correct, points: d.res.points || 0, message: d.res.message } })),
@@ -1171,14 +1174,14 @@ function dailyKeyFor(n) { const d = dailyDate(n); return `${d.getUTCFullYear()}-
 function dailyEmoji(darts) { return darts.map(d => (d.res.correct ? '🎯' : '⬜')).join(''); }
 function dailyOver() {
   if (S.past) return pastOver();
-  const saved = store.get('daily', null);
+  const saved = store.get(dk('daily', S.dailyClub), null);
   if (!saved) return;
-  const log = dailyLog(); log[saved.key] = saved.points; store.set('dailyLog', log);
+  const log = dailyLog(); log[saved.key] = saved.points; store.set(dk('dailyLog', S.dailyClub), log);
   unlock('first');
   if (saved.darts.every(d => d.res.correct)) unlock('perfect');
   const st = dailyStreak(); if (st >= 3) unlock('streak3'); if (st >= 7) unlock('streak7');
-  store.set('finishedOnce', true); track('Game finished', { game: 'Daily Match', day: saved.n, points: saved.points, hits: saved.darts.filter(d => d.res.correct).length });
-  L.recordGame({ game: 'daily', players: ['You'], winner: null, solo: true, league: null, detail: `#${saved.n}, ${saved.points} pts` });
+  store.set('finishedOnce', true); track('Game finished', { game: S.dailyClub ? 'Club Daily' : 'Daily Match', day: saved.n, points: saved.points, hits: saved.darts.filter(d => d.res.correct).length });
+  L.recordGame({ game: 'daily', players: ['You'], winner: null, solo: true, league: null, detail: `${S.dailyClub ? S.dailyClub + ' ' : ''}#${saved.n}, ${saved.points} pts` });
   if (saved.points > 0) { confetti(); sfx.win(); } else sfx.miss();
   showDailyResult(saved);
 }
@@ -1250,33 +1253,35 @@ function fillBoard(mine) {
 function showDailyResult(saved = dailySaved()) {
   if (!saved) return;
   S.dailyShown = saved;
-  sendDailyScore(saved);
-  postDailyToLeagues(saved);
+  const club = S.dailyClub;
+  if (!club) sendDailyScore(saved);
+  postDailyToLeagues(saved, club);
   const hits = saved.darts.filter(d => d.res.correct).length;
   const streak = dailyStreak();
   const prevBest = dailyBest(saved.key);
   const newBest = prevBest !== null && saved.points > prevBest;
   const bestLine = newBest ? `🏆 Previous best: ${prevBest}` : prevBest !== null ? `🏆 Your best: <b>${Math.max(prevBest, saved.points)}</b>` : '';
-  S.shareText = `⭐ Top Flight 501 Daily #${saved.n}\n${dailyEmoji(saved.darts)} ${saved.points} pts${streak > 1 ? ` · 🔥 ${streak} days` : ''}\nCan you beat me? Today's match 👇`;
+  S.shareText = club ? `🏟️ Top Flight 501 ${club} Daily #${saved.n}\n${dailyEmoji(saved.darts)} ${saved.points} pts\nOur league, our club 👇`
+    : `⭐ Top Flight 501 Daily #${saved.n}\n${dailyEmoji(saved.darts)} ${saved.points} pts${streak > 1 ? ` · 🔥 ${streak} days` : ''}\nCan you beat me? Today's match 👇`;
   openModal(`
-    <p class="eyebrow">⭐ Daily Match #${saved.n}</p>
+    <p class="eyebrow">${club ? `🏟️ ${esc(club)} Daily #${saved.n}` : `⭐ Daily Match #${saved.n}`}</p>
     <h2>${newBest ? 'New personal best! 🏆' : hits === DAILY_DARTS ? 'Perfect day! 🔥' : hits >= 4 ? 'Cracking effort' : hits >= 2 ? 'Not bad at all' : 'Tough one today'}</h2>
     <p class="big-score center">${saved.points}</p>
     <p class="daily-emoji">${dailyEmoji(saved.darts)}</p>
     <p class="hint center">${hits} of ${DAILY_DARTS} darts hit${streak > 1 ? ` · 🔥 ${streak}-day streak` : ''}${bestLine ? `<br>${bestLine}` : ''}<br>Next match in ${untilTomorrow()}</p>
     <div class="daily-board" data-board hidden></div>
-    <div class="row three-up">
+    ${club ? `<div class="row"><button class="btn ghost" data-act="daily-key">Answers</button><button class="btn primary" data-act="share">↗ Share</button></div>` : `<div class="row three-up">
       <button class="btn ghost" data-act="daily-key">Answers</button>
       <button class="btn ghost story-btn" data-act="story">📸 Story</button>
       <button class="btn primary" data-act="share">↗ Share</button>
-    </div>
+    </div>`}
     <button class="btn link lg-nudge" data-act="leagues">🏆 ${O.me() ? 'See your league tables' : 'Start a league with your mates'}</button>
-    <button class="btn link" data-act="past">📅 Play past Dailies</button>
+    ${club ? '' : '<button class="btn link" data-act="past">📅 Play past Dailies</button>'}
     <button class="btn link" data-act="daily-close">Back to games</button>
     ${store.get('remindAdded', false) ? nextNudge('daily') : '<button class="btn link remind-link" data-act="reminder">⏰ Remind me every day</button>'}
     ${followRow('Daily')}
     <p class="hint center small">Scores and streak are saved on this device. Playing elsewhere? Use Settings → Backup to move them.</p>`, { dismissable: false });
-  fillBoard(saved.points);
+  if (!club) fillBoard(saved.points);
 }
 
 // ---------- Instagram story image of your Daily result ----------
@@ -1587,12 +1592,18 @@ function h2hBlock(games, scope) {
 }
 
 // ---------- online leagues (nicknames, Daily tables, head-to-head) ----------
+// Clubs with 3+ Premier League seasons in the database: enough matches for a club Daily (same list as lib/server.js)
+const CLUB_DAILY = ['Arsenal', 'Aston Villa', 'Bournemouth', 'Brentford', 'Brighton & Hove Albion', 'Burnley', 'Chelsea', 'Crystal Palace',
+  'Everton', 'Fulham', 'Leeds United', 'Leicester City', 'Liverpool', 'Manchester City', 'Manchester United', 'Newcastle United',
+  'Nottingham Forest', 'Sheffield United', 'Southampton', 'Tottenham Hotspur', 'Watford', 'West Bromwich Albion', 'West Ham United', 'Wolverhampton Wanderers'];
 const LEAGUE_RULES = `
       <li><b>Pick a nickname</b> and your club colours. No email, no password, no real names. Save your <b>recovery code</b>: it’s how you get back in on a new phone.</li>
-      <li><b>Start a league</b> and send your mates the invite link or the join code (like <span class="nowrap">TF-K7Q2M</span>). Up to 50 players in a league.</li>
-      <li><b>⭐ Daily table.</b> Your first go at each day’s Daily Match scores your points. See this week (Monday to Sunday) or all time since the league started.</li>
-      <li><b>⚔️ Head-to-head.</b> Play The Classic on your own, Round the Grounds or Sudden Death, then tap <b>Challenge a mate</b>. They play the same matches on their phone and only their first go counts. Fewer darts wins (most points in Sudden Death).</li>
-      <li><b>Run the league.</b> Whoever starts it can rename it or remove players. Spot a rude name? Tap <b>Report a name</b>.</li>`;
+      <li><b>Start a league</b> and invite your mates. Pick a format: a <b>full season</b> (play everyone twice: 20 players = 38 gameweeks), a <b>half season</b> (everyone once), a <b>sprint</b> of 4, 6 or 10 gameweeks, or an <b>open table</b> with no fixtures.</li>
+      <li><b>Gameweeks run Monday to Sunday.</b> Each week you’re drawn against one mate. Whoever scores more Daily Match points that week wins: <b>3 points</b> for a win, <b>1</b> for a draw. Your first go each day counts. Odd numbers? Someone gets a bye.</li>
+      <li><b>Club only</b> (optional): the league plays that club’s own Daily Match, a real match from its history each day.</li>
+      <li><b>⚔️ Challenges.</b> Extra bragging rights: play The Classic on your own, Round the Grounds or Sudden Death, then tap <b>Challenge a mate</b>. They play the same matches and only their first go counts.</li>
+      <li><b>🏟️ Supporters’ table.</b> Your club colours put you in your club’s fans table, and every club is ranked by its fans’ average Daily score.</li>
+      <li><b>Run the league.</b> Whoever starts it can kick off early, rename it, remove players and start the next season. Spot a rude name? Tap <b>Report a name</b>.</li>`;
 function leagueHow() {
   if (store.get('hideRules:leagues', false)) {
     return `<div class="row slim lg-how-links"><button class="btn link show-rules" data-act="lg-rules-toggle">📋 How it works</button><button class="btn link watch-link" data-act="lg-tutorial">▶ Watch (15s)</button></div>`;
@@ -1621,7 +1632,7 @@ const onlineErr = e => (e && e.message) || 'Something went wrong. Try again in a
 async function loadMyLeagues() {
   if (!O.me()) return;
   S.myLeaguesErr = null;
-  try { const r = await O.refresh(); S.myLeagues = r.leagues; S.today = r.day; }
+  try { const r = await O.refresh(); S.myLeagues = r.leagues; S.today = r.day; rememberClubDailies(r.leagues); }
   catch (e) { S.myLeaguesErr = onlineErr(e); }
   if (S.screen === 'leagues' && !S.openLeague) renderLeagues();
 }
@@ -1640,7 +1651,31 @@ function openLeague(code) {
   loadLeague(code);
 }
 
+// ---------- dates for gameweeks (Daily #n → its date) ----------
+const nDate = n => new Date(DAILY_FIRST + (n - 1) * 864e5);
+const fmtN = (n, opts = { weekday: 'short', day: 'numeric', month: 'short' }) => nDate(n).toLocaleDateString('en-GB', { ...opts, timeZone: 'UTC' });
+const FORMAT_INFO = {
+  full: { icon: '🏆', label: 'Full season', blurb: 'Play everyone twice. 20 players = 38 gameweeks, like the Premier League.' },
+  half: { icon: '🗓️', label: 'Half season', blurb: 'Play everyone once. Quicker to finish.' },
+  sprint: { icon: '⚡', label: 'Sprint', blurb: 'A short season of a few gameweeks.' },
+  open: { icon: '📊', label: 'Open table', blurb: 'No fixtures. Just add up everyone’s Daily Match points.' },
+};
+const isSeasonFmt = f => f && f !== 'open';
+const fmtLabel = l => FORMAT_INFO[l.format || 'open'].label + (l.format === 'sprint' && l.weeks ? ` (${l.weeks} weeks)` : '');
+
+function leagueMeta(l) {
+  const bits = [];
+  if (!isSeasonFmt(l.format)) bits.push(`Open table · ${l.members} ${l.members === 1 ? 'player' : 'players'}`);
+  else if (l.status === 'signup') bits.push(`${fmtLabel(l)} · kicks off ${fmtN(l.start)} · ${l.members}/20 in`);
+  else if (l.status === 'done') bits.push(`${fmtLabel(l)} · season over`);
+  else bits.push(`${fmtLabel(l)} · gameweek ${Math.max(1, Math.floor(((S.today || dailyNumber()) - l.start) / 7) + 1)}`);
+  if (l.club) bits.push(`🏟️ ${esc(l.club)} only`);
+  if (l.mine) bits.push('you run it');
+  return bits.join(' · ');
+}
+
 function renderLeagues() {
+  if (S.openSup) return renderSupporters();
   if (S.openLeague) return renderLeague();
   const m = O.me();
   if (!m) {
@@ -1649,12 +1684,13 @@ function renderLeagues() {
       <button class="back" data-act="hub">‹ All games</button>
       <p class="eyebrow">🏆 Leagues</p>
       <h2>Play your mates in a league</h2>
-      <p class="hint">Daily Match points and head-to-head challenges with your mates, each on your own phone.</p>
+      <p class="hint">A season of weekly fixtures against your mates, decided by Daily Match points. Each of you on your own phone.</p>
       ${leagueHow()}
       <div class="lg-cta">
         <button class="btn primary" data-act="nick-new">Pick a nickname</button>
         <button class="linkish" data-act="nick-restore">I have a recovery code</button>
       </div>
+      <button class="sup-card" data-act="supporters"><span class="sup-i" aria-hidden="true">🏟️</span><span><b>Supporters’ table</b><small>Every club ranked by its fans’ Daily scores</small></span><span class="game-go" aria-hidden="true">›</span></button>
     </section>`;
     return;
   }
@@ -1665,27 +1701,76 @@ function renderLeagues() {
     <p class="eyebrow">🏆 Leagues</p>
     <div class="me-row">${nickChip(m.nick, m.club)}<button class="btn ghost small-btn" data-act="me-edit">Edit</button></div>
     <h2>Your leagues</h2>
-    ${leagueHow()}
     ${S.myLeaguesErr ? `<p class="error">${esc(S.myLeaguesErr)}</p><button class="btn ghost" data-act="leagues">Try again</button>`
       : !ls ? '<p class="hint">Loading your leagues…</p>'
       : ls.length ? `<ul class="league-list">${ls.map(l => `<li><button class="league-row" data-act="open-league" data-v="${esc(l.code)}">
           <span class="lr-name">${esc(l.name)}</span>
-          <span class="lr-meta">${l.members} ${l.members === 1 ? 'player' : 'players'} · ${esc(l.code)}${l.mine ? ' · you run it' : ''}</span>
+          <span class="lr-meta">${leagueMeta(l)}</span>
           <span class="game-go" aria-hidden="true">›</span></button></li>`).join('')}</ul>`
-      : '<p class="hint">You’re not in a league yet. Start one and send your mates the code, or join theirs.</p>'}
-    <form class="lg-form" data-form="new-league" autocomplete="off">
-      <label class="label" for="new-league-name">Start a league</label>
-      <div class="lg-inline"><input class="text" id="new-league-name" data-new-league maxlength="30" placeholder="League name, e.g. Friday night lads"><button class="btn primary" type="submit">Create</button></div>
-    </form>
-    <form class="lg-form" data-form="join-league" autocomplete="off">
-      <label class="label" for="join-code">Join with a code</label>
-      <div class="lg-inline"><input class="text code-in" id="join-code" data-join-code maxlength="12" placeholder="TF-K7Q2M" autocapitalize="characters" spellcheck="false"><button class="btn ghost" type="submit">Join</button></div>
-    </form>
+      : '<p class="hint">You’re not in a league yet. Start one and invite your mates, or join theirs with a code.</p>'}
+    <div class="lg-actions">
+      <button class="btn primary" data-act="nl-open">＋ Start a league</button>
+      <button class="btn ghost" data-act="join-open">Join with a code</button>
+    </div>
     ${S.lgFormErr ? `<p class="error" role="alert">${esc(S.lgFormErr)}</p>` : ''}
-    <p class="hint small">Your nickname and league scores are saved online so your mates can see them. Your other scores stay on this phone.</p>
+    <button class="sup-card" data-act="supporters"><span class="sup-i" aria-hidden="true">🏟️</span><span><b>Supporters’ table</b><small>${m.club ? `${esc(m.club)} fans v the rest` : 'Every club ranked by its fans’ Daily scores'}</small></span><span class="game-go" aria-hidden="true">›</span></button>
+    ${leagueHow()}
   </section>`;
 }
 
+// ---------- start a league: one tidy sheet ----------
+function createHtml() {
+  const n = S.newLg;
+  const fmts = ['full', 'half', 'sprint', 'open'];
+  return `<h2>Start a league</h2>
+    <form data-form="create-league" autocomplete="off">
+      <input class="text" id="nl-name" maxlength="30" placeholder="League name, e.g. Friday night lads" value="${esc(n.name)}">
+      <p class="error" data-nick-err ${S.nickErr ? '' : 'hidden'}>${esc(S.nickErr || '')}</p>
+      <div class="fmt-list" role="radiogroup" aria-label="Format">
+        ${fmts.map(f => `<button type="button" class="fmt ${n.format === f ? 'on' : ''}" role="radio" aria-checked="${n.format === f}" data-act="nl-format" data-v="${f}">
+          <span class="fmt-i" aria-hidden="true">${FORMAT_INFO[f].icon}</span>
+          <span class="fmt-b"><b>${FORMAT_INFO[f].label}</b><small>${FORMAT_INFO[f].blurb}</small>
+          ${f === 'sprint' ? `<span class="fmt-weeks">${[4, 6, 10].map(w => `<span class="pill-btn ${n.weeks === w ? 'on' : ''}" role="button" data-act="nl-weeks" data-v="${w}">${w} weeks</span>`).join('')}</span>` : ''}</span>
+        </button>`).join('')}
+      </div>
+      <details class="nl-more" ${n.club ? 'open' : ''}><summary>More options</summary>
+        <label class="label" for="nl-club">Club only</label>
+        <select id="nl-club" data-nl-club><option value="">Any club (the normal Daily Match)</option>${CLUB_DAILY.map(c => `<option ${n.club === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+        <p class="hint">Pick a club and the league plays that club’s own Daily Match: a different real match from its Premier League history every day. Clubs with three or more Premier League seasons, so there are enough matches.</p>
+      </details>
+      <p class="hint" data-kickoff ${isSeasonFmt(n.format) ? '' : 'hidden'}>${`Kicks off ${fmtN(dailyNumber() - ((nDate(dailyNumber()).getUTCDay() + 6) % 7) + 7, { weekday: 'long', day: 'numeric', month: 'long' })}, or whenever you press kick off. Up to 20 players.`}</p>
+      <button class="btn primary big" type="submit" ${S.busyOnline ? 'disabled' : ''}>${S.busyOnline ? 'Creating…' : 'Create league'}</button>
+    </form>
+    <button class="btn link" data-act="close">Cancel</button>`;
+}
+// update the format cards in place, so the sheet doesn't flicker
+function pickFormat(n) {
+  document.querySelectorAll('#modal .fmt').forEach(b => { const on = b.dataset.v === n.format; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+  document.querySelectorAll('#modal .fmt-weeks .pill-btn').forEach(b => b.classList.toggle('on', Number(b.dataset.v) === n.weeks));
+  const k = $('#modal [data-kickoff]'); if (k) k.hidden = !isSeasonFmt(n.format);
+}
+function joinHtml() {
+  return `<h2>Join a league</h2>
+    <p class="hint">Type the code your mate sent you.</p>
+    <form data-form="join-league" autocomplete="off">
+      <input class="text code-in" id="join-code" data-join-code maxlength="12" placeholder="TF-K7Q2M" autocapitalize="characters" spellcheck="false">
+      <p class="error" data-nick-err ${S.nickErr ? '' : 'hidden'}>${esc(S.nickErr || '')}</p>
+      <button class="btn primary big" type="submit">Join</button>
+    </form>
+    <button class="btn link" data-act="close">Cancel</button>`;
+}
+function nextSeasonHtml() {
+  const v = S.league, f = S.newLg.format;
+  return `<h2>Start season ${v.season + 1}</h2>
+    <p class="hint">Everyone in ${esc(v.name)} stays in. Fixtures are drawn at kick-off next Monday.</p>
+    <div class="fmt-list">${['full', 'half', 'sprint'].map(k => `<button type="button" class="fmt ${f === k ? 'on' : ''}" data-act="ns-format" data-v="${k}">
+      <span class="fmt-i" aria-hidden="true">${FORMAT_INFO[k].icon}</span><span class="fmt-b"><b>${FORMAT_INFO[k].label}</b><small>${FORMAT_INFO[k].blurb}</small>
+      ${k === 'sprint' ? `<span class="fmt-weeks">${[4, 6, 10].map(w => `<span class="pill-btn ${S.newLg.weeks === w ? 'on' : ''}" role="button" data-act="ns-weeks" data-v="${w}">${w} weeks</span>`).join('')}</span>` : ''}</span></button>`).join('')}</div>
+    <button class="btn primary big" data-act="ns-go">Start season ${v.season + 1}</button>
+    <button class="btn link" data-act="close">Cancel</button>`;
+}
+
+// ---------- one league ----------
 function dailyRows(v) {
   const range = S.lgRange || 'week';
   const by = id => v.members.find(x => x.id === id) || { nick: '?', club: '' };
@@ -1699,6 +1784,45 @@ function h2hRows(v) {
 }
 const GAME_SHORT = { x01: 'Classic', clock: 'Round the Grounds', sudden: 'Sudden Death' };
 
+// a fixture as two scoreboard lines: name on the left, Daily points on the right
+function fxCard(a, as, b, bs, who, settled) {
+  const line = (id, mine, theirs) => `<div class="fx-line ${settled && mine != null && mine > theirs ? 'won' : ''}"><span class="fx-who">${who(id)}</span><b class="fx-pts">${mine == null ? '–' : mine}</b></div>`;
+  return `<div class="fx">${line(a, as, bs)}${line(b, bs, as)}</div>`;
+}
+function statusCard(v, who) {
+  if (!isSeasonFmt(v.format)) return '';
+  if (v.status === 'signup') {
+    return `<div class="lg-status">
+      <p class="lg-status-t">📅 Kicks off ${fmtN(v.start, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+      <p class="hint">${v.members.length} of 20 players in. The fixtures are drawn at kick-off, so get your mates in first.</p>
+      ${v.mine ? `<button class="btn ghost" data-act="lg-kickoff">Kick off now</button>` : ''}
+    </div>`;
+  }
+  if (v.status === 'done') {
+    const c = v.champs[v.champs.length - 1];
+    return `<div class="lg-status done">
+      <p class="lg-status-t">🏆 Season ${v.season} champion${c ? `: ${who(c.id, c.nick)}` : ''}</p>
+      ${v.mine ? `<button class="btn primary" data-act="lg-next-season">Start season ${v.season + 1}</button>` : '<p class="hint">Whoever runs the league can start the next season.</p>'}
+    </div>`;
+  }
+  const end = v.start + 7 * v.gw - 1;
+  const f = v.fixtures.find(x => x.gw === v.gw && (x.h === v.me || x.a === v.me));
+  let line;
+  if (!f) line = '<p class="hint">You joined after kick-off, so you’re in the fixtures from next season. Your Daily scores still count for your mates’ challenges.</p>';
+  else if (!f.a) line = '<p class="hint">You have a bye this week. Put your feet up.</p>';
+  else {
+    const mineHome = f.h === v.me;
+    const [ms, ts, opp] = mineHome ? [f.hs, f.as, f.a] : [f.as, f.hs, f.h];
+    const lead = ms > ts ? 'You’re winning' : ms < ts ? 'You’re behind' : 'All square';
+    line = `${fxCard(v.me, ms ?? 0, opp, ts ?? 0, who, false)}<p class="hint">${lead}. Every Daily Match you play this week adds to your score.</p>`;
+  }
+  return `<div class="lg-status">
+    <p class="lg-status-t">Gameweek ${v.gw} of ${v.gws} <small>ends ${fmtN(end)}</small></p>
+    ${line}
+    <button class="linkish" data-act="lg-remind">⏰ Remind me every Sunday</button>
+  </div>`;
+}
+
 function renderLeague() {
   const v = S.league;
   const head = `<button class="back" data-act="leagues-home">‹ Your leagues</button><p class="eyebrow">🏆 League</p>`;
@@ -1706,46 +1830,83 @@ function renderLeague() {
     app.innerHTML = `<section class="card leagues">${head}${S.leagueErr ? `<p class="error">${esc(S.leagueErr)}</p><button class="btn ghost" data-act="open-league" data-v="${esc(S.openLeague)}">Try again</button>` : '<p class="hint">Loading the table…</p>'}</section>`;
     return;
   }
-  const tab = S.lgTab || 'daily', range = S.lgRange || 'week';
-  const done = dailySaved() && dailySaved().done;
-  const rowAttrs = (r, i) => `class="${r.club ? 'club-row' : ''} ${r.id === v.me ? 'me' : ''}" style="${rowVars(r.club)}"`;
-  const daily = dailyRows(v);
-  const h2h = h2hRows(v);
-  const name = id => { const m = v.members.find(x => x.id === id); return m ? esc(m.nick) : 'Old player'; };
-  app.innerHTML = `
-  <section class="card leagues">
-    ${head}
-    <h2>${esc(v.name)}</h2>
-    <div class="lg-code"><span>Join code <b>${esc(v.code)}</b></span><button class="btn primary" data-act="lg-invite">↗ Invite mates</button></div>
-    <div class="seg lg-tabs">
-      <button class="seg-btn ${tab === 'daily' ? 'on' : ''}" data-act="lg-tab" data-v="daily">⭐ Daily table</button>
-      <button class="seg-btn ${tab === 'h2h' ? 'on' : ''}" data-act="lg-tab" data-v="h2h">⚔️ Head-to-head</button>
-    </div>
-    ${tab === 'daily' ? `
-      <div class="lg-range">${[['week', 'This week'], ['all', 'All time']].map(([k, t]) => `<button class="pill-btn ${range === k ? 'on' : ''}" data-act="lg-range" data-v="${k}">${t}</button>`).join('')}</div>
+  const season = isSeasonFmt(v.format);
+  const range = S.lgRange || 'week';
+  const done = dailySaved(v.club || null) && dailySaved(v.club || null).done;
+  const mem = id => v.members.find(x => x.id === id);
+  const who = (id, fallback) => { const m = mem(id); return m ? nickChip(m.nick, m.club, id === v.me) : `<span class="nick-chip">${esc(fallback || 'Old player')}</span>`; };
+  const nameOf = id => { const m = mem(id); return m ? esc(m.nick) : 'Old player'; };
+  const rowAttrs = r => `class="${r.club ? 'club-row' : ''} ${r.id === v.me ? 'me' : ''}" style="${rowVars(r.club)}"`;
+  const tabs = season ? [['table', '🏆 Table'], ['fixtures', '📅 Fixtures'], ['chal', '⚔️ Challenges']] : [['daily', '⭐ Daily table'], ['chal', '⚔️ Challenges']];
+  const tab = tabs.some(([k]) => k === S.lgTab) ? S.lgTab : tabs[0][0];
+  const playBtn = done ? '' : `<button class="btn ghost big" data-act="${v.club ? 'club-daily' : 'daily'}" data-v="${esc(v.club || '')}">${v.club ? `🏟️ Play today’s ${esc(v.club)} Daily` : '⭐ Play today’s Daily'}</button>`;
+
+  let body = '';
+  if (tab === 'table') {
+    if (!v.table) body = `<p class="hint">The table appears at kick-off. ${v.members.length} ${v.members.length === 1 ? 'player is' : 'players are'} in so far.</p>`;
+    else {
+      const rows = v.table.map(r => ({ ...r, ...(mem(r.id) || { nick: 'Old player', club: '' }) }));
+      body = `<div class="table-wrap"><table class="ltable lg-table">
+        <thead><tr><th>#</th><th class="l">Player</th><th>P</th><th>W</th><th>D</th><th>L</th><th title="Points">Pts</th></tr></thead>
+        <tbody>${rows.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td><b>${r.pts}</b></td></tr>`).join('')}</tbody>
+      </table></div>
+      <p class="hint">3 points for a win, 1 for a draw. Level on points? Whoever scored more Daily points goes higher. The table updates when each gameweek ends.</p>`;
+    }
+    body += playBtn;
+  } else if (tab === 'fixtures') {
+    if (!v.fixtures) body = '<p class="hint">Fixtures are drawn at kick-off.</p>';
+    else {
+      const g = Math.min(Math.max(S.lgGw || Math.min(v.gw, v.gws), 1), v.gws);
+      const fx = v.fixtures.filter(f => f.gw === g);
+      const state = g < v.gw ? 'Final' : g === v.gw ? 'Live' : 'Coming up';
+      const [a, b] = [v.start + 7 * (g - 1), v.start + 7 * g - 1];
+      body = `<div class="gw-nav">
+          <button class="gw-btn" data-act="lg-gw" data-v="${g - 1}" ${g <= 1 ? 'disabled' : ''} aria-label="Previous gameweek">‹</button>
+          <span><b>Gameweek ${g}</b><small>${fmtN(a, { day: 'numeric', month: 'short' })} – ${fmtN(b, { day: 'numeric', month: 'short' })} · ${state}</small></span>
+          <button class="gw-btn" data-act="lg-gw" data-v="${g + 1}" ${g >= v.gws ? 'disabled' : ''} aria-label="Next gameweek">›</button>
+        </div>
+        <ul class="fx-list">${fx.filter(f => f.a).map(f => `<li class="${f.h === v.me || f.a === v.me ? 'mine' : ''}">${fxCard(f.h, f.hs, f.a, f.as, who, state === 'Final')}</li>`).join('')}</ul>
+        ${fx.filter(f => !f.a).map(f => `<p class="hint fx-bye">${nameOf(f.h)} has a bye.</p>`).join('')}`;
+    }
+  } else if (tab === 'daily') {
+    const daily = dailyRows(v);
+    body = `<div class="lg-range">${[['week', 'This week'], ['all', 'All time']].map(([k, t]) => `<button class="pill-btn ${range === k ? 'on' : ''}" data-act="lg-range" data-v="${k}">${t}</button>`).join('')}</div>
       <div class="table-wrap"><table class="ltable lg-table">
         <thead><tr><th>#</th><th class="l">Player</th><th title="Dailies played">P</th><th title="Points">Pts</th><th title="Today's Daily">Today</th></tr></thead>
-        <tbody>${daily.map((r, i) => `<tr ${rowAttrs(r, i)}><td>${i + 1}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</td><td>${r.r.played}</td><td><b>${r.r.pts}</b></td><td>${r.today == null ? '–' : r.today}</td></tr>`).join('')}</tbody>
+        <tbody>${daily.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</td><td>${r.r.played}</td><td><b>${r.r.pts}</b></td><td>${r.today == null ? '–' : r.today}</td></tr>`).join('')}</tbody>
       </table></div>
-      <p class="hint">${range === 'week' ? 'This week runs Monday to Sunday.' : 'Every Daily since the league started.'} Your first go at each day’s Daily Match counts.</p>
-      ${done ? '' : '<button class="btn ghost big" data-act="daily">⭐ Play today’s Daily</button>'}
-    ` : `
-      ${h2h.some(r => r.p) ? `<div class="table-wrap"><table class="ltable lg-table">
+      <p class="hint">${range === 'week' ? 'This week runs Monday to Sunday.' : 'Every Daily since the league started.'} Your first go at each day’s ${v.club ? `${esc(v.club)} Daily` : 'Daily Match'} counts.</p>
+      ${playBtn}`;
+  } else {
+    const h2h = h2hRows(v);
+    body = `${h2h.some(r => r.p) ? `<div class="table-wrap"><table class="ltable lg-table">
         <thead><tr><th>#</th><th class="l">Player</th><th>P</th><th>W</th><th>D</th><th>L</th></tr></thead>
-        <tbody>${h2h.map((r, i) => `<tr ${rowAttrs(r, i)}><td>${i + 1}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</td><td>${r.p}</td><td><b>${r.w}</b></td><td>${r.d}</td><td>${r.l}</td></tr>`).join('')}</tbody>
+        <tbody>${h2h.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</td><td>${r.p}</td><td><b>${r.w}</b></td><td>${r.d}</td><td>${r.l}</td></tr>`).join('')}</tbody>
       </table></div>
       <h3 class="sec">Latest results</h3>
       <ul class="results">${v.results.map(g => {
         const o = g.ar === g.br ? 0 : (g.g === 'sudden' ? g.ar > g.br : g.ar < g.br) ? 1 : -1;
         const unit = g.g === 'sudden' ? 'pts' : 'darts';
         return `<li class="res"><span class="res-icon" aria-hidden="true">⚔️</span><span class="res-body">
-          <span class="res-who">${o > 0 ? `<b>${name(g.a)}</b>` : name(g.a)} ${g.ar} v ${g.br} ${o < 0 ? `<b>${name(g.b)}</b>` : name(g.b)}</span>
+          <span class="res-who">${o > 0 ? `<b>${nameOf(g.a)}</b>` : nameOf(g.a)} ${g.ar} v ${g.br} ${o < 0 ? `<b>${nameOf(g.b)}</b>` : nameOf(g.b)}</span>
           <span class="res-meta">${GAME_SHORT[g.g]}${g.g === 'x01' ? ` ${g.s}` : ''} · ${unit} · ${shortDate(new Date(g.at).toISOString())}</span></span></li>`;
-      }).join('')}</ul>` : '<p class="hint">No challenges between league players yet.</p>'}
-      <p class="hint">Play The Classic on your own, Round the Grounds or Sudden Death, then tap <b>⚔️ Challenge a mate</b>. When someone in this league plays your link, the result lands here.</p>
-    `}
-    <h3 class="sec">Players (${v.members.length})</h3>
-    <ul class="lg-members">${v.members.map(mm => `<li>${nickChip(mm.nick, mm.club, mm.id === v.me)}${mm.id === v.owner ? '<small class="lg-owner">runs the league</small>' : ''}
+      }).join('')}</ul>` : '<p class="hint">No challenges between players in this league yet.</p>'}
+      <p class="hint">Extra bragging rights, separate from the ${season ? 'season' : 'table'}. Play The Classic on your own, Round the Grounds or Sudden Death, then tap <b>⚔️ Challenge a mate</b>.</p>`;
+  }
+
+  const past = v.champs.filter(c => !(v.status === 'done' && c.season === v.season));
+  app.innerHTML = `
+  <section class="card leagues">
+    ${head}
+    <h2>${esc(v.name)}</h2>
+    <p class="lg-sub">${fmtLabel(v)}${season ? ` · season ${v.season}` : ''}${v.club ? ` · 🏟️ ${esc(v.club)} matches only` : ''}</p>
+    ${statusCard(v, who)}
+    <div class="lg-code"><span>Join code <b>${esc(v.code)}</b></span><button class="btn primary" data-act="lg-invite">↗ Invite mates</button></div>
+    <div class="seg lg-tabs ${tabs.length === 3 ? 'three' : ''}">${tabs.map(([k, t]) => `<button class="seg-btn ${tab === k ? 'on' : ''}" data-act="lg-tab" data-v="${k}">${t}</button>`).join('')}</div>
+    ${body}
+    ${past.length ? `<p class="hint lg-champs">🏆 Past champions: ${past.map(c => `season ${c.season} <b>${esc(c.nick)}</b>`).join(', ')}</p>` : ''}
+    <h3 class="sec">Players (${v.members.length}${season ? '/20' : ''})</h3>
+    <ul class="lg-members">${v.members.map(mm => `<li>${nickChip(mm.nick, mm.club, mm.id === v.me)}${mm.id === v.owner ? '<small class="lg-owner">runs the league</small>' : ''}${v.inSeason && !v.inSeason.includes(mm.id) ? '<small class="lg-owner">joins next season</small>' : ''}
       ${v.mine && mm.id !== v.me ? `<button class="linkish" data-act="lg-remove" data-v="${esc(mm.id)}">Remove</button>` : ''}</li>`).join('')}</ul>
     <div class="row wrap league-tools">
       ${v.mine ? '<button class="btn ghost" data-act="lg-rename">Rename</button>' : ''}
@@ -1754,6 +1915,78 @@ function renderLeague() {
     </div>
     <div class="row slim lg-how-links"><button class="btn link show-rules" data-act="lg-rules">📋 How it works</button><button class="btn link watch-link" data-act="lg-tutorial">▶ Watch (15s)</button></div>
   </section>`;
+}
+
+// gameweek reminder: every Sunday evening until the season ends
+function lgRemindHtml(v) {
+  const g = v.status === 'live' ? v.gw : 1, left = Math.max(1, (v.gws || (v.format === 'sprint' ? v.weeks : 38)) - g + 1);
+  const d = nDate(v.start + 7 * g - 1), ds = `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
+  const goo = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&text=' + encodeURIComponent(`🏆 ${v.name}: gameweek closes tonight`)
+    + '&details=' + encodeURIComponent(`Last chance to play today's Daily Match for this gameweek's fixture: https://topflight501.com/j/${v.code}`)
+    + `&dates=${ds}T190000/${ds}T191500&ctz=Europe/Dublin`
+    + '&recur=' + encodeURIComponent(`RRULE:FREQ=WEEKLY;COUNT=${left}`);
+  const ics = `/api/remind?code=${encodeURIComponent(v.code)}`;
+  const android = /android/i.test(navigator.userAgent);
+  const [main, other] = android ? [[goo, '📅 Add to Google Calendar', true], [ics, 'Use a different calendar', false]] : [[ics, '📅 Add to Calendar', false], [goo, 'Use Google Calendar instead', true]];
+  const a = ([href, label, ext], cls) => `<a class="${cls}" href="${href}"${ext ? ' target="_blank" rel="noopener"' : ''} data-act="lg-remind-add">${label}</a>`;
+  return `<h2>⏰ Gameweek reminder</h2>
+    <p>A nudge every Sunday at 7pm, the last evening of each gameweek, until the season ends (${left} ${left === 1 ? 'week' : 'weeks'}).</p>
+    <div class="remind-btns">${a(main, 'btn primary')}${a(other, 'btn link remind-other')}</div>
+    <p class="hint">It goes into your own calendar app. We don’t get your details.</p>
+    <button class="btn link" data-act="close">Close</button>`;
+}
+
+// ---------- the Supporters' table ----------
+async function loadSupporters() {
+  const s = S.sup;
+  s.err = null; s.data = null; renderSupporters();
+  try { s.data = s.tab === 'fans' ? await O.clubFans(s.club, s.range) : await O.clubs(s.range); }
+  catch (e) { s.err = onlineErr(e); }
+  if (S.openSup) renderSupporters();
+}
+function renderSupporters() {
+  const s = S.sup, m = O.me(), d = s.data;
+  const myClub = m && m.club;
+  let body;
+  if (s.err) body = `<p class="error">${esc(s.err)}</p>`;
+  else if (!d) body = '<p class="hint">Loading…</p>';
+  else if (s.tab === 'fans') {
+    const rows = [...d.rows]; if (d.mine) rows.push(d.mine);
+    body = rows.length ? `<div class="table-wrap"><table class="ltable lg-table">
+        <thead><tr><th>#</th><th class="l">Fan</th><th title="Dailies played">P</th><th>Pts</th></tr></thead>
+        <tbody>${rows.map(r => `<tr class="${r.id === d.me ? 'me club-row' : 'club-row'}" style="${rowVars(d.club)}"><td>${r.rank}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === d.me ? ' <small>(you)</small>' : ''}</td><td>${r.played}</td><td><b>${r.pts}</b></td></tr>`).join('')}</tbody>
+      </table></div>
+      <p class="hint">${d.fans} ${esc(d.club)} ${d.fans === 1 ? 'fan has' : 'fans have'} a nickname. Everyone who picks ${esc(d.club)} colours is in this table.</p>`
+      : `<p class="hint">No ${esc(s.club)} fans have played ${s.range === 'week' ? 'this week' : 'yet'}. Be the first.</p>`;
+  } else {
+    body = (d.clubs.length ? `<div class="table-wrap"><table class="ltable lg-table">
+        <thead><tr><th>#</th><th class="l">Club</th><th title="Fans who played">Fans</th><th title="Average Daily Match score">Avg</th></tr></thead>
+        <tbody>${d.clubs.map((c, i) => `<tr class="club-row ${c.club === myClub ? 'me' : ''}" style="${rowVars(c.club)}"><td>${i + 1}</td><td class="l"><b>${esc(c.club)}</b></td><td>${c.players}</td><td><b>${c.avg}</b></td></tr>`).join('')}</tbody>
+      </table></div>` : `<p class="hint">No club has ${d.min} fans playing ${s.range === 'week' ? 'this week' : 'yet'}. Get your mates to pick their colours.</p>`)
+      + `<p class="hint">Clubs are ranked by their fans’ average Daily Match score. A club needs ${d.min} fans playing to get on the table.${d.waiting.length ? ` Waiting: ${d.waiting.map(w => esc(w.club)).join(', ')}.` : ''}</p>`
+      + (m ? (myClub ? '' : '<p class="hint">Pick your club colours (Leagues → Edit) to play for your club.</p>') : '<button class="btn ghost" data-act="nick-new">Pick a nickname and your club</button>');
+  }
+  app.innerHTML = `
+  <section class="card leagues">
+    <button class="back" data-act="sup-back">‹ Leagues</button>
+    <p class="eyebrow">🏟️ Supporters’ table</p>
+    <h2>${s.tab === 'fans' ? `${esc(s.club)} fans` : 'Which fans know their football?'}</h2>
+    ${myClub ? `<div class="seg lg-tabs"><button class="seg-btn ${s.tab === 'clubs' ? 'on' : ''}" data-act="sup-tab" data-v="clubs">All clubs</button><button class="seg-btn ${s.tab === 'fans' ? 'on' : ''}" data-act="sup-tab" data-v="fans">${esc(myClub)} fans</button></div>` : ''}
+    <div class="lg-range">${[['week', 'This week'], ['all', 'All time']].map(([k, t]) => `<button class="pill-btn ${s.range === k ? 'on' : ''}" data-act="sup-range" data-v="${k}">${t}</button>`).join('')}</div>
+    ${body}
+  </section>`;
+}
+
+// the clubs whose own Daily you play, for the home screen
+function clubDailies() { return (store.get('clubDailies', []) || []).filter(c => CLUB_COLOURS[c]).slice(0, 2); }
+function rememberClubDailies(leagues) { store.set('clubDailies', [...new Set((leagues || []).map(l => l.club).filter(Boolean))]); }
+function clubDailyBanners() {
+  return clubDailies().map(c => {
+    const saved = dailySaved(c);
+    const state = saved && saved.done ? `Today <b>${saved.points}</b>` : saved ? 'Resume' : 'Play';
+    return `<button class="club-daily" data-act="club-daily" data-v="${esc(c)}" style="${rowVars(c)}"><span>🏟️ <b>${esc(c)} Daily</b><small>For your club-only league</small></span><span class="club-daily-go">${state}</span></button>`;
+  }).join('');
 }
 
 // ---------- nickname set-up ----------
@@ -1806,7 +2039,8 @@ function nickError(msg) {
 // what to do once someone has a nickname: join the league they were invited to, save a challenge result, or show their leagues
 async function afterNick() {
   const next = S.afterNick; S.afterNick = null;
-  postDailyToLeagues(dailySaved());
+  postDailyToLeagues(dailySaved(null));
+  for (const c of clubDailies()) postDailyToLeagues(dailySaved(c), c);
   if (next && next.join) { await joinLeague(next.join); return; }
   if (next && next.vs) { closeModal(); await saveVsResult(); return; }
   closeModal();
@@ -1818,7 +2052,7 @@ async function joinLeague(code) {
     const v = await O.joinLeague(code);
     track('League joined');
     closeModal();
-    S.league = v; S.lgTab = 'daily'; S.myLeagues = null;
+    S.league = v; S.lgTab = null; S.myLeagues = null;
     openLeague(v.code);
     toast(`You’re in ${v.name} 🏆`);
   } catch (e) {
@@ -1832,7 +2066,8 @@ function offerJoin(p) {
   const m = O.me();
   openModal(`<p class="eyebrow">🏆 League invite</p>
     <h2>Join ${esc(p.name)}?</h2>
-    <p>${p.members} ${p.members === 1 ? 'player is' : 'players are'} in already. You’ll be in the Daily table and the head-to-head table.</p>
+    <p class="lg-sub">${fmtLabel(p)}${p.club ? ` · 🏟️ ${esc(p.club)} matches only` : ''}</p>
+    <p>${p.members} ${p.members === 1 ? 'player is' : 'players are'} in already.${isSeasonFmt(p.format) ? (p.status === 'signup' ? ` Kicks off ${fmtN(p.start, { weekday: 'long', day: 'numeric', month: 'long' })}.` : ' The season’s under way, so you’ll be in the fixtures from next season.') : ' Your Daily Match points go in the table.'}</p>
     ${m ? `<p class="hint">You’ll join as ${nickChip(m.nick, m.club)}</p>
       <div class="row"><button class="btn ghost" data-act="close">Not now</button><button class="btn primary" data-act="lg-join" data-v="${esc(p.code)}">Join</button></div>`
       : `<button class="btn primary big" data-act="nick-new" data-v="${esc(p.code)}">Pick a nickname and join</button>
@@ -1841,9 +2076,10 @@ function offerJoin(p) {
 
 // ---------- scores into leagues ----------
 // A finished Daily goes to the league tables once. Tried again next time if the signal drops.
-function postDailyToLeagues(saved) {
-  if (!O.me() || !saved || !saved.done || store.get('lgSent:' + saved.n, false) || saved.n < dailyNumber() - 1) return;
-  O.postDaily(saved.n, saved.points).then(() => store.set('lgSent:' + saved.n, true)).catch(() => {});
+function postDailyToLeagues(saved, club = null) {
+  const key = 'lgSent:' + (club ? club + ':' : '') + (saved && saved.n);
+  if (!O.me() || !saved || !saved.done || store.get(key, false) || saved.n < dailyNumber() - 1) return;
+  O.postDaily(saved.n, saved.points, club).then(() => store.set(key, true)).catch(() => {});
 }
 // a challenge sent by someone with a nickname: save how you did against them
 async function saveVsResult() {
@@ -2441,7 +2677,7 @@ function confetti() {
 }
 
 // ---------- events ----------
-function goHub() { S.screen = 'hub'; S.error = null; renderHub(); }
+function goHub() { S.screen = 'hub'; S.error = null; S.dailyClub = null; renderHub(); }
 
 // on a laptop/PC the browser's own club dropdown is a long, unstyled list, so open the tidy club picker instead (phones keep their native picker)
 document.addEventListener('mousedown', e => {
@@ -2457,13 +2693,21 @@ document.addEventListener('click', async e => {
   switch (act) {
     case 'pick': if (S.quickPrev) { Object.assign(S, S.quickPrev); S.quickPrev = null; } if (S.welcome) { S.welcome = false; store.set('welcomed', true); } if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } track('Game picked', { game: GAMES[v] ? GAMES[v].title : v }); S.game = v; clampPlayers(); S.error = null; S.screen = 'setup'; renderSetup(); window.scrollTo(0, 0); break;
     case 'hub': goHub(); break;
+    case 'club-daily':
+      if (S.busy || !v) break;
+      if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); }
+      S.dailyClub = v;
+      if (dailySaved(v) && dailySaved(v).done) { S.game = 'daily'; S.dailyN = dailyNumber(); showDailyResult(dailySaved(v)); }
+      else await startDaily(null, v);
+      break;
     case 'daily':
       if (S.busy) break;
+      S.dailyClub = null;
       if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); }
       if (dailySaved() && dailySaved().done) { S.game = 'daily'; S.dailyN = dailyNumber(); showDailyResult(); }
       else await startDaily();
       break;
-    case 'daily-key': try { S.match = await dailyMatch((S.dailyShown || dailySaved()).n); } catch { break; } openModal(answerKeyHtml(), { dismissable: false }); break;
+    case 'daily-key': try { const dn = (S.dailyShown || dailySaved()).n; S.match = S.dailyClub ? await clubDailyMatch(dn, S.dailyClub) : await dailyMatch(dn); } catch { break; } openModal(answerKeyHtml(), { dismissable: false }); break;
     case 'daily-result': showDailyResult(S.dailyShown || dailySaved()); break;
     case 'daily-close': modalRoot._onClose = null; closeModal(); goHub(); break;
     case 'share': shareResult(b); break;
@@ -2511,9 +2755,42 @@ document.addEventListener('click', async e => {
     case 'install-ok': store.set('installDone', true); closeModal(); renderHub(); break;
     case 'leagues':
       if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); }
-      track('Leagues opened'); S.screen = 'leagues'; S.openLeague = null; S.lgFormErr = null; S.myLeagues = null; renderLeagues(); window.scrollTo(0, 0); loadMyLeagues(); break;
-    case 'leagues-home': S.openLeague = null; S.league = null; S.lgFormErr = null; renderLeagues(); window.scrollTo(0, 0); loadMyLeagues(); break;
-    case 'open-league': if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } openLeague(v); break;
+      track('Leagues opened'); S.screen = 'leagues'; S.openLeague = null; S.openSup = false; S.lgFormErr = null; S.myLeagues = null; renderLeagues(); window.scrollTo(0, 0); loadMyLeagues(); break;
+    case 'leagues-home': S.openLeague = null; S.league = null; S.openSup = false; S.lgFormErr = null; renderLeagues(); window.scrollTo(0, 0); loadMyLeagues(); break;
+    case 'open-league': if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); } S.openSup = false; S.lgTab = null; S.lgGw = null; openLeague(v); break;
+    case 'nl-open': S.nickErr = null; S.busyOnline = false; S.newLg = { name: '', format: 'full', weeks: 6, club: '' }; openModal(createHtml()); break;
+    case 'join-open': S.nickErr = null; openModal(joinHtml()); setTimeout(() => { const i = $('#join-code'); if (i && !isTouch()) i.focus(); }, 50); break;
+    case 'nl-format': case 'nl-weeks': case 'ns-format': case 'ns-weeks': {
+      e.preventDefault(); e.stopPropagation();
+      const n = S.newLg;
+      if (act.endsWith('format')) n.format = v; else { n.format = 'sprint'; n.weeks = Number(v); }
+      pickFormat(n);
+      break;
+    }
+    case 'lg-next-season': S.newLg = { format: S.league.format, weeks: S.league.weeks || 6 }; openModal(nextSeasonHtml()); break;
+    case 'ns-go':
+      try { S.league = await O.nextSeason(S.league.code, S.newLg.format, S.newLg.weeks); track('Season started', { format: S.newLg.format }); closeModal(); S.lgTab = null; renderLeague(); toast(`Season ${S.league.season} is go 🏆`); }
+      catch (err) { closeModal(); toast(onlineErr(err)); }
+      break;
+    case 'lg-kickoff':
+      openModal(`<h2>Kick off now?</h2><p>The fixtures are drawn now for the ${S.league.members.length} players in, and this week becomes gameweek 1. Anyone who joins after kick-off plays from next season.</p>
+        <div class="row"><button class="btn ghost" data-act="close">Wait</button><button class="btn primary" data-act="lg-kickoff-yes">Kick off</button></div>`);
+      break;
+    case 'lg-kickoff-yes':
+      try { S.league = await O.kickOff(S.league.code); track('Season kicked off'); closeModal(); S.lgTab = 'fixtures'; S.lgGw = null; renderLeague(); toast('Fixtures drawn. Game on! 🎯'); }
+      catch (err) { closeModal(); toast(onlineErr(err)); }
+      break;
+    case 'lg-gw': S.lgGw = Number(v); renderLeague(); break;
+    case 'lg-remind': track('Gameweek reminder opened'); openModal(lgRemindHtml(S.league)); break;
+    case 'lg-remind-add': track('Gameweek reminder added'); setTimeout(() => toast('Check your calendar to confirm ⏰'), 400); break;
+    case 'supporters':
+      if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); }
+      track('Supporters table opened');
+      S.screen = 'leagues'; S.openSup = true; S.sup = { tab: 'clubs', range: 'week', club: O.me() && O.me().club };
+      window.scrollTo(0, 0); loadSupporters(); break;
+    case 'sup-back': S.openSup = false; renderLeagues(); window.scrollTo(0, 0); if (O.me() && !S.myLeagues) loadMyLeagues(); break;
+    case 'sup-tab': S.sup.tab = v; S.sup.club = O.me() && O.me().club; loadSupporters(); break;
+    case 'sup-range': S.sup.range = v; loadSupporters(); break;
     case 'lg-tab': S.lgTab = v; renderLeague(); break;
     case 'lg-rules-toggle': store.set('hideRules:leagues', !store.get('hideRules:leagues', false)); renderLeagues(); break;
     case 'lg-rules': openModal(`<h2>🏆 How leagues work</h2><ul class="how-list">${LEAGUE_RULES}</ul><div class="row"><button class="btn ghost" data-act="lg-tutorial">▶ Watch (15s)</button><button class="btn primary" data-act="close">Got it</button></div>`); break;
@@ -2689,15 +2966,27 @@ document.addEventListener('submit', e => {
     if (S.busyOnline) return;
     S.busyOnline = true; S.lgFormErr = null;
     const btn = $('form[data-form="new-league"] button[type=submit]'); if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
-    O.createLeague(name).finally(() => { S.busyOnline = false; }).then(v => { track('League created'); S.league = v; S.lgTab = 'daily'; S.myLeagues = null; openLeague(v.code); })
+    O.createLeague(name).finally(() => { S.busyOnline = false; }).then(v => { track('League created'); S.league = v; S.lgTab = null; S.myLeagues = null; openLeague(v.code); })
       .catch(err => { S.lgFormErr = onlineErr(err); renderLeagues(); const i = $('[data-new-league]'); if (i) i.value = name; });
   }
   if (f === 'join-league') {
     const raw = ($('[data-join-code]') || {}).value || '';
-    if (!raw.trim()) { S.lgFormErr = 'Type the league code your mate sent you, like TF-K7Q2M.'; renderLeagues(); const i = $('[data-join-code]'); if (i) i.focus(); return; }
+    if (!raw.trim()) { nickError('Type the league code your mate sent you, like TF-K7Q2M.'); return; }
     const code = O.cleanCode(raw);
-    if (!code) { S.lgFormErr = 'League codes look like TF-K7Q2M. Check it and try again.'; renderLeagues(); const i = $('[data-join-code]'); if (i) i.value = raw; return; }
-    S.lgFormErr = null; joinLeague(code);
+    if (!code) { nickError('League codes look like TF-K7Q2M. Check it and try again.'); return; }
+    S.lgFormErr = null;
+    O.joinLeague(code).then(v => { track('League joined'); closeModal(); S.league = v; S.lgTab = null; S.lgGw = null; S.myLeagues = null; openLeague(v.code); toast(`You’re in ${v.name} 🏆`); })
+      .catch(err => nickError(onlineErr(err)));
+  }
+  if (f === 'create-league') {
+    const n = S.newLg; n.name = ($('#nl-name') || {}).value || '';
+    if (!n.name.trim()) { nickError('Give your league a name first.'); const i = $('#nl-name'); if (i) i.focus(); return; }
+    if (S.busyOnline) return;
+    S.busyOnline = true;
+    const btn = $('form[data-form="create-league"] button[type=submit]'); if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+    O.createLeague(n.name, { format: n.format, weeks: n.weeks, club: n.club }).finally(() => { S.busyOnline = false; })
+      .then(v => { track('League created', { format: n.format, club: n.club || 'Any' }); closeModal(); S.league = v; S.lgTab = null; S.lgGw = null; S.myLeagues = null; if (n.club) rememberClubDailies([...(S.myLeagues || []), v]); openLeague(v.code); })
+      .catch(err => { if (btn) { btn.disabled = false; btn.textContent = 'Create league'; } nickError(onlineErr(err)); });
   }
   if (f === 'nick' || f === 'nick-edit') {
     const nick = ($('#nick-in') || {}).value || '';
@@ -2732,7 +3021,7 @@ document.addEventListener('submit', e => {
 document.addEventListener('input', e => {
   const t = e.target;
   if (t.dataset.name !== undefined) S.names[Number(t.dataset.name)] = t.value;
-  if ((t.id === 'nick-in' || t.id === 'restore-in' || t.id === 'lg-rename-in') && S.nickErr !== undefined) { S.nickErr = null; const er = $('[data-nick-err]'); if (er) er.hidden = true; }
+  if (['nick-in', 'restore-in', 'lg-rename-in', 'nl-name', 'join-code'].includes(t.id) && S.nickErr !== undefined) { S.nickErr = null; const er = $('[data-nick-err]'); if (er) er.hidden = true; }
   if (t.dataset.member !== undefined) { const [i, j] = t.dataset.member.split('-').map(Number); S.members[i][j] = t.value; }
 });
 document.addEventListener('change', async e => {
@@ -2756,6 +3045,7 @@ document.addEventListener('change', async e => {
     if (t.value === '__new') { S.creatingLeague = true; renderSetup(); setTimeout(() => { const i = $('[data-new-league]'); if (i) i.focus(); }, 0); }
     else { S.leagueId = t.value; renderSetup(); }
   }
+  if (t.dataset.nlClub !== undefined && S.newLg) S.newLg.club = t.value;
   if (t.dataset.h2h !== undefined) {
     const sels = document.querySelectorAll('[data-h2h]');
     S.h2h = [sels[0].value, sels[1].value];
@@ -2811,6 +3101,7 @@ document.addEventListener('keydown', e => {
     track('Opened challenge link', { game: GAMES[vsOffer.g].title });
     openModal(challengeHtml(vsOffer));
   }
+  if (O.me()) O.refresh().then(r => { S.myLeagues = r.leagues; S.today = r.day; const before = clubDailies().join(); rememberClubDailies(r.leagues); if (S.screen === 'hub' && modalRoot.hidden && before !== clubDailies().join()) renderHub(); }).catch(() => {});
   // a league invite link opens that league, or offers to join it
   const jq = new URLSearchParams(location.search).get('join');
   if (jq) {

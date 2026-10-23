@@ -6,9 +6,9 @@ let fails = 0;
 const ok = (cond, what) => { if (!cond) { fails++; console.log('FAIL:', what); } else console.log('ok  ', what); };
 async function call(method, path, body, key) {
   const r = await fetch(BASE + path, { method, headers: { 'content-type': 'application/json', ...(key ? { 'x-tf-key': key } : {}) }, body: body ? JSON.stringify(body) : undefined });
-  return { status: r.status, ...(await r.json().catch(() => ({}))) };
+  return { ...(await r.json().catch(() => ({}))), status: r.status };
 }
-const tag = Date.now().toString(36).slice(-4).toUpperCase();
+const tag = String(Date.now()).slice(-5);
 
 // nicknames
 let r = await call('POST', '/api/me', { action: 'create', nick: 'f.u.c.k' });

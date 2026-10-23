@@ -104,6 +104,35 @@ export async function dailyMatch(n = dailyNumber()) {
   return m;
 }
 
+// A club's own Daily Match, for leagues that only use one club's matches: the same match for every fan that day.
+// Each club's usable matches are shuffled once into a fixed order and played through, so none repeats
+// until all have been used (95+ days even for the smallest eligible clubs).
+const strHash = str => [...str].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 7);
+const clubOrder = new Map();
+export async function clubDailyMatch(n, club) {
+  if (!clubOrder.has(club)) {
+    const map = await getClubs();
+    const seasons = DAILY_SEASONS.filter(s => (map[s] || []).includes(club));
+    const list = [];
+    for (const season of seasons) {
+      const D = await loadSeason(season);
+      for (const m of D.matches) if ((m.h === club || m.a === club) && m.s[0] + m.s[1] > 0 && m.p.some(x => x[3] > 0) && m.p.some(x => x[4] > 0)) list.push(m.id);
+    }
+    if (!list.length) throw new Error('No matches for that club');
+    clubOrder.set(club, shuffle(list.sort(), seeded(strHash(club))));
+  }
+  const order = clubOrder.get(club);
+  const id = order[(n - 1) % order.length];
+  const D = await loadSeason(id.slice(0, 7));
+  const raw = D.matches.find(m => m.id === id);
+  const m = expand(raw, D);
+  const r2 = seeded(n * 97 + 13);
+  const inMatch = new Set(raw.p.map(x => String(x[0])));
+  const ids = Object.keys(D.players).filter(x => !inMatch.has(x)).sort();
+  m.decoys.players = shuffle(ids, r2).slice(0, 12).map(x => { const [full, web] = D.players[x]; return { id: x, full, web }; });
+  return m;
+}
+
 let clubMap = null;
 export async function getClubs() {
   if (!clubMap) {

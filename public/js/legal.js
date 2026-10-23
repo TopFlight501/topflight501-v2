@@ -16,12 +16,13 @@ export const privacyHtml = `
     <p>Leagues are optional. If you pick a nickname, we store on our server:</p>
     <ul>
       <li>your nickname and the club colours you choose</li>
-      <li>your Daily Match scores (your first go each day)</li>
-      <li>the leagues you’re in</li>
+      <li>your Daily Match scores (your first go each day), including a club’s own Daily if your league plays one</li>
+      <li>the leagues you’re in and their fixtures</li>
       <li>the results of challenge links played between players with nicknames</li>
       <li>a scrambled (hashed) copy of your recovery code, so we can recognise your phone. We can’t turn it back into the code.</li>
     </ul>
-    <p>We don’t ask for your real name, email, age or location, and you shouldn’t use your real name as a nickname. Other players in your leagues can see your nickname, colours, scores and results.</p>
+    <p>We don’t ask for your real name, email, age or location, and you shouldn’t use your real name as a nickname. Other players in your leagues can see your nickname, colours, scores, fixtures and results.</p>
+    <p><b>Supporters’ table:</b> if you pick a club’s colours, your nickname and Daily Match points appear in that club’s fans table, which anyone can see, and count towards your club’s average. Choose “No club” to stay out of it.</p>
     <p><b>Why:</b> to run the leagues and challenges you’ve chosen to take part in. <b>How long:</b> until you delete it. A nickname that isn’t used for 12 months is deleted automatically, with everything linked to it.</p>
     <p><b>Deleting it:</b> Leagues → your nickname → <b>Edit</b> → <b>Delete my nickname</b>, or <b>Settings → Delete all my data</b>. Everything linked to your nickname is removed from our server straight away.</p>
     <p>If you report a name, we keep the report until we’ve dealt with it. League data is stored by Cloudflare in the European Union.</p>

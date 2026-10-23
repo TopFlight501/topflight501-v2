@@ -1,7 +1,7 @@
 // Online leagues: create, join with a code, leave, rename, remove a player, kick off a season, and view the tables.
 // Formats: open (a running Daily points table) or a season (full home and away, half, or a sprint of set gameweeks)
 // where each gameweek is a head-to-head fixture decided by Daily Match points. Challenge-link results are shown too.
-import { json, fail, handle, db, who, body, randCode, newId, cleanLeague, showLeague, cleanClub, dayNow, dayOf, weekStartN, beats } from '../../lib/server.js';
+import { json, fail, handle, db, who, body, randCode, newId, cleanLeague, showLeague, cleanClubDaily, dayNow, dayOf, weekStartN, beats } from '../../lib/server.js';
 import { FORMATS, SPRINT_WEEKS, SEASON_MAX, drawFixtures, shuffled, scoreSeason, nextMonday, currentGw } from '../../lib/season.js';
 import { checkName } from '../../lib/names.js';
 
@@ -152,7 +152,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
     if (!c.ok) return fail(c.msg, 400, c.why);
     const format = FORMATS[b.format] ? b.format : 'open';
     const weeks = format === 'sprint' ? (SPRINT_WEEKS.includes(Number(b.weeks)) ? Number(b.weeks) : 6) : 0;
-    const club = cleanClub(b.club);
+    const club = cleanClubDaily(b.club);
     const counts = await DB.prepare(`SELECT (SELECT COUNT(*) FROM leagues WHERE owner = ?) AS owned, (SELECT COUNT(*) FROM members WHERE player = ?) AS joined`).bind(me.id, me.id).first();
     if (counts.owned >= MAX_OWNED) return fail(`You can run up to ${MAX_OWNED} leagues.`, 400, 'limit');
     if (counts.joined >= MAX_LEAGUES) return fail(`You can be in up to ${MAX_LEAGUES} leagues. Leave one first.`, 400, 'limit');

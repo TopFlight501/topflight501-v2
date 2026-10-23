@@ -65,7 +65,11 @@ export async function refresh() {
 
 // ---------- leagues ----------
 export const league = code => api('GET', '/api/leagues?code=' + encodeURIComponent(code));
-export const createLeague = name => api('POST', '/api/leagues', { action: 'create', name });
+export const createLeague = (name, opts = {}) => api('POST', '/api/leagues', { action: 'create', name, ...opts });
+export const kickOff = code => api('POST', '/api/leagues', { action: 'kickoff', code });
+export const nextSeason = (code, format, weeks) => api('POST', '/api/leagues', { action: 'next-season', code, format, weeks });
+export const clubs = range => api('GET', '/api/clubs?range=' + range);
+export const clubFans = (club, range) => api('GET', '/api/clubs?range=' + range + '&club=' + encodeURIComponent(club));
 export const joinLeague = code => api('POST', '/api/leagues', { action: 'join', code });
 export const leaveLeague = code => api('POST', '/api/leagues', { action: 'leave', code });
 export const renameLeague = (code, name) => api('POST', '/api/leagues', { action: 'rename', code, name });
@@ -73,7 +77,7 @@ export const removeMember = (code, player) => api('POST', '/api/leagues', { acti
 export const report = (kind, target) => api('POST', '/api/report', { kind, target });
 
 // ---------- scores and challenges ----------
-export const postDaily = (n, p) => api('POST', '/api/scores', { n, p });
+export const postDaily = (n, p, club) => api('POST', '/api/scores', { n, p, ...(club ? { club } : {}) });
 export const createChallenge = c => api('POST', '/api/challenges', { action: 'create', ...c }).then(r => r.id);
 export const postResult = (id, r) => api('POST', '/api/challenges', { action: 'result', id, r });
 
