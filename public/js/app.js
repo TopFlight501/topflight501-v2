@@ -153,6 +153,7 @@ function applySettings() {
   const root = document.documentElement;
   if (settings.theme === 'system') root.removeAttribute('data-theme');
   else root.setAttribute('data-theme', settings.theme);
+  if (window.__spookyMarks) window.__spookyMarks();   // Halloween logo follows light/dark
   setSoundEnabled(settings.sound);
 }
 function saveSettings() { store.set('settings', settings); applySettings(); }

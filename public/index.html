@@ -29,6 +29,16 @@
         var s = JSON.parse(localStorage.getItem('tf501:settings') || '{}');
         if (s.theme === 'light' || s.theme === 'dark') document.documentElement.setAttribute('data-theme', s.theme);
       } catch (e) {}
+      // Halloween: the spooky logo shows until midnight at the end of 31 October, then the normal one comes back by itself
+      window.__spooky = Date.now() < new Date(2026, 10, 1).getTime();
+      if (window.__spooky) document.documentElement.classList.add('spooky');
+      window.__spookyMarks = function () {
+        if (!window.__spooky) return;
+        var r = document.documentElement, t = r.getAttribute('data-theme');
+        var dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.querySelectorAll('.brand img').forEach(function (i) { i.src = 'img/mark-halloween' + (dark ? '-dark' : '') + '.png?v=1'; });
+        document.querySelectorAll('.splash-mark').forEach(function (i) { i.src = 'img/mark-halloween.png?v=1'; });
+      };
     })();
   </script>
   <style>
@@ -36,6 +46,7 @@
     @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0C1719;--card:#132225;--teal:#7FC4D2;--muted:#94AAAE;--ink:#E8F1EF;--green:#2BD09E;--line:#24393D;--mark-filter:brightness(0) invert(.85) sepia(.3) hue-rotate(140deg); color-scheme: dark; } }
     :root[data-theme="dark"] { --bg:#0C1719;--card:#132225;--teal:#7FC4D2;--muted:#94AAAE;--ink:#E8F1EF;--green:#2BD09E;--line:#24393D;--mark-filter:brightness(0) invert(.85) sepia(.3) hue-rotate(140deg); color-scheme: dark; }
     html, body { margin: 0; background: var(--bg); }
+    html.spooky .brand img, html.spooky .splash-mark { filter: none !important; }
     html.booting, html.booting body { background: #F3F6F5; }
     body { font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif; }
 /* splash: the logo sits exactly where Android's own start screen puts it, so the two blend.
@@ -112,7 +123,9 @@
         "Real matches, real scorers, real bragging rights.",
         "It\u2019s not a quiz. It\u2019s a checkout."
       ];
+      if (window.__spooky) lines = ["Something wicked this way checks out. 🎃", "Trick or treble? Step up and throw. 🎃", "Spooky season. Same football brains."];
       document.getElementById('splash-line').textContent = lines[Math.floor(Math.random() * lines.length)];
+      window.__spookyMarks();
       window.__splashStart = Date.now();
     })();
   </script>
@@ -132,6 +145,7 @@
     </div>
   </header>
   </div>
+  <script>window.__spookyMarks && window.__spookyMarks(); if (window.__spooky) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', window.__spookyMarks);</script>
 
   <main id="app" aria-live="polite"></main>
   <div id="modal" hidden></div>
@@ -158,6 +172,6 @@
       caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
     }
   </script>
-  <script type="module" src="js/app.js?v=95"></script>
+  <script type="module" src="js/app.js?v=96"></script>
 </body>
 </html>
