@@ -919,3 +919,22 @@ a.game-card { text-decoration: none; color: inherit; }
 .fx-line.won .fx-pts { opacity: 1; }
 .fx-line.won .fx-pts::after { content: ' ✓'; color: var(--green-deep); font-size: .85rem; }
 .fx-pts { white-space: nowrap; }
+
+/* nicknames, style C: neutral tags and rows with a small club-colour badge */
+.nick-chip, .nick-chip.clubbed { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px 4px 9px; border-radius: 999px; font-weight: 800; background: var(--soft); color: var(--ink); border: 0; box-shadow: none; max-width: 100%; }
+.nick-chip .nc-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nick-chip small { color: var(--muted); font-weight: 600; opacity: 1; }
+.club-dot { flex: none; display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: linear-gradient(90deg, var(--c1) 50%, var(--c2) 50%);
+  box-shadow: 0 0 0 1.5px var(--c1b, var(--c1)), 0 0 0 3px var(--card), 0 0 0 4px var(--line); }
+:root[data-theme="dark"] .club-dot { --c1b: color-mix(in srgb, var(--c1) 65%, white); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .club-dot { --c1b: color-mix(in srgb, var(--c1) 65%, white); } }
+.ln-nm { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; }
+.ln-nm b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-table tbody tr td { background: none; color: inherit; }
+.lg-table tbody tr.me td { background: color-mix(in srgb, var(--green) 9%, transparent); }
+.lg-table tbody tr.me td:first-child { border-radius: 10px 0 0 10px; }
+.lg-table tbody tr.me td:last-child { border-radius: 0 10px 10px 0; }
+.ltable.lg-table tbody tr:first-child td { background: none; }
+.ltable.lg-table tbody tr.me:first-child td { background: color-mix(in srgb, var(--green) 9%, transparent); }
+.fx .nick-chip, .lg-status .fx .nick-chip, .fx-who .nick-chip { display: inline-flex; background: none; padding: 2px 0; }
+.lg-members .nick-chip, .vs-saved .nick-chip, .me-row .nick-chip { background: var(--soft); }

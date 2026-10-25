@@ -1618,6 +1618,11 @@ function leagueHow() {
     </div>`;
 }
 // A league row painted in the player's club colours: main colour behind, second colour as a stripe.
+// a small half-and-half badge in the club's colours, shown next to a nickname (or club name)
+function clubDot(club) {
+  const k = CLUB_COLOURS[club];
+  return k ? `<i class="club-dot" style="--c1:${k[0]};--c2:${k[1]}" title="${esc(club)}" aria-hidden="true"></i>` : '';
+}
 function rowVars(club) {
   const k = CLUB_COLOURS[club];
   if (!k) return '';
@@ -1626,7 +1631,7 @@ function rowVars(club) {
   return `--rb:${bg};--rf:${fg};--rs:${stripe}`;
 }
 function nickChip(nick, club, you = false) {
-  return `<span class="nick-chip ${club ? 'clubbed' : ''}" style="${rowVars(club)}">${esc(nick)}${you ? ' <small>(you)</small>' : ''}</span>`;
+  return `<span class="nick-chip">${clubDot(club)}<span class="nc-n">${esc(nick)}</span>${you ? ' <small>(you)</small>' : ''}</span>`;
 }
 const onlineErr = e => (e && e.message) || 'Something went wrong. Try again in a minute.';
 
@@ -1837,7 +1842,7 @@ function renderLeague() {
   const mem = id => v.members.find(x => x.id === id);
   const who = (id, fallback) => { const m = mem(id); return m ? nickChip(m.nick, m.club, id === v.me) : `<span class="nick-chip">${esc(fallback || 'Old player')}</span>`; };
   const nameOf = id => { const m = mem(id); return m ? esc(m.nick) : 'Old player'; };
-  const rowAttrs = r => `class="${r.club ? 'club-row' : ''} ${r.id === v.me ? 'me' : ''}" style="${rowVars(r.club)}"`;
+  const rowAttrs = r => `class="${r.id === v.me ? 'me' : ''}"`;
   const tabs = season ? [['table', '🏆 Table'], ['fixtures', '📅 Fixtures'], ['chal', '⚔️ Challenges']] : [['daily', '⭐ Daily table'], ['chal', '⚔️ Challenges']];
   const tab = tabs.some(([k]) => k === S.lgTab) ? S.lgTab : tabs[0][0];
   const playBtn = done ? '' : `<button class="btn ghost big" data-act="${v.club ? 'club-daily' : 'daily'}" data-v="${esc(v.club || '')}">${v.club ? `🏟️ Play today’s ${esc(v.club)} Daily` : '⭐ Play today’s Daily'}</button>`;
@@ -1849,7 +1854,7 @@ function renderLeague() {
       const rows = v.table.map(r => ({ ...r, ...(mem(r.id) || { nick: 'Old player', club: '' }) }));
       body = `<div class="table-wrap"><table class="ltable lg-table">
         <thead><tr><th>#</th><th class="l">Player</th><th>P</th><th>W</th><th>D</th><th>L</th><th title="Points">Pts</th></tr></thead>
-        <tbody>${rows.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td><b>${r.pts}</b></td></tr>`).join('')}</tbody>
+        <tbody>${rows.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><span class="ln-nm">${clubDot(r.club)}<b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</span></td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td><b>${r.pts}</b></td></tr>`).join('')}</tbody>
       </table></div>
       <p class="hint">3 points for a win, 1 for a draw. Level on points? Whoever scored more Daily points goes higher. The table updates when each gameweek ends.</p>`;
     }
@@ -1874,7 +1879,7 @@ function renderLeague() {
     body = `<div class="lg-range">${[['week', 'This week'], ['all', 'All time']].map(([k, t]) => `<button class="pill-btn ${range === k ? 'on' : ''}" data-act="lg-range" data-v="${k}">${t}</button>`).join('')}</div>
       <div class="table-wrap"><table class="ltable lg-table">
         <thead><tr><th>#</th><th class="l">Player</th><th title="Dailies played">P</th><th title="Points">Pts</th><th title="Today's Daily">Today</th></tr></thead>
-        <tbody>${daily.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</td><td>${r.r.played}</td><td><b>${r.r.pts}</b></td><td>${r.today == null ? '–' : r.today}</td></tr>`).join('')}</tbody>
+        <tbody>${daily.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><span class="ln-nm">${clubDot(r.club)}<b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</span></td><td>${r.r.played}</td><td><b>${r.r.pts}</b></td><td>${r.today == null ? '–' : r.today}</td></tr>`).join('')}</tbody>
       </table></div>
       <p class="hint">${range === 'week' ? 'This week runs Monday to Sunday.' : 'Every Daily since the league started.'} Your first go at each day’s ${v.club ? `${esc(v.club)} Daily` : 'Daily Match'} counts.</p>
       ${playBtn}`;
@@ -1882,7 +1887,7 @@ function renderLeague() {
     const h2h = h2hRows(v);
     body = `${h2h.some(r => r.p) ? `<div class="table-wrap"><table class="ltable lg-table">
         <thead><tr><th>#</th><th class="l">Player</th><th>P</th><th>W</th><th>D</th><th>L</th></tr></thead>
-        <tbody>${h2h.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</td><td>${r.p}</td><td><b>${r.w}</b></td><td>${r.d}</td><td>${r.l}</td></tr>`).join('')}</tbody>
+        <tbody>${h2h.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><span class="ln-nm">${clubDot(r.club)}<b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</span></td><td>${r.p}</td><td><b>${r.w}</b></td><td>${r.d}</td><td>${r.l}</td></tr>`).join('')}</tbody>
       </table></div>
       <h3 class="sec">Latest results</h3>
       <ul class="results">${v.results.map(g => {
@@ -1956,14 +1961,14 @@ function renderSupporters() {
     const rows = [...d.rows]; if (d.mine) rows.push(d.mine);
     body = rows.length ? `<div class="table-wrap"><table class="ltable lg-table">
         <thead><tr><th>#</th><th class="l">Fan</th><th title="Dailies played">P</th><th>Pts</th></tr></thead>
-        <tbody>${rows.map(r => `<tr class="${r.id === d.me ? 'me club-row' : 'club-row'}" style="${rowVars(d.club)}"><td>${r.rank}</td><td class="l"><b>${esc(r.nick)}</b>${r.id === d.me ? ' <small>(you)</small>' : ''}</td><td>${r.played}</td><td><b>${r.pts}</b></td></tr>`).join('')}</tbody>
+        <tbody>${rows.map(r => `<tr class="${r.id === d.me ? 'me' : ''}"><td>${r.rank}</td><td class="l"><span class="ln-nm">${clubDot(d.club)}<b>${esc(r.nick)}</b>${r.id === d.me ? ' <small>(you)</small>' : ''}</span></td><td>${r.played}</td><td><b>${r.pts}</b></td></tr>`).join('')}</tbody>
       </table></div>
       <p class="hint">${d.fans} ${esc(d.club)} ${d.fans === 1 ? 'fan has' : 'fans have'} a nickname. Everyone who picks ${esc(d.club)} colours is in this table.</p>`
       : `<p class="hint">No ${esc(s.club)} fans have played ${s.range === 'week' ? 'this week' : 'yet'}. Be the first.</p>`;
   } else {
     body = (d.clubs.length ? `<div class="table-wrap"><table class="ltable lg-table">
         <thead><tr><th>#</th><th class="l">Club</th><th title="Fans who played">Fans</th><th title="Average Daily Match score">Avg</th></tr></thead>
-        <tbody>${d.clubs.map((c, i) => `<tr class="club-row ${c.club === myClub ? 'me' : ''}" style="${rowVars(c.club)}"><td>${i + 1}</td><td class="l"><b>${esc(c.club)}</b></td><td>${c.players}</td><td><b>${c.avg}</b></td></tr>`).join('')}</tbody>
+        <tbody>${d.clubs.map((c, i) => `<tr class="${c.club === myClub ? 'me' : ''}"><td>${i + 1}</td><td class="l"><span class="ln-nm">${clubDot(c.club)}<b>${esc(c.club)}</b></span></td><td>${c.players}</td><td><b>${c.avg}</b></td></tr>`).join('')}</tbody>
       </table></div>` : `<p class="hint">No club has ${d.min} fans playing ${s.range === 'week' ? 'this week' : 'yet'}. Get your mates to pick their colours.</p>`)
       + `<p class="hint">Clubs are ranked by their fans’ average Daily Match score. A club needs ${d.min} fans playing to get on the table.${d.waiting.length ? ` Waiting: ${d.waiting.map(w => esc(w.club)).join(', ')}.` : ''}</p>`
       + (m ? (myClub ? '' : '<p class="hint">Pick your club colours (Leagues → Edit) to play for your club.</p>') : '<button class="btn ghost" data-act="nick-new">Pick a nickname and your club</button>');
