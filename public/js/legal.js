@@ -1,5 +1,5 @@
 // Privacy notice and terms of use. Plain English, kept short.
-const UPDATED = '23 October 2026';
+const UPDATED = '1 November 2026';
 const CONTACT = 'topflight501@outlook.com';
 
 export const privacyHtml = `
@@ -25,6 +25,7 @@ export const privacyHtml = `
     <p><b>Supporters’ table:</b> if you pick a club’s colours, your nickname and Daily Match points appear in that club’s fans table, which anyone can see, and count towards your club’s average. Choose “No club” to stay out of it.</p>
     <p><b>Why:</b> to run the leagues and challenges you’ve chosen to take part in. <b>How long:</b> until you delete it. A nickname that isn’t used for 12 months is deleted automatically, with everything linked to it.</p>
     <p><b>Deleting it:</b> Leagues → your nickname → <b>Edit</b> → <b>Delete my nickname</b>, or <b>Settings → Delete all my data</b>. Everything linked to your nickname is removed from our server straight away.</p>
+    <p><b>Bot check:</b> when you make or change a nickname, or create a league, Cloudflare Turnstile (our host’s free bot check) quickly checks you’re a person and not a spam program. It usually happens invisibly; now and then it may ask for a tap. Cloudflare looks at technical signals from your browser for this. We only get a pass or fail back, and we don’t store it. See Cloudflare’s privacy policy at cloudflare.com/privacypolicy.</p>
     <p>If you report a name, we keep the report until we’ve dealt with it. League data is stored by Cloudflare in the European Union.</p>
     <h3>Anonymous visit counting</h3>
     <p>We use Umami (umami.is), a privacy-focused, cookie-free analytics service, to count visits and see which games are played. It records things like the page visited, the game started or finished, the type of device and browser, the country and region the visit came from, and the website that sent you here. It doesn’t use cookies, doesn’t store your IP address, doesn’t build a profile of you and can’t identify you. We only ever see totals, for example “300 games of Killer this week”.</p>
@@ -32,7 +33,7 @@ export const privacyHtml = `
     <h3>Hosting</h3>
     <p>The site is hosted by Cloudflare (cloudflare.com). Like any web host, Cloudflare’s servers handle technical information such as your IP address and browser type to deliver the pages and keep the service secure. We don’t use this information to identify you.</p>
     <h3>Fonts and images</h3>
-    <p>All fonts and images are served from this site. Apart from the anonymous visit counter above, nothing is loaded from Google or other third parties while you play.</p>
+    <p>All fonts and images are served from this site. Apart from the anonymous visit counter and the bot check above, nothing is loaded from Google or other third parties while you play.</p>
     <h3>Links to other sites</h3>
     <p>Links to X, Instagram, TikTok and Buy Me a Coffee take you to those services, which have their own privacy policies.</p>
     <h3>Daily Match leaderboard</h3>

@@ -1,5 +1,5 @@
 // Your nickname: create one, get it back on another phone with the recovery code, change it, or delete it.
-import { json, fail, handle, db, who, body, sha, newId, newRecovery, cleanRecovery, cleanClub, deletePlayer, showLeague, dayNow } from '../../lib/server.js';
+import { json, fail, handle, db, who, body, sha, newId, newRecovery, cleanRecovery, cleanClub, deletePlayer, showLeague, dayNow, checkHuman, checkCap } from '../../lib/server.js';
 import { checkName, nameKey } from '../../lib/names.js';
 
 const pub = p => ({ id: p.id, nick: p.nick, club: p.club || '' });
@@ -24,6 +24,8 @@ export const onRequestPost = handle(async ({ request, env }) => {
   if (b.action === 'create') {
     const c = checkName(b.nick, 'nick');
     if (!c.ok) return fail(c.msg, 400, c.why);
+    await checkHuman(env, b.ts);
+    await checkCap(DB, env, 'nick');
     const code = newRecovery();
     const p = { id: newId(), nick: c.name, club: cleanClub(b.club) };
     const now = Date.now();
@@ -51,6 +53,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
     if (b.nick !== undefined) {
       const c = checkName(b.nick, 'nick');
       if (!c.ok) return fail(c.msg, 400, c.why);
+      if (c.name !== me.nick) await checkHuman(env, b.ts);
       nick = c.name;
     }
     if (b.club !== undefined) club = cleanClub(b.club);

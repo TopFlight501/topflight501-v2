@@ -3,8 +3,8 @@ import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllow
 import { sfx, setSoundEnabled } from './sound.js?v=74';
 import * as L from './leagues.js?v=75';
 import { initAnalytics, track } from './analytics.js?v=74';
-import { privacyHtml, termsHtml } from './legal.js?v=77';
-import * as O from './online.js?v=2';
+import { privacyHtml, termsHtml } from './legal.js?v=78';
+import * as O from './online.js?v=3';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');

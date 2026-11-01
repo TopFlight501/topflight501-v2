@@ -1,7 +1,7 @@
 // Online leagues: create, join with a code, leave, rename, remove a player, kick off a season, and view the tables.
 // Formats: open (a running Daily points table) or a season (full home and away, half, or a sprint of set gameweeks)
 // where each gameweek is a head-to-head fixture decided by Daily Match points. Challenge-link results are shown too.
-import { json, fail, handle, db, who, body, randCode, newId, cleanLeague, showLeague, cleanClubDaily, dayNow, dayOf, weekStartN, beats } from '../../lib/server.js';
+import { json, fail, handle, db, who, body, randCode, newId, cleanLeague, showLeague, cleanClubDaily, dayNow, dayOf, weekStartN, beats, checkHuman, checkCap } from '../../lib/server.js';
 import { FORMATS, SPRINT_WEEKS, SEASON_MAX, drawFixtures, shuffled, scoreSeason, nextMonday, currentGw } from '../../lib/season.js';
 import { checkName } from '../../lib/names.js';
 
@@ -157,6 +157,8 @@ export const onRequestPost = handle(async ({ request, env }) => {
     const counts = await DB.prepare(`SELECT (SELECT COUNT(*) FROM leagues WHERE owner = ?) AS owned, (SELECT COUNT(*) FROM members WHERE player = ?) AS joined`).bind(me.id, me.id).first();
     if (counts.owned >= MAX_OWNED) return fail(`You can run up to ${MAX_OWNED} leagues.`, 400, 'limit');
     if (counts.joined >= MAX_LEAGUES) return fail(`You can be in up to ${MAX_LEAGUES} leagues. Leave one first.`, 400, 'limit');
+    await checkHuman(env, b.ts);
+    await checkCap(DB, env, 'league');
     const season = FORMATS[format].season;
     const lg = { id: newId(), name: c.name, format, weeks, club, season: 1, status: season ? 'signup' : 'open', start_n: season ? nextMonday() : 0, champs: '[]', owner: me.id, created: now };
     for (let i = 0; i < 5; i++) {

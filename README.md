@@ -46,6 +46,11 @@ Optional. A player picks a nickname and a club colour and gets a recovery code (
 
 Cloudflare set-up: a D1 database bound as `DB` (Production and Preview), and a secret `ADMIN_KEY` for the admin page.
 
+### Spam protection
+
+- **Bot check (Cloudflare Turnstile, free):** making a nickname, changing it, or creating a league asks Cloudflare to check it's a person. Usually invisible. Switched on by adding `TURNSTILE_SITEKEY` (plain text) and `TURNSTILE_SECRET` (secret) in Cloudflare Pages → Settings → Variables and secrets. Without them, nothing is checked. If Cloudflare's check is ever unreachable, people are let through rather than blocked. The player's IP address isn't sent.
+- **Hourly cap:** at most 300 new nicknames and 60 new leagues an hour across the whole site (change with `NICK_CAP` / `LEAGUE_CAP`). Existing players aren't affected when it's hit.
+
 The name filter checks nicknames and league names against rude-word lists in many languages (including the [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) lists, CC BY 4.0, plus our own in `tools/wordlists/extra.txt`), undoes disguises (sh1t, f.u.c.k, phuk), refuses other alphabets and emoji, and lets every Premier League player, club and manager name through. Add words to `tools/wordlists/extra.txt` or innocent words to `allow.txt`, then run `python tools/build_names.py`.
 
 ### Testing on your own computer
@@ -54,6 +59,7 @@ The name filter checks nicknames and league names against rude-word lists in man
 node tools/dev-server.mjs          # the site plus the /api functions, with a local database
 node tools/test_names.mjs          # name filter tests
 node tools/test_daily.mjs          # Daily leaderboard tests (500 scores at once)
+node tools/test_spam.mjs           # bot check and hourly spam cap tests
 node tools/test_api.mjs            # league API tests (needs the dev server running)
 python tools/test_ui.py            # clicks through the screens in a headless browser (needs Playwright)
 ```

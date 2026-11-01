@@ -32,7 +32,7 @@ const D1 = {
 };
 const kv = new Map();
 const KV = { async get(k, t) { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, async put(k, v) { kv.set(k, v); } };
-const env = { DB: D1, SCORES: KV, ADMIN_KEY: process.env.ADMIN_KEY || 'dev-admin-key-123' };
+const env = { DB: D1, SCORES: KV, ADMIN_KEY: process.env.ADMIN_KEY || 'dev-admin-key-123', TURNSTILE_SITEKEY: process.env.TURNSTILE_SITEKEY, TURNSTILE_SECRET: process.env.TURNSTILE_SECRET };
 
 // Testing only: POST /__dev/clock {"days": 3} moves this server's clock forward, to play out gameweeks quickly
 let shift = 0;

@@ -35,9 +35,55 @@ async function api(method, path, body) {
   return j;
 }
 
+// ---------- bot check (Cloudflare Turnstile) ----------
+// Only used when making a nickname, changing it, or creating a league. Usually invisible:
+// a small box only appears if Cloudflare wants a tap. Does nothing until it's switched on in Cloudflare.
+let siteKey = null, scriptLoad = null;
+async function getSiteKey() {
+  if (siteKey === null) {
+    try { const r = await fetch('/api/human'); siteKey = r.ok ? ((await r.json()).key || '') : ''; } catch { siteKey = ''; }
+  }
+  return siteKey;
+}
+function loadScript() {
+  if (window.turnstile) return Promise.resolve();
+  if (!scriptLoad) {
+    scriptLoad = new Promise((ok, no) => {
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      s.async = true; s.onload = ok; s.onerror = () => { scriptLoad = null; no(); };
+      document.head.appendChild(s);
+    });
+  }
+  return scriptLoad;
+}
+async function humanToken() {
+  const key = await getSiteKey();
+  if (!key) return undefined;
+  try { await loadScript(); } catch { throw new ApiError('No connection. Check your signal and try again.', 'offline', 0); }
+  const box = document.createElement('div');
+  box.className = 'human-check';
+  box.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2000;';
+  document.body.appendChild(box);
+  let id = null;
+  try {
+    return await new Promise((ok, no) => {
+      const stop = setTimeout(() => no(new ApiError('Couldn’t check you’re not a robot. Try again.', 'human', 0)), 60000);
+      id = window.turnstile.render(box, {
+        sitekey: key, appearance: 'interaction-only', theme: 'auto',
+        callback: t => { clearTimeout(stop); ok(t); },
+        'error-callback': () => { clearTimeout(stop); no(new ApiError('Couldn’t check you’re not a robot. Try again.', 'human', 0)); },
+      });
+    });
+  } finally {
+    try { if (id !== null) window.turnstile.remove(id); } catch { /* ignore */ }
+    box.remove();
+  }
+}
+
 // ---------- your nickname ----------
 export async function createMe(nick, club) {
-  const r = await api('POST', '/api/me', { action: 'create', nick, club });
+  const r = await api('POST', '/api/me', { action: 'create', nick, club, ts: await humanToken() });
   save({ ...r.me, code: r.code });
   return r;
 }
@@ -47,7 +93,8 @@ export async function restoreMe(code) {
   return r;
 }
 export async function updateMe(fields) {
-  const r = await api('POST', '/api/me', { action: 'update', ...fields });
+  const changingNick = fields.nick !== undefined && me() && fields.nick.trim() !== me().nick;
+  const r = await api('POST', '/api/me', { action: 'update', ...fields, ...(changingNick ? { ts: await humanToken() } : {}) });
   save({ ...me(), ...r.me });
   return r.me;
 }
@@ -65,7 +112,7 @@ export async function refresh() {
 
 // ---------- leagues ----------
 export const league = code => api('GET', '/api/leagues?code=' + encodeURIComponent(code));
-export const createLeague = (name, opts = {}) => api('POST', '/api/leagues', { action: 'create', name, ...opts });
+export const createLeague = async (name, opts = {}) => api('POST', '/api/leagues', { action: 'create', name, ...opts, ts: await humanToken() });
 export const kickOff = code => api('POST', '/api/leagues', { action: 'kickoff', code });
 export const nextSeason = (code, format, weeks) => api('POST', '/api/leagues', { action: 'next-season', code, format, weeks });
 export const clubs = range => api('GET', '/api/clubs?range=' + range);
