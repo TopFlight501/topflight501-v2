@@ -13,7 +13,7 @@ Premier League trivia played like darts. Every match, scorer, assist, card, play
 | `public/js/analytics.js` | Anonymous, cookie-free visit and game counting with Umami (dashboard at cloud.umami.is). |
 | `public/js/sound.js` | Sound effects (generated in the browser, no audio files). |
 | `tools/` | Scripts that rebuild the database (only needed when adding a new season). |
-| `functions/api/daily.js` | The Daily Match leaderboard (a Cloudflare Pages Function, scores kept in Cloudflare KV). |
+| `functions/api/daily.js` | The Daily Match leaderboard (a Cloudflare Pages Function; anonymous running counts in the D1 database since 1 November 2026, older days still read from Cloudflare KV). |
 | `functions/api/me.js`, `leagues.js`, `scores.js`, `challenges.js`, `report.js` | Online leagues: nicknames, recovery codes, league tables, Daily scores and challenge results (Cloudflare D1 database, binding `DB`). |
 | `functions/api/admin.js`, `public/admin.html` | Admin page for reported names. Needs the `ADMIN_KEY` secret in Cloudflare. |
 | `lib/server.js` | Shared server code: database tables (created automatically), codes, deleting a player. |
@@ -53,6 +53,7 @@ The name filter checks nicknames and league names against rude-word lists in man
 ```
 node tools/dev-server.mjs          # the site plus the /api functions, with a local database
 node tools/test_names.mjs          # name filter tests
+node tools/test_daily.mjs          # Daily leaderboard tests (500 scores at once)
 node tools/test_api.mjs            # league API tests (needs the dev server running)
 python tools/test_ui.py            # clicks through the screens in a headless browser (needs Playwright)
 ```
