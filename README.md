@@ -16,6 +16,7 @@ Premier League trivia played like darts. Every match, scorer, assist, card, play
 | `functions/api/daily.js` | The Daily Match leaderboard (a Cloudflare Pages Function; anonymous running counts in the D1 database since 1 November 2026, older days still read from Cloudflare KV). |
 | `functions/api/me.js`, `leagues.js`, `scores.js`, `challenges.js`, `report.js` | Online leagues: nicknames, recovery codes, league tables, Daily scores and challenge results (Cloudflare D1 database, binding `DB`). |
 | `functions/api/admin.js`, `public/admin.html` | Admin page for reported names. Needs the `ADMIN_KEY` secret in Cloudflare. |
+| `public/js/progress.js`, `functions/api/progress.js` | Your progress: career points and ranks, stats, streak freezes, and saving it all to the nickname so a new phone keeps it. Change the rank names and point levels at the top of `progress.js`. |
 | `lib/server.js` | Shared server code: database tables (created automatically), codes, deleting a player. |
 | `lib/names.js`, `lib/name-lists.js` | The nickname and league-name filter. Rebuild the lists with `python tools/build_names.py`. |
 | `public/js/online.js` | The site's side of online leagues (talks to `/api`, remembers the nickname on the phone). |
@@ -42,7 +43,7 @@ Then open http://localhost:8000.
 
 ## Online leagues
 
-Optional. A player picks a nickname and a club colour and gets a recovery code (shown once; we keep only a hashed copy). Leagues have a join code (TF-K7Q2M) and an invite link (topflight501.com/j/TF-K7Q2M). Each league shows a Daily table (Daily Match points, this week and all time) and a Head-to-head table (challenge links played between members). Nothing else is stored: no emails, real names, passwords or IP addresses. Nicknames unused for 12 months are deleted automatically.
+Optional. A player picks a nickname and a club colour and gets a recovery code (shown once; we keep only a hashed copy). Leagues have a join code (TF-K7Q2M) and an invite link (topflight501.com/j/TF-K7Q2M). Each league shows a Daily table (Daily Match points, this week and all time) and a Head-to-head table (challenge links played between members). A player's own game progress (Daily scores by day, achievements, personal bests, stats, career points) is saved to the nickname too. Nothing else is stored: no emails, real names, passwords or IP addresses. Nicknames unused for 12 months are deleted automatically.
 
 Cloudflare set-up: a D1 database bound as `DB` (Production and Preview), and a secret `ADMIN_KEY` for the admin page.
 
@@ -60,6 +61,7 @@ node tools/dev-server.mjs          # the site plus the /api functions, with a lo
 node tools/test_names.mjs          # name filter tests
 node tools/test_daily.mjs          # Daily leaderboard tests (500 scores at once)
 node tools/test_spam.mjs           # bot check and hourly spam cap tests
+node tools/test_progress.mjs       # ranks, streak freezes, stats and progress-saving rules
 node tools/test_api.mjs            # league API tests (needs the dev server running)
 python tools/test_ui.py            # clicks through the screens in a headless browser (needs Playwright)
 ```

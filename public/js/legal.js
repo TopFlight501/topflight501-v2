@@ -1,5 +1,5 @@
 // Privacy notice and terms of use. Plain English, kept short.
-const UPDATED = '1 November 2026';
+const UPDATED = '10 November 2026';
 const CONTACT = 'topflight501@outlook.com';
 
 export const privacyHtml = `
@@ -19,9 +19,10 @@ export const privacyHtml = `
       <li>your Daily Match scores (your first go each day), including a club’s own Daily if your league plays one</li>
       <li>the leagues you’re in and their fixtures</li>
       <li>the results of challenge links played between players with nicknames</li>
+      <li>your game progress, so it follows you to a new phone: your Daily Match scores by day (your streak), achievements, personal bests, how often you get each type of answer right, and your career points and rank</li>
       <li>a scrambled (hashed) copy of your recovery code, so we can recognise your phone. We can’t turn it back into the code.</li>
     </ul>
-    <p>We don’t ask for your real name, email, age or location, and you shouldn’t use your real name as a nickname. Other players in your leagues can see your nickname, colours, scores, fixtures and results.</p>
+    <p>We don’t ask for your real name, email, age or location, and you shouldn’t use your real name as a nickname. Other players in your leagues can see your nickname, colours, rank, scores, fixtures and results.</p>
     <p><b>Supporters’ table:</b> if you pick a club’s colours, your nickname and Daily Match points appear in that club’s fans table, which anyone can see, and count towards your club’s average. Choose “No club” to stay out of it.</p>
     <p><b>Why:</b> to run the leagues and challenges you’ve chosen to take part in. <b>How long:</b> until you delete it. A nickname that isn’t used for 12 months is deleted automatically, with everything linked to it.</p>
     <p><b>Deleting it:</b> Leagues → your nickname → <b>Edit</b> → <b>Delete my nickname</b>, or <b>Settings → Delete all my data</b>. Everything linked to your nickname is removed from our server straight away.</p>
@@ -59,7 +60,7 @@ export const termsHtml = `
     <h3>Fair use</h3>
     <p>Please don’t try to disrupt the site, copy it wholesale or use it for anything unlawful.</p>
     <h3>No guarantees</h3>
-    <p>The game is provided as it is, without warranties. We may change, pause or stop it at any time. Your settings, personal bests, achievements and Daily Match scores are saved only on your device (apart from your leagues nickname and league scores), so use Settings → Backup if they matter to you.</p>
+    <p>The game is provided as it is, without warranties. We may change, pause or stop it at any time. Without a nickname, your settings, personal bests, achievements, stats and Daily Match scores are saved only on your device, so use Settings → Backup if they matter to you. With a nickname, your game progress is also saved to it.</p>
     <h3>Nicknames</h3>
     <p>Pick a nickname that isn’t rude, hurtful or pretending to be someone else, and isn’t your real name. We may change or remove any nickname or league name, without warning.</p>
     <h3>Liability</h3>

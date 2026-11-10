@@ -76,8 +76,8 @@ async function seasonView(DB, lg, today = dayNow()) {
 
 async function view(DB, lg, meId) {
   lg = await advance(DB, lg);
-  const ms = (await DB.prepare(`SELECT p.id, p.nick, p.club, m.joined FROM members m JOIN players p ON p.id = m.player
-    WHERE m.league = ? ORDER BY m.joined`).bind(lg.id).all()).results || [];
+  const ms = (await DB.prepare(`SELECT p.id, p.nick, p.club, m.joined, COALESCE(g.pts, 0) AS pts FROM members m JOIN players p ON p.id = m.player
+    LEFT JOIN progress g ON g.player = p.id WHERE m.league = ? ORDER BY m.joined`).bind(lg.id).all()).results || [];
   const ids = ms.map(m => m.id);
   const marks = ids.map(() => '?').join(',');
   const today = dayNow(), week = weekStartN(today), since = dayOf(lg.created);
@@ -87,7 +87,7 @@ async function view(DB, lg, meId) {
     format: lg.format || 'open', weeks: lg.weeks || 0, club: lg.club || '', season: lg.season || 1,
     status: lg.status || 'open', start: lg.start_n || 0, today, week, cap: cap(lg),
     champs: JSON.parse(lg.champs || '[]'),
-    members: ms.map(m => ({ id: m.id, nick: m.nick, club: m.club || '' })),
+    members: ms.map(m => ({ id: m.id, nick: m.nick, club: m.club || '', cp: m.pts || 0 })),
   };
 
   if (isSeason(lg)) {

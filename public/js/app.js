@@ -1,10 +1,11 @@
 import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, clubDailyMatch, dailyNumber, dailyKey } from './data.js?v=77';
 import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=78';
 import { sfx, setSoundEnabled } from './sound.js?v=74';
-import * as L from './leagues.js?v=75';
+import * as L from './leagues.js?v=76';
 import { initAnalytics, track } from './analytics.js?v=74';
-import { privacyHtml, termsHtml } from './legal.js?v=78';
-import * as O from './online.js?v=3';
+import { privacyHtml, termsHtml } from './legal.js?v=79';
+import * as O from './online.js?v=4';
+import * as P from './progress.js?v=1';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -66,7 +67,8 @@ const hardOn = () => S.hard && ['x01', 'killer', 'clock', 'sudden'].includes(S.g
 const HARD_SECS = 60;
 // 180 rule: two Scorers in a row and the next dart is worth 60 whatever the category
 // First Classic game: a short tip on the first dart of round 1, until a round has been played
-const coachOn = () => S.game === 'x01' && S.round <= 1 && !S.visit.length && !store.get('tipClassic', false);
+const coachOn = () => (S.game === 'x01' && S.round <= 1 && !S.visit.length && !store.get('tipClassic', false))
+  || (S.game === 'daily' && !S.past && !S.visit.length && !store.get('tipDaily', false) && !Object.keys(store.get('dailyLog', {})).length);
 // Pundit's clue: one per visit, a right answer after it scores half
 const clueOk = () => ['x01', 'killer', 'clock', 'sudden'].includes(S.game) && !hardOn() && !easyOn();
 function makeClue(cat) {
@@ -210,7 +212,7 @@ function settingsHtml() {
   </div>
   <div class="field">
     <span class="label">Your data</span>
-    <p class="hint">Apart from your leagues nickname and league scores, everything is saved on this device only. Make a backup to keep your personal bests, Daily Match scores and streak, or to move them to another phone or computer.</p>
+    <p class="hint">Without a nickname, everything is saved on this device only. With one, your streak, rank, stats and achievements are saved to it as well. Make a backup to keep your personal bests, Daily Match scores and streak, or to move them to another phone or computer.</p>
     <div class="row wrap">
       <button class="btn ghost" data-act="backup">⬇️ Backup</button>
       <button class="btn ghost" data-act="restore">⬆️ Restore</button>
@@ -296,20 +298,26 @@ function render() {
 }
 
 function renderHub() {
+  // First visit: one clear way in. The full list of games is a tap away.
+  if (S.welcome) {
+    app.innerHTML = `
+  <section class="hub">
+    <div class="welcome first" role="note">
+      <h3>👋 Welcome to Top Flight 501</h3>
+      <p>Premier League trivia, scored like darts. <b>Free</b>, no sign-up, nothing to download.</p>
+      <button type="button" class="btn primary big" data-act="daily">⭐ Play today’s match</button>
+      <p class="welcome-small">One real match, six darts, about two minutes. Everyone gets the same match today.</p>
+      <button type="button" class="btn ghost" data-act="welcome-x">👥 With your mates? See all the games</button>
+    </div>
+    ${S.error ? `<p class="error">${esc(S.error)}</p>` : ''}
+  </section>`;
+    return;
+  }
+  const r = P.careerPoints() > 0 ? P.rankOf(P.careerPoints()) : null;
   app.innerHTML = `
   <section class="hub">
-    ${S.welcome ? `<div class="welcome" role="note">
-      <button type="button" class="welcome-x" data-act="welcome-x" aria-label="Close welcome message">✕</button>
-      <h3>👋 Welcome to Top Flight 501</h3>
-      <p>Thanks for coming in! A <b>free</b> game to test your Premier League knowledge, scored like darts.</p>
-      <ul>
-        <li><span>🙋</span>Play on your own</li>
-        <li><span>⚔️</span>Take on your mates</li>
-        <li><span>👥</span>Or go team v team, like a proper quiz night</li>
-      </ul>
-      <p class="welcome-small">No sign-up, no app to download. Just pick a game below.</p>
-      ${followRow('Welcome')}
-    </div>` : ''}
+    ${r ? `<button type="button" class="rank-strip" data-act="achievements" aria-label="Your progress: ${esc(r.name)}, ${num(r.pts)} career points">
+      <span aria-hidden="true">${r.icon}</span><b>${esc(r.name)}</b><span class="rs-bar"><i style="width:${r.pct}%"></i></span><span class="rs-p">${r.next ? `${num(r.toGo)} to go` : `${num(r.pts)} pts`}</span><span aria-hidden="true">›</span></button>` : ''}
     <p class="eyebrow">Premier League trivia, darts style</p>
     <div class="hub-head"><h2>Pick your game</h2><button type="button" class="quick-pill" data-act="quick" title="Solo, 301, straight in. No setup." aria-label="Quick play: solo 301, straight in">⚡ Quick play</button></div>
     <div class="games">
@@ -688,7 +696,8 @@ function renderPlay() {
       <form class="throw" data-form="throw" autocomplete="off">
         ${coachOn() ? `<div class="coach"><button type="button" class="coach-x" data-act="coach-x" aria-label="Hide tip">✕</button>
           <b>👋 First go?</b> Pick a box, then name a player from this match.
-          <span>👕 <b>Lineup</b> is easiest, ⚽ <b>Scorer</b> takes off most.${S.vs ? '' : ' Don’t know it? Tap <b>🔄 New match</b>.'}</span></div>` : ''}
+          <span>${S.game === 'daily' ? '👕 <b>Lineup</b> is easiest: anyone who played. ⚽ <b>Scorer</b> scores most. Surnames are fine, and so are small typos.'
+            : `👕 <b>Lineup</b> is easiest, ⚽ <b>Scorer</b> takes off most.${S.vs ? '' : ' Don’t know it? Tap <b>🔄 New match</b>.'}`}</span></div>` : ''}
         <span class="label">${label}</span>
         <div class="chips ${cats.length === 1 ? 'single' : cats.length === 2 ? 'two' : ''}">${catBtns}</div>
         ${S.clue ? `<div class="clue">🎙️ <b>Pundit${S.clue.cat !== S.cat ? ` (${TARGET_INFO[S.clue.cat].short})` : ''}:</b> ${S.clue.text}</div>` : ''}
@@ -907,6 +916,7 @@ function sentOffWon(p) {
   p.legs += 1;
   unlock('first'); unlock('sentoff');
   store.set('finishedOnce', true); track('Game finished', gameInfo({ result: 'Winner', rounds: S.round }));
+  gameDone();
   L.recordGame({ game: 'sentoff', players: S.players.map(x => x.name), winner: p.name, solo: false, league: null, detail: `${p.fouls} ${p.fouls === 1 ? 'foul' : 'fouls'}` });
   confetti(); sfx.win(); buzz([80, 60, 80, 60, 160]);
   S.legStarter = (S.legStarter + 1) % S.players.length;
@@ -1099,11 +1109,7 @@ function dailyBest(skipKey = null, club = S.dailyClub) {
   return vals.length ? Math.max(...vals) : null;
 }
 function dailyStreak(club = S.dailyClub) {
-  const log = dailyLog(club); let n = 0;
-  const d = new Date();
-  if (!log[dailyKey(d)]) d.setDate(d.getDate() - 1);   // today not played yet: count up to yesterday
-  while (log[dailyKey(d)] !== undefined) { n += 1; d.setDate(d.getDate() - 1); }
-  return n;
+  return P.streakFrom(dailyLog(club), club ? {} : P.freezes().used);   // streak freezes only cover the main Daily Match
 }
 function loadTodayTop() {
   if (S.todayTopLoaded) return; S.todayTopLoaded = true;
@@ -1179,11 +1185,14 @@ function dailyOver() {
   const log = dailyLog(); log[saved.key] = saved.points; store.set(dk('dailyLog', S.dailyClub), log);
   unlock('first');
   if (saved.darts.every(d => d.res.correct)) unlock('perfect');
-  const st = dailyStreak(); if (st >= 3) unlock('streak3'); if (st >= 7) unlock('streak7');
+  S.fzEarned = !S.dailyClub && P.earnFreeze(dailyStreak(null));
   store.set('finishedOnce', true); track('Game finished', { game: S.dailyClub ? 'Club Daily' : 'Daily Match', day: saved.n, points: saved.points, hits: saved.darts.filter(d => d.res.correct).length });
   L.recordGame({ game: 'daily', players: ['You'], winner: null, solo: true, league: null, detail: `${S.dailyClub ? S.dailyClub + ' ' : ''}#${saved.n}, ${saved.points} pts` });
+  gameDone();
   if (saved.points > 0) { confetti(); sfx.win(); } else sfx.miss();
+  S.dailyJustDone = true;
   showDailyResult(saved);
+  S.dailyJustDone = false; S.fzEarned = false;
 }
 // Add a finished Daily to the leaderboard. Only marked as sent once the server has it,
 // so a failed send (bad signal, busy server) is tried again the next time the result opens.
@@ -1269,18 +1278,24 @@ function showDailyResult(saved = dailySaved()) {
     <p class="big-score center">${saved.points}</p>
     <p class="daily-emoji">${dailyEmoji(saved.darts)}</p>
     <p class="hint center">${hits} of ${DAILY_DARTS} darts hit${streak > 1 ? ` · 🔥 ${streak}-day streak` : ''}${bestLine ? `<br>${bestLine}` : ''}<br>Next match in ${untilTomorrow()}</p>
+    ${club ? '' : rankLineHtml(S.dailyJustDone ? saved.points : 0)}
+    ${S.fzEarned && !club ? `<p class="fz-note">🧊 <b>Streak freeze earned!</b> Miss a day and your streak stays alive.</p>` : ''}
     <div class="daily-board" data-board hidden></div>
-    ${club ? `<div class="row"><button class="btn ghost" data-act="daily-key">Answers</button><button class="btn primary" data-act="share">↗ Share</button></div>` : `<div class="row three-up">
+    <button class="btn primary big" data-act="share">↗ Share your score</button>
+    <div class="row">
       <button class="btn ghost" data-act="daily-key">Answers</button>
-      <button class="btn ghost story-btn" data-act="story">📸 Story</button>
-      <button class="btn primary" data-act="share">↗ Share</button>
-    </div>`}
-    <button class="btn link lg-nudge" data-act="leagues">🏆 ${O.me() ? 'See your league tables' : 'Start a league with your mates'}</button>
-    ${club ? '' : '<button class="btn link" data-act="past">📅 Play past Dailies</button>'}
-    <button class="btn link" data-act="daily-close">Back to games</button>
-    ${store.get('remindAdded', false) ? nextNudge('daily') : '<button class="btn link remind-link" data-act="reminder">⏰ Remind me every day</button>'}
-    ${followRow('Daily')}
-    <p class="hint center small">Scores and streak are saved on this device. Playing elsewhere? Use Settings → Backup to move them.</p>`, { dismissable: false });
+      ${club ? '' : '<button class="btn ghost story-btn" data-act="story">📸 Story</button>'}
+      <button class="btn ghost" data-act="daily-close">Home</button>
+    </div>
+    ${O.me() ? '<button class="btn link lg-nudge" data-act="leagues">🏆 See your league tables</button>' : ''}
+    <details class="more"><summary>More: ${O.me() ? '' : 'leagues, '}past Dailies, reminders</summary>
+      ${O.me() ? '' : '<button class="btn link lg-nudge" data-act="leagues">🏆 Start a league with your mates</button>'}
+      ${club ? '' : '<button class="btn link" data-act="past">📅 Play past Dailies</button>'}
+      ${club ? '' : '<button class="btn link" data-act="achievements">📊 Your stats and achievements</button>'}
+      ${store.get('remindAdded', false) ? nextNudge('daily') : '<button class="btn link remind-link" data-act="reminder">⏰ Remind me every day</button>'}
+      ${followRow('Daily')}
+      <p class="hint center small">${O.me() ? 'Your scores and streak are saved to your nickname.' : 'Scores and streak are saved on this device. Pick a nickname (in Leagues) to keep them if you change phone.'}</p>
+    </details>`, { dismissable: false });
   if (!club) fillBoard(saved.points);
 }
 
@@ -1417,7 +1432,79 @@ const ACHIEVEMENTS = [
   { id: 'killer', icon: '💔', name: 'Serial killer', desc: 'Win a game of Killer' },
   { id: 'grounds', icon: '🏟️', name: 'Groundhopper', desc: 'Make it round the grounds' },
   { id: 'sentoff', icon: '🟥', name: 'Last one standing', desc: 'Win a game of Sent Off' },
+  { id: 'streak14', icon: '🔥', name: 'Fortnight', desc: 'A 14-day Daily Match streak' },
+  { id: 'streak30', icon: '🏅', name: 'Player of the month', desc: 'A 30-day Daily Match streak' },
+  { id: 'streak50', icon: '🏏', name: 'Half-century', desc: 'A 50-day Daily Match streak' },
+  { id: 'streak100', icon: '💎', name: 'Centurion', desc: 'A 100-day Daily Match streak' },
+  { id: 'daily10', icon: '🎟️', name: 'Regular', desc: 'Play 10 Daily Matches' },
+  { id: 'daily50', icon: '🎫', name: 'Season ticket', desc: 'Play 50 Daily Matches' },
+  { id: 'd200', icon: '🚀', name: 'Double ton', desc: '200+ in a Daily Match' },
+  { id: 'd300', icon: '🥅', name: 'Top bins', desc: '300+ in a Daily Match' },
+  { id: 'allround', icon: '🧩', name: 'All-rounder', desc: 'Finish every game at least once' },
+  { id: 'hardwin', icon: '⏱️', name: 'No googling', desc: 'Win The Classic in Hard mode' },
+  { id: 'boot', icon: '👟', name: 'Golden boot', desc: 'Name 100 scorers' },
+  { id: 'playmaker', icon: '🅰️', name: 'Playmaker', desc: 'Name 50 assists' },
+  { id: 'notebook', icon: '🟨', name: 'Ref’s notebook', desc: 'Name 50 booked players' },
+  { id: 'gaffer', icon: '🧥', name: 'The gaffer', desc: 'Name 25 managers' },
+  { id: 'legend', icon: '👑', name: 'Club legend', desc: 'Reach the rank of Club Legend' },
 ];
+// Achievements earned over time: streaks, Dailies played, names named, rank. Checked after every game and on opening.
+function checkAch() {
+  const log = dailyLog(null), fz = P.freezes(), st = P.stats();
+  const run = Math.max(P.bestStreak(log, fz.used), dailyStreak(null));
+  for (const n of [3, 7, 14, 30, 50, 100]) if (run >= n) unlock('streak' + n);
+  const d = P.dailyNumbers(log);
+  if (d.played >= 10) unlock('daily10');
+  if (d.played >= 50) unlock('daily50');
+  if (d.best >= 200) unlock('d200');
+  if (d.best >= 300) unlock('d300');
+  const played = new Set(L.getHistory().map(g => g.game));
+  if (['x01', 'killer', 'clock', 'sudden', 'sentoff', 'daily'].every(g => played.has(g))) unlock('allround');
+  const hits = c => (st.cats[c] || [0])[0];
+  if (hits('scorer') >= 100) unlock('boot');
+  if (hits('assist') >= 50) unlock('playmaker');
+  if (hits('booked') >= 25 * 2) unlock('notebook');
+  if (hits('manager') >= 25) unlock('gaffer');
+  if (P.rankOf(st.pts).i >= P.RANKS.findIndex(r => r.name === 'Club Legend')) unlock('legend');
+}
+// A game has just finished: count it, check achievements and promotion, save to the nickname
+function gameDone() {
+  P.recordGameDone();
+  setTimeout(() => { checkAch(); checkPromotion(); syncSoon(); }, 0);
+}
+function checkPromotion() {
+  const r = P.rankOf(P.careerPoints()), seen = store.get('rankSeen', null);
+  if (seen !== null && r.i > seen) {
+    track('Promoted', { rank: r.name });
+    achQueue.push({ icon: r.icon, name: r.name, small: 'Promoted! New rank' }); if (achQueue.length === 1) showNextAch();
+  }
+  if (seen === null || r.i > seen) store.set('rankSeen', r.i);
+}
+
+// ---------- saving progress to the nickname (so a new phone keeps the streak) ----------
+let syncTimer = null, syncedText = null;
+function syncSoon() {
+  if (!O.me()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    const snap = P.snapshot(), text = JSON.stringify(snap);
+    if (text === syncedText) return;
+    O.saveProgress(snap).then(() => { syncedText = text; }).catch(() => {});
+  }, 1500);
+}
+async function syncPull() {
+  if (!O.me()) return;
+  try {
+    const remote = await O.getProgress();
+    syncedText = remote ? JSON.stringify(remote) : null;
+    if (remote && P.merge(remote)) {
+      store.set('rankSeen', P.rankOf(P.careerPoints()).i);
+      updateAchBadge();
+      if (S.screen === 'hub' && modalRoot.hidden) renderHub();
+    }
+    syncSoon();
+  } catch { /* offline or not switched on: try again next time */ }
+}
 function unlock(id) {
   const got = store.get('ach', {});
   if (got[id]) return;
@@ -1431,21 +1518,63 @@ const achQueue = [];
 function showNextAch() {
   const a = achQueue[0]; if (!a) return;
   const t = document.createElement('div');
-  t.className = 'ach-toast'; t.innerHTML = `<span class="ach-i">${a.icon}</span><span><small>Achievement unlocked</small><b>${esc(a.name)}</b></span>`;
+  t.className = 'ach-toast'; t.innerHTML = `<span class="ach-i">${a.icon}</span><span><small>${a.small || 'Achievement unlocked'}</small><b>${esc(a.name)}</b></span>`;
   document.body.appendChild(t);
   setTimeout(() => t.classList.add('out'), 2600);
   setTimeout(() => { t.remove(); achQueue.shift(); showNextAch(); }, 3100);
 }
 const TROPHY_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h10v5.5a5 5 0 0 1-10 0z"/><path d="M7 5.5H4.6a2.6 2.6 0 0 0 2.7 3.9"/><path d="M17 5.5h2.4a2.6 2.6 0 0 1-2.7 3.9"/><path d="M12 14v3.5"/><path d="M8.5 20.5h7"/><path d="M10 17.5h4l.6 3h-5.2z"/><circle class="ach-eye" cx="12" cy="8.4" r="1.7" stroke="none"/></svg>`;
-function achievementsPanelHtml() {
-  const got = store.get('ach', {});
-  const n = ACHIEVEMENTS.filter(a => got[a.id]).length, all = n === ACHIEVEMENTS.length;
-  return `<div class="ach-head">
-      <span class="ach-logo${all ? ' gold' : ''}">${TROPHY_SVG}</span>
-      <div><h2>Achievements</h2><p class="hint">${n} of ${ACHIEVEMENTS.length} unlocked</p></div>
+const num = n => Number(n).toLocaleString('en-GB');
+function rankLineHtml(gain = 0) {
+  const r = P.rankOf(P.careerPoints());
+  return `<div class="rank-line"><span class="rank-i" aria-hidden="true">${r.icon}</span>
+    <span class="rank-b"><span class="rank-t"><b>${esc(r.name)}</b><span>${gain > 0 ? `+${num(gain)} · ` : ''}${num(r.pts)} pts</span></span>
+    <span class="ach-bar"><span style="width:${r.pct}%"></span></span>
+    ${r.next ? `<small>${num(r.toGo)} to ${esc(r.next.name)} ${r.next.icon}</small>` : '<small>Top of the game. Nothing left to prove.</small>'}</span></div>`;
+}
+function statsHtml() {
+  const log = dailyLog(null), fz = P.freezes(), st = P.stats(), d = P.dailyNumbers(log);
+  const streak = dailyStreak(null), best = Math.max(P.bestStreak(log, fz.used), streak);
+  const todayPts = (dailySaved(null) || {}).done ? dailySaved(null).points : null;
+  const peak = Math.max(1, ...d.bands);
+  const thrown = P.CATS.reduce((t, c) => t + ((st.cats[c] || [0, 0])[1]), 0);
+  const bests = bestsList();
+  return `
+    <div class="st-tiles">
+      <div class="st-tile"><b>${streak ? '🔥 ' : ''}${streak}</b><span>Day streak</span><small>Best ${best}</small></div>
+      <div class="st-tile"><b>${d.played}</b><span>Dailies</span><small>${d.played ? `Average ${d.avg}` : 'None yet'}</small></div>
+      <div class="st-tile"><b>${num(st.games)}</b><span>Games</span><small>All game types</small></div>
     </div>
-    <div class="ach-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${ACHIEVEMENTS.length}" aria-valuenow="${n}"><span style="width:${Math.round(n / ACHIEVEMENTS.length * 100)}%"></span></div>
-    ${achievementsHtml(true)}
+    <div class="st-fz"><span class="fz-ice" aria-label="${fz.have} of ${P.MAX_FREEZES} streak freezes">${'🧊'.repeat(fz.have)}${'<i>🧊</i>'.repeat(P.MAX_FREEZES - fz.have)}</span>
+      <span><b>Streak freezes: ${fz.have}</b><small>Miss a day and one is used for you, so your streak survives. Earn one for every ${P.FREEZE_EVERY} days in a row (you can hold ${P.MAX_FREEZES}).</small></span></div>
+    <span class="label">Your Daily Match scores${d.played ? ` <span class="opt">best ${d.best}</span>` : ''}</span>
+    ${d.played ? `<div class="st-bars">${P.BANDS.map(([lo, hi, label], i) => `<div class="st-bar${todayPts !== null && todayPts >= lo && todayPts <= hi ? ' today' : ''}"><span class="sb-l">${label}</span><span class="sb-t"><i style="width:${Math.max(d.bands[i] ? 9 : 0, Math.round(d.bands[i] / peak * 100))}%"></i></span><span class="sb-n">${d.bands[i]}</span></div>`).join('')}</div>
+      ${todayPts !== null ? '<p class="hint small">The highlighted bar is today’s score.</p>' : ''}`
+      : '<p class="hint">Play a Daily Match and your scores start stacking up here.</p>'}
+    <span class="label">How often you’re right <span class="opt">Daily and solo games</span></span>
+    ${thrown ? `<div class="st-bars acc">${P.CATS.map(c => { const [h, t] = st.cats[c] || [0, 0]; const pc = t ? Math.round(h / t * 100) : 0;
+      return `<div class="st-bar${t ? '' : ' none'}"><span class="sb-l">${TARGET_INFO[c].icon} ${esc(TARGET_INFO[c].short)}</span><span class="sb-t"><i style="width:${pc}%"></i></span><span class="sb-n">${t ? `${pc}%` : '–'}</span></div>`; }).join('')}</div>
+      <p class="hint small">Counted since ${fmtDate(st.since)}, from ${num(thrown)} ${thrown === 1 ? 'dart' : 'darts'}.</p>`
+      : '<p class="hint">Throw a few darts and you’ll see which answers you’re best at: scorers, assists, bookings and the rest.</p>'}
+    ${bests.length ? `<span class="label">Personal bests (solo)</span><p class="hint">${bests.join('<br>')}</p>` : ''}
+    <details class="more ranks"><summary>All the ranks</summary>
+      <p class="hint small">Every point you score in the Daily Match and in solo games adds to your career points.</p>
+      <ol class="rank-list">${P.RANKS.map((r, i) => `<li class="${i === P.rankOf(st.pts).i ? 'me' : i < P.rankOf(st.pts).i ? 'done' : ''}"><span>${r.icon}</span><b>${esc(r.name)}</b><small>${num(r.at)} pts</small></li>`).join('')}</ol>
+    </details>
+    <p class="hint small st-save">${O.me() ? `✅ Saved to your nickname, ${esc(O.me().nick)}. Enter your recovery code on a new phone and it all comes with you.`
+      : 'Saved on this phone only. <button class="linkish" data-act="nick-new">Pick a nickname</button> and your streak, rank and achievements follow you to a new phone.'}</p>`;
+}
+function achievementsPanelHtml(tab = S.progTab || 'stats') {
+  S.progTab = tab;
+  const got = store.get('ach', {});
+  const n = ACHIEVEMENTS.filter(a => got[a.id]).length;
+  return `<p class="eyebrow">Your progress</p>
+    ${rankLineHtml()}
+    <div class="seg prog-seg">
+      <button class="seg-btn ${tab === 'stats' ? 'on' : ''}" data-act="prog-tab" data-v="stats">📊 Stats</button>
+      <button class="seg-btn ${tab === 'ach' ? 'on' : ''}" data-act="prog-tab" data-v="ach">🏆 Achievements ${n}/${ACHIEVEMENTS.length}</button>
+    </div>
+    ${tab === 'ach' ? achievementsHtml(true) : statsHtml()}
     <button class="btn link" data-act="close">Close</button>`;
 }
 function updateAchBadge() {
@@ -1454,7 +1583,7 @@ function updateAchBadge() {
   const n = ACHIEVEMENTS.filter(a => got[a.id]).length, all = n === ACHIEVEMENTS.length;
   btn.classList.toggle('some', n > 0 && !all);
   btn.classList.toggle('gold', all);
-  btn.setAttribute('aria-label', `Achievements, ${n} of ${ACHIEVEMENTS.length} unlocked`);
+  btn.setAttribute('aria-label', `Your progress: stats and achievements, ${n} of ${ACHIEVEMENTS.length} unlocked`);
 }
 function achievementsHtml(inPanel = false) {
   const got = store.get('ach', {});
@@ -1878,7 +2007,7 @@ function renderLeague() {
     body = `<div class="lg-range">${[['week', 'This week'], ['all', 'All time']].map(([k, t]) => `<button class="pill-btn ${range === k ? 'on' : ''}" data-act="lg-range" data-v="${k}">${t}</button>`).join('')}</div>
       <div class="table-wrap"><table class="ltable lg-table">
         <thead><tr><th>#</th><th class="l">Player</th><th title="Dailies played">P</th><th title="Points">Pts</th><th title="Today's Daily">Today</th></tr></thead>
-        <tbody>${daily.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><span class="ln-nm">${clubDot(r.club)}<b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</span></td><td>${r.r.played}</td><td><b>${r.r.pts}</b></td><td>${r.today == null ? '–' : r.today}</td></tr>`).join('')}</tbody>
+        <tbody>${daily.map((r, i) => `<tr ${rowAttrs(r)}><td>${i + 1}</td><td class="l"><span class="ln-nm">${clubDot(r.club)}<b>${esc(r.nick)}</b>${r.id === v.me ? ' <small>(you)</small>' : ''}</span>${r.cp ? `<span class="ln-rank">${P.rankOf(r.cp).icon} ${esc(P.rankOf(r.cp).name)}</span>` : ''}</td><td>${r.r.played}</td><td><b>${r.r.pts}</b></td><td>${r.today == null ? '–' : r.today}</td></tr>`).join('')}</tbody>
       </table></div>
       <p class="hint">${range === 'week' ? 'This week runs Monday to Sunday.' : 'Every Daily since the league started.'} Your first go at each day’s ${v.club ? `${esc(v.club)} Daily` : 'Daily Match'} counts.</p>
       ${playBtn}`;
@@ -2044,6 +2173,7 @@ function nickError(msg) {
 // what to do once someone has a nickname: join the league they were invited to, save a challenge result, or show their leagues
 async function afterNick() {
   const next = S.afterNick; S.afterNick = null;
+  await syncPull();
   postDailyToLeagues(dailySaved(null));
   for (const c of clubDailies()) postDailyToLeagues(dailySaved(c), c);
   if (next && next.join) { await joinLeague(next.join); return; }
@@ -2462,6 +2592,9 @@ function applyThrow(answer, res) {
       break;
   }
 
+  // your stats and career points: the Daily Match and solo games (replays of old Dailies don't count)
+  if (!S.past && (S.game === 'daily' || S.players.length === 1)) P.recordDart(dart.cat, res.correct, res.correct ? (easyOn() ? res.points / 2 : res.points) : 0);
+
   render();
   if (res.correct) { pulse(currentIdx()); sfx.hit(); buzz(40); } else { sfx.miss(); }
   if (S.game !== 'daily' && S.visit.length === 3 && S.visit.every(d => d.res.correct)) unlock('three');
@@ -2590,6 +2723,8 @@ function legWon(p) {
   if (S.vs && solo) extra += vsLine();
   if (!solo) extra += `<p class="legs-line">${S.players.map(x => `${esc(x.name)} <b>${x.legs}</b>`).join(' · ')}</p>`;
   const detail = S.game === 'x01' ? `${S.start}, ${p.darts} darts` : S.game === 'clock' ? `${p.darts} darts` : S.game === 'killer' ? `${p.lives} ${p.lives === 1 ? 'life' : 'lives'} left` : '';
+  if (S.game === 'x01' && hardOn()) unlock('hardwin');
+  gameDone();
   L.recordGame({ game: S.game, players: S.players.map(x => x.name), winner: p.name, solo, league: solo || !LEAGUES_ENABLED ? null : (S.leagueId || null), detail });
   const lg = LEAGUES_ENABLED && !solo && S.leagueId ? L.getLeague(S.leagueId) : null;
   if (lg) extra += `<p class="hint">Saved to <b>${esc(lg.name)}</b>. <button class="btn link inline" data-act="open-league" data-v="${lg.id}">See the table</button></p>`;
@@ -2620,6 +2755,7 @@ function suddenOver() {
   const isBest = !easyOn() && p.points > 0 && (!best || p.points > best.points);
   if (isBest) store.set('best:sudden', { points: p.points, streak: p.streak });
   const last = S.visit[S.visit.length - 1];
+  gameDone();
   L.recordGame({ game: 'sudden', players: [p.name], winner: null, solo: true, league: null, detail: `${p.points} pts, ${p.streak} in a row` });
   if (isBest) { confetti(); sfx.win(); } else { sfx.miss(); }
   S.shareText = shareLine(p);
@@ -2707,6 +2843,7 @@ document.addEventListener('click', async e => {
       break;
     case 'daily':
       if (S.busy) break;
+      if (S.welcome) { S.welcome = false; store.set('welcomed', true); track('Welcome: played Daily'); }
       S.dailyClub = null;
       if (!modalRoot.hidden) { modalRoot._onClose = null; closeModal(); }
       if (dailySaved() && dailySaved().done) { S.game = 'daily'; S.dailyN = dailyNumber(); showDailyResult(); }
@@ -2752,7 +2889,7 @@ document.addEventListener('click', async e => {
     case 'past-play': modalRoot._onClose = null; closeModal(); await startDaily(Number(v)); break;
     case 'past-key': openModal(answerKeyHtml().replace('data-act="daily-result">Back', 'data-act="past-back">Back')); break;
     case 'past-back': showPastResult(); break;
-    case 'coach-x': store.set('tipClassic', true); track('Tip dismissed'); renderPlay(); break;
+    case 'coach-x': store.set(S.game === 'daily' ? 'tipDaily' : 'tipClassic', true); track('Tip dismissed'); renderPlay(); break;
     case 'diff': S.easy = v === 'easy'; S.hard = v === 'hard'; track('Setting changed', { setting: 'difficulty', value: v }); renderSetup(); break;
     case 'choose': throwDart(v); break;
     case 'install': installApp(); break;
@@ -2905,7 +3042,8 @@ document.addEventListener('click', async e => {
     case 'begin': S.busy = true; renderSetup(); await begin(); break;
     case 'rules': openModal(rulesHtml()); break;
     case 'settings': openModal(settingsHtml()); break;
-    case 'achievements': openModal(achievementsPanelHtml()); track('Achievements opened'); break;
+    case 'achievements': checkAch(); openModal(achievementsPanelHtml(v === 'ach' ? 'ach' : 'stats')); track('Progress opened'); break;
+    case 'prog-tab': openModal(achievementsPanelHtml(v)); track('Progress tab', { tab: v }); break;
     case 'order': moveGame(v, Number(b.dataset.d)); track('Game order changed'); break;
     case 'order-reset': store.set('gameOrder', []); { const el = document.querySelector('.order-list'); if (el) el.outerHTML = orderListHtml(); } if (S.screen === 'hub') renderHub(); toast('Back to the usual order'); break;
     case 'set': {
@@ -3064,7 +3202,10 @@ document.addEventListener('keydown', e => {
 // ---------- boot ----------
 (async function boot() {
   initAnalytics();
+  const frozen = P.settleFreezes();
+  checkAch(); checkPromotion();
   updateAchBadge();
+  if (frozen) setTimeout(() => { toast(`🧊 Streak freeze used. Your ${dailyStreak(null)}-day streak is safe`); track('Streak freeze used', { n: frozen }); }, 1800);
   store.set('visits', store.get('visits', 0) + 1);
   S.welcome = store.get('visits', 0) <= 1 && !store.get('welcomed', false);
   const saved = store.get('setup', null);
@@ -3106,6 +3247,7 @@ document.addEventListener('keydown', e => {
     track('Opened challenge link', { game: GAMES[vsOffer.g].title });
     openModal(challengeHtml(vsOffer));
   }
+  syncPull();
   if (O.me()) O.refresh().then(r => { S.myLeagues = r.leagues; S.today = r.day; const before = clubDailies().join(); rememberClubDailies(r.leagues); if (S.screen === 'hub' && modalRoot.hidden && before !== clubDailies().join()) renderHub(); }).catch(() => {});
   // a league invite link opens that league, or offers to join it
   const jq = new URLSearchParams(location.search).get('join');

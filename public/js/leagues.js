@@ -123,7 +123,9 @@ export function exportData() {
   try { ach = JSON.parse(localStorage.getItem('tf501:ach') || '{}'); } catch { /* ignore */ }
   let me = null;   // leagues nickname and recovery code, so restoring a backup brings your nickname back
   try { me = JSON.parse(localStorage.getItem('tf501:me') || 'null'); } catch { /* ignore */ }
-  return { app: 'topflight501', version: 1, exported: new Date().toISOString(), leagues: getLeagues(), history: getHistory(), bests, daily, ach, me };
+  let stats = null, fz = null;   // career points, hit rates and streak freezes
+  try { stats = JSON.parse(localStorage.getItem('tf501:stats') || 'null'); fz = JSON.parse(localStorage.getItem('tf501:fz') || 'null'); } catch { /* ignore */ }
+  return { app: 'topflight501', version: 1, exported: new Date().toISOString(), leagues: getLeagues(), history: getHistory(), bests, daily, ach, me, stats, fz };
 }
 
 export function importData(data) {
@@ -182,6 +184,10 @@ export function importData(data) {
   try {
     const m = data.me;
     if (m && typeof m.code === 'string' && typeof m.nick === 'string' && !localStorage.getItem('tf501:me')) localStorage.setItem('tf501:me', JSON.stringify({ id: String(m.id || ''), nick: m.nick.slice(0, 16), club: String(m.club || ''), code: m.code.slice(0, 20) }));
+  } catch { /* ignore */ }
+  try {
+    if (data.stats && typeof data.stats === 'object' && !localStorage.getItem('tf501:stats')) localStorage.setItem('tf501:stats', JSON.stringify(data.stats));
+    if (data.fz && typeof data.fz === 'object' && !localStorage.getItem('tf501:fz')) localStorage.setItem('tf501:fz', JSON.stringify(data.fz));
   } catch { /* ignore */ }
   return { addedLeagues, addedGames, addedDays };
 }

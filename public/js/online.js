@@ -128,6 +128,10 @@ export const postDaily = (n, p, club) => api('POST', '/api/scores', { n, p, ...(
 export const createChallenge = c => api('POST', '/api/challenges', { action: 'create', ...c }).then(r => r.id);
 export const postResult = (id, r) => api('POST', '/api/challenges', { action: 'result', id, r });
 
+// ---------- your progress, saved to your nickname ----------
+export const getProgress = () => api('GET', '/api/progress').then(r => r.data);
+export const saveProgress = data => api('POST', '/api/progress', { data });
+
 // League codes: TF-K7Q2M. People may type them in lower case, with spaces, or without the TF-.
 export function cleanCode(s) {
   const c = String(s || '').toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/^TF/, '');

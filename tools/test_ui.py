@@ -21,6 +21,8 @@ def api(path, body=None, key=None):
 
 def phone(browser, name):
     ctx = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
+    # skip the first-visit welcome (one big "Play today's match" button) so the full list of games shows
+    ctx.add_init_script("try { localStorage.setItem('tf501:welcomed', 'true'); } catch (e) {}")
     page = ctx.new_page()
     page.on('pageerror', lambda e: errors.append(f'{name}: {e}'))
     page.on('console', lambda m: m.type == 'error' and errors.append(f'{name} console: {m.text}'))
