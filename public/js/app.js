@@ -1,5 +1,5 @@
-import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, clubDailyMatch, dailyNumber, dailyKey } from './data.js?v=77';
-import { CATEGORIES, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=78';
+import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, clubDailyMatch, dailyNumber, dailyKey, matchContext } from './data.js?v=78';
+import { CATEGORIES, NEAR, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=79';
 import { sfx, setSoundEnabled } from './sound.js?v=74';
 import * as L from './leagues.js?v=75';
 import { initAnalytics, track } from './analytics.js?v=74';
@@ -64,6 +64,8 @@ const NAME_CATS = ['scorer', 'assist', 'lineup', 'booked', 'manager'];
 const easyOn = () => S.easy && S.game !== 'daily' && S.game !== 'sentoff';
 const hardOn = () => S.hard && ['x01', 'killer', 'clock', 'sudden'].includes(S.game);
 const HARD_SECS = 60;
+// Near misses: optional in The Classic, off unless the player turns it on
+const nearOn = () => S.near && S.game === 'x01';
 // 180 rule: two Scorers in a row and the next dart is worth 60 whatever the category
 // First Classic game: a short tip on the first dart of round 1, until a round has been played
 const coachOn = () => S.game === 'x01' && S.round <= 1 && !S.visit.length && !store.get('tipClassic', false);
@@ -98,7 +100,7 @@ function makeClue(cat) {
   return `${/^[AEIOU]/.test(team(p)) ? 'An' : 'A'} <b>${team(p)}</b> <b>${POS[p.pos] || 'player'}</b>${og ? ' (it was an own goal)' : ''}. ${fact}`;
 }
 const onFor180 = () => S.game === 'x01' && S.visit.length >= 2 && S.visit.length < dartsPerVisit() && !S.legOver
-  && S.visit.slice(-2).every(d => d.res.correct && d.cat === 'scorer' && !d.clued);
+  && S.visit.slice(-2).every(d => d.res.correct && !d.res.near && d.cat === 'scorer' && !d.clued);
 
 // ---------- state ----------
 const S = {
@@ -135,6 +137,7 @@ const S = {
   teamGame: false,
   easy: false,            // Easy mode: pick from four names instead of typing
   hard: false,            // Hard mode: 60 seconds per dart
+  near: false,            // Near misses: close calls score a little (The Classic only)
   choices: null,          // the four options currently shown
   shareText: '',
 };
@@ -433,6 +436,11 @@ function renderSetup() {
         ${[501, 301, 101].map(n => `<button class="seg-btn num ${S.start === n ? 'on' : ''}" data-act="start" data-v="${n}">${n}</button>`).join('')}
       </div>
       <p class="hint">${S.start === 501 ? 'The full game. New to it? Try 301 for a quicker one.' : S.start === 301 ? 'Recommended for beginners: a quicker game, roughly half the length of 501.' : 'A quick-fire game, a few rounds each.'}</p>
+    </div>
+    <div class="field">
+      <span class="label">Near misses</span>
+      <div class="seg">${[['off', 'Off'], ['on', '🤏 On']].map(([v, l]) => `<button class="seg-btn ${(v === 'on') === !!S.near ? 'on' : ''}" data-act="near" data-v="${v}">${l}</button>`).join('')}</div>
+      <p class="hint">${S.near ? `Close calls take a little off: scoreline one goal out −${NEAR.oneOff}, right result −${NEAR.result}, a scorer who played −${NEAR.scorer}, an assist who scored −${NEAR.assist}.` : 'Only right answers count. Turn on to score a little for close calls.'}</p>
     </div>` : ''}
 
     <div class="field f-half">
@@ -549,12 +557,14 @@ function scoreboard() {
 
 function matchCard(cls = '') {
   const m = S.match;
+  const cluesBtn = cls === 'match-side' ? '' : '<button type="button" class="mc-btn" data-act="mclues">🔍 Match clues</button>';
   // your club's colours as an outline on the match card (not in the Daily Match, which is the same for everyone)
   const club = S.game !== 'daily' && S.clubs[0] && CLUB_COLOURS[S.clubs[0]] ? S.clubs[0] : '';
   return `<div class="match ${cls} ${club ? 'club-theme' : ''}" ${club ? `style="${clubVars(club)}"` : ''}>
     <div class="match-meta"><span>Premier League ${seasonLabel(m.season)}</span><span>Round ${S.round}</span></div>
     <div class="teams"><span class="team">${esc(m.home)}</span><span class="vs">v</span><span class="team">${esc(m.away)}</span></div>
     <div class="match-date">${fmtDate(m.date)}</div>
+    ${cluesBtn}
   </div>`;
 }
 
@@ -606,7 +616,7 @@ function dartSlots() {
   return `<div class="darts ${n > 3 ? 'six' : ''}">${Array.from({ length: n }, (_, i) => i).map(i => {
     const d = S.visit[i];
     if (!d) { const g = i === S.visit.length && onFor180(); return `<div class="dart ${i === S.visit.length ? 'next' : ''} ${g ? 'gold' : ''}"><span class="dart-n">${g ? (n > 3 ? '🎯' : '🎯 For 180') : n > 3 ? i + 1 : 'Dart ' + (i + 1)}</span></div>`; }
-    return `<div class="dart ${d.res.correct ? 'hit' : 'miss'}">
+    return `<div class="dart ${d.res.correct ? 'hit' : 'miss'} ${d.res.near ? 'near' : ''}">
       <span class="dart-n">${n > 3 ? TARGET_INFO[d.cat].icon : TARGET_INFO[d.cat].short}</span>
       <span class="dart-v">${dartValue(d)}</span>
     </div>`;
@@ -682,7 +692,7 @@ function renderPlay() {
     ${dartSlots()}
     ${hardOn() && !done ? `<div class="dart-timer" aria-label="Time left"><span class="dt-bar"></span><span class="dt-n">${HARD_SECS}s</span></div>` : ''}
     ${S.game === 'clock' ? routeStrip(p) : ''}
-    ${last ? `<p class="result ${last.res.correct ? 'ok' : 'bad'}">${last.res.correct ? '🎯 ' : ''}${esc(last.res.message)}${last.res.correct ? resultPts(last.res) : ''}${last.extra ? `<span class="extra">${esc(last.extra)}</span>` : ''}</p>` : ''}
+    ${last ? `<p class="result ${last.res.near ? 'near' : last.res.correct ? 'ok' : 'bad'}">${last.res.near ? '🤏 ' : last.res.correct ? '🎯 ' : ''}${esc(last.res.message)}${last.res.correct ? resultPts(last.res) : ''}${last.extra ? `<span class="extra">${esc(last.extra)}</span>` : ''}</p>` : ''}
     ${onFor180() && !done ? `<div class="on180"><span class="o-i">🔥</span><div><b>On for a 180!</b><small>Two scorers in a row: any right answer now scores 60</small></div></div>` : ''}
     ${!done ? `
       <form class="throw" data-form="throw" autocomplete="off">
@@ -944,7 +954,7 @@ const longId = id => id.replace(/^(\d\d)(\d\d)-/, '20$1-$2-');
 function challengeLink() {
   const me = S.players[0].name, named = me && me !== 'Player';
   const nick = O.me() ? O.me().nick : (named ? me : '');
-  return `https://topflight501.com/?vs=${S.game}${S.game === 'x01' ? `&s=${S.start}` : ''}${easyOn() ? '&e=1' : ''}&r=${vsMine()}${nick ? `&n=${encodeURIComponent(nick)}` : ''}${S.chalId ? `&c=${S.chalId}` : ''}&m=${S.played.map(shortId).join('.')}`;
+  return `https://topflight501.com/?vs=${S.game}${S.game === 'x01' ? `&s=${S.start}` : ''}${easyOn() ? '&e=1' : ''}${nearOn() ? '&nm=1' : ''}&r=${vsMine()}${nick ? `&n=${encodeURIComponent(nick)}` : ''}${S.chalId ? `&c=${S.chalId}` : ''}&m=${S.played.map(shortId).join('.')}`;
 }
 function parseChallenge() {
   const q = new URLSearchParams(location.search);
@@ -953,7 +963,7 @@ function parseChallenge() {
   const m = (q.get('m') || '').split('.').filter(x => /^\d{4}-\d{1,3}$/.test(x)).slice(0, 80).map(longId);
   if (!VS_GAMES.includes(g) || !Number.isFinite(r) || !m.length || ![101, 301, 501].includes(s)) return null;
   const c = /^[2-9A-Z]{10}$/.test(q.get('c') || '') ? q.get('c') : null;
-  return { g, s, e: q.get('e') === '1', r, n: (q.get('n') || '').trim().slice(0, 20), m, c };
+  return { g, s, e: q.get('e') === '1', nm: g === 'x01' && q.get('nm') === '1', r, n: (q.get('n') || '').trim().slice(0, 20), m, c };
 }
 function vsWhat(c) {
   return c.g === 'x01' ? `${vsUnit(c.g, c.r)} to check out from ${c.s}` : c.g === 'clock' ? `${vsUnit(c.g, c.r)} to get round the grounds` : `${vsUnit(c.g, c.r)} in Sudden Death`;
@@ -962,7 +972,7 @@ function challengeHtml(c) {
   const g = GAMES[c.g];
   return `<p class="eyebrow">⚔️ Challenge</p>
     <h2>${c.n ? esc(c.n) : 'A mate'} challenges you</h2>
-    <p class="vs-game">${g.icon} <b>${g.title}</b>${c.g === 'x01' ? ` · ${c.s}` : ''}${c.e ? ' · Easy mode' : ''}</p>
+    <p class="vs-game">${g.icon} <b>${g.title}</b>${c.g === 'x01' ? ` · ${c.s}` : ''}${c.e ? ' · Easy mode' : ''}${c.nm ? ' · Near misses' : ''}</p>
     <p class="big-score">${c.r}</p>
     <p>${vsWhat(c)}. You get the exact same matches, on your phone. Can you beat it?</p>
     ${O.me() ? `<p class="hint">Playing as ${nickChip(O.me().nick, O.me().club)}${c.c ? '. The result goes in your head-to-head record.' : ''}</p>` : `<label class="vs-name"><span class="label">Your name <span class="opt">optional</span></span>
@@ -978,7 +988,7 @@ async function acceptChallenge() {
   const name = O.me() ? O.me().nick : (($('#vs-name') || {}).value || '').trim();
   closeModal();
   track('Challenge accepted', { game: GAMES[c.g].title });
-  S.game = c.g; S.start = c.s; S.easy = c.e; S.nPlayers = 1; S.teamGame = false;
+  S.game = c.g; S.start = c.s; S.easy = c.e; S.near = !!c.nm; S.nPlayers = 1; S.teamGame = false;
   if (name) S.names[0] = name;
   S.players = [{ name: name || 'Player', legs: 0 }];
   S.legStarter = 0;
@@ -1015,7 +1025,8 @@ const shareBtn = () => challengeable()
 function shareLine(p) {
   const solo = S.players.length === 1;
   const vs = () => S.players.filter(x => x !== p).map(x => x.name).join(', ');
-  const easy = easyOn() ? ' (easy mode)' : '';
+  const modes = [easyOn() && 'easy mode', nearOn() && 'near misses on'].filter(Boolean);
+  const easy = modes.length ? ` (${modes.join(', ')})` : '';
   switch (S.game) {
     case 'x01': return solo ? `🎯 Checked out from ${S.start} in ${p.darts} darts on Top Flight 501${easy}. Beat that 👇` : `🎯 ${p.name} beat ${vs()} at ${S.start} on Top Flight 501${easy}.`;
     case 'clock': return solo ? `🏟️ Round the Grounds in ${p.darts} darts on Top Flight 501${easy}. Beat that 👇` : `🏟️ ${p.name} beat ${vs()} round the grounds on Top Flight 501${easy}.`;
@@ -1523,7 +1534,7 @@ function clubPickerHtml(ctx = '') {
     <button class="btn link" data-act="close">Close</button>`;
 }
 function saveSetup() {
-  store.set('setup', { ...store.get('setup', {}), leagueId: S.leagueId, game: GAMES[S.game] && !GAMES[S.game].hidden ? S.game : 'x01', nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, hard: S.hard, members: S.members });
+  store.set('setup', { ...store.get('setup', {}), leagueId: S.leagueId, game: GAMES[S.game] && !GAMES[S.game].hidden ? S.game : 'x01', nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, hard: S.hard, near: S.near, members: S.members });
 }
 
 // ---------- add to home screen ----------
@@ -2159,6 +2170,46 @@ function openModal(html, { onClose, dismissable = true } = {}) {
   if (first) first.focus({ preventScroll: true });
   if (sheet) sheet.scrollTop = 0;
 }
+// ---------- 🔍 Match clues: the table, form and last meeting going into the match ----------
+const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+const FORM_WORD = { W: 'Won', D: 'Drew', L: 'Lost' };
+function formChips(form) {
+  if (!form.length) return '<span class="mc-none">No games yet</span>';
+  return `<span class="mc-form" aria-label="Last ${form.length}: ${form.map(f => FORM_WORD[f]).join(', ')}">${form.map(f => `<i class="f-${f}">${f}</i>`).join('')}</span>`;
+}
+function matchCluesHtml(m, c) {
+  const team = (name, t) => `<div class="mc-team">
+    <span class="mc-name">${esc(name)}</span>
+    ${c.opening ? '' : `<span class="mc-pos">${ordinal(t.pos)}</span><span class="mc-pts">${t.pts} pts from ${t.pl}</span>`}
+    ${formChips(t.form)}
+  </div>`;
+  const when = c.opening ? '🏁 Opening weekend of the season'
+    : c.finalDay ? '🏁 Final day of the season'
+    : `📅 ${esc(m.home)}’s ${ordinal(c.home.pl + 1)} league game of the season`;
+  const last = c.last
+    ? `🔁 Last met <b>${esc(c.last.home)} ${c.last.score[0]}–${c.last.score[1]} ${esc(c.last.away)}</b> <span class="mc-sub">${fmtDate(c.last.date)}</span>`
+    : '🔁 No meeting in the season before';
+  return `<p class="eyebrow">🔍 Match clues</p>
+    <h2 class="mc-title">${esc(m.home)} <span>v</span> ${esc(m.away)}</h2>
+    <p class="hint mc-when">${fmtDate(m.date)} · ${seasonLabel(m.season)}</p>
+    ${c.opening ? '' : '<p class="mc-cap">Going into the game</p>'}
+    <div class="mc-teams">${team(m.home, c.home)}${team(m.away, c.away)}</div>
+    <ul class="mc-list"><li>${when}</li><li>${last}</li></ul>
+    <button class="btn primary big" data-act="close">Back to the match</button>`;
+}
+async function showMatchClues() {
+  const m = S.match;
+  if (!m || S.mcBusy) return;
+  S.mcBusy = true;
+  try {
+    const c = await matchContext(m);
+    if (S.match !== m) return;
+    openModal(matchCluesHtml(m, c));
+    track('Match clues', gameInfo());
+  } catch { toast('Couldn’t load the clues. Check your connection.'); }
+  finally { S.mcBusy = false; }
+}
+
 function closeModal() {
   modalRoot.hidden = true;
   modalRoot.innerHTML = '';
@@ -2175,6 +2226,7 @@ const COMMON_RULES = `
   <li><b>Every goal counts.</b> A player can be picked once for each goal or assist they got: two goals means two Scorer darts, two assists means two Assist darts. Lineup, Booked and the scoreline count once per player per match.</li>
   <li><b>Lineup means someone new.</b> A player you’ve already had as a scorer, assist or booking on this match can’t be your Lineup answer. It won’t cost you a dart, just pick someone else.</li>
   <li><b>🎙️ Pundit’s clue.</b> Stuck? Pick a box and tap it for one hint per turn: the player’s team and position, plus their age at the time or another Premier League club they played for. A right answer after a clue scores half (not in Hard mode, Easy mode or the Daily).</li>
+  <li><b>🔍 Match clues.</b> Can’t place the game? Tap <b>Match clues</b> on the match card for the league table and form going into it, and the last time the two sides met. Free, and it never gives away what happened.</li>
   <li><b>⏱️ Hard mode.</b> Turn it on before the game: you get ${HARD_SECS} seconds for each dart, and running out of time is a miss.</li>
   <li><b>See what you missed.</b> After each match, tap <b>👀 Last match’s answers</b> to see everything you could have had. The game carries on.</li>
   <li><b>Give up.</b> Stuck? Giving up shows every answer for this match, but the game ends and has to be restarted.</li>`;
@@ -2210,6 +2262,7 @@ function gameRules(game) {
     x01: `
       <li><b>Start on 501, 301 or 101.</b> Play solo for your fastest checkout, or 2–4 head-to-head. <b>Managers</b>: one person each, three darts a visit. <b>Teams</b>: 2–8 people per team take turns, one teammate throwing each visit. Teams can be different sizes.</li>
       <li><b>Deduction tiers.</b> Pick any category for each dart. Correct answers come off your score. ${TIERS}</li>
+      <li><b>🤏 Near misses.</b> Optional, off unless you turn it on before the game. Close calls take a little off: one goal out on the scoreline −${NEAR.oneOff}, the right result −${NEAR.result}, a scorer who played but didn’t score −${NEAR.scorer}, an assist who scored instead −${NEAR.assist}. Once each per match, and they don’t count towards a 180.</li>
       <li><b>🎯 180!</b> Hit two Scorers in a row and your next dart is worth 60 in any category. Get it right for a 180.</li>
       <li><b>Checkout.</b> You don’t need exactly 0. The first player to reach 0 or below wins the leg.</li>`,
     killer: `
@@ -2290,7 +2343,7 @@ async function begin(quick = false) {
     ...(S.teamGame ? { members: S.members[i].map((m, j) => (m || '').trim() || `Player ${j + 1}`), mIdx: 0 } : {}),
   }));
   S.legStarter = 0;
-  if (!quick) store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, members: S.members });
+  if (!quick) store.set('setup', { leagueId: S.leagueId, game: S.game, nPlayers: S.nPlayers, unit: S.unit, start: S.start, names: S.names, from: S.seasonFrom, to: S.seasonTo, clubs: S.clubs, easy: S.easy, near: S.near, members: S.members });
   await startLeg();
 }
 
@@ -2302,6 +2355,7 @@ function gameInfo(extra = {}) {
     seasons: `${seasonLabel(S.seasonFrom || '')} to ${seasonLabel(S.seasonTo || '')}`,
     ...(S.game === 'x01' ? { start: S.start } : {}),
     ...(easyOn() ? { mode: 'Easy' } : hardOn() ? { mode: 'Hard' } : {}),
+    ...(nearOn() ? { nearMisses: 'On' } : {}),
     ...extra,
   };
 }
@@ -2395,7 +2449,7 @@ function throwDart(choiceId) {
   } else {
     if (S.cat === 'scoreline') answer = [$('[data-sl="0"]').value, $('[data-sl="1"]').value];
     else answer = ($('[data-answer]') || {}).value || '';
-    res = S.cat === 'manager' ? managerDart(answer, claimed) : checkDart(S.match, S.cat, answer, claimed);
+    res = S.cat === 'manager' ? managerDart(answer, claimed) : checkDart(S.match, S.cat, answer, claimed, { near: nearOn() });
   }
   S.choices = null;
   if (res.invalid && res.dup) {
@@ -2428,7 +2482,7 @@ function applyThrow(answer, res) {
   const after = { win: false, pick: false, over: false };
   switch (S.game) {
     case 'x01':
-      if (res.correct && boost && !dart.clued) res.points = 60;
+      if (res.correct && boost && !dart.clued && !res.near) res.points = 60;
       if (res.correct) p.score -= res.points;
       if (p.score <= 0) after.win = true;
       break;
@@ -2464,10 +2518,10 @@ function applyThrow(answer, res) {
 
   render();
   if (res.correct) { pulse(currentIdx()); sfx.hit(); buzz(40); } else { sfx.miss(); }
-  if (S.game !== 'daily' && S.visit.length === 3 && S.visit.every(d => d.res.correct)) unlock('three');
+  if (S.game !== 'daily' && S.visit.length === 3 && S.visit.every(d => d.res.correct && !d.res.near)) unlock('three');
   if (S.game === 'x01' && S.visit.reduce((t, d) => t + (d.res.correct ? d.res.points : 0), 0) >= 100) unlock('ton');
   if (S.game === 'sudden' && p.streak >= 10) unlock('nerves');
-  if (res.correct && boost && !dart.clued) { dart.extra = ' 180! 🎯'; celebrate180(S.visit.slice(-3)); unlock('oneeighty'); track('180', gameInfo()); }
+  if (res.correct && boost && !dart.clued && !res.near) { dart.extra = ' 180! 🎯'; celebrate180(S.visit.slice(-3)); unlock('oneeighty'); track('180', gameInfo()); }
 
   if (after.win) { S.legOver = true; setTimeout(() => legWon(p), 650); return; }
   if (after.over) { S.legOver = true; setTimeout(suddenOver, 700); return; }
@@ -2567,7 +2621,7 @@ function legWon(p) {
     title = `🎯 ${esc(p.name)} wins the leg`;
     if (solo) {
       const best = store.get('best:' + S.start, null);
-      const isBest = !easyOn() && (!best || p.darts < best.darts);
+      const isBest = !easyOn() && !nearOn() && (!best || p.darts < best.darts);
       if (isBest) store.set('best:' + S.start, { darts: p.darts, matches: S.matchesThisLeg });
       extra = `<p>Checked out from ${S.start} in <b>${p.darts} darts</b> across ${S.matchesThisLeg} matches.${isBest ? ' <b>New personal best!</b>' : best ? ` Best: ${best.darts} darts.` : ''}</p>`;
     }
@@ -2753,6 +2807,8 @@ document.addEventListener('click', async e => {
     case 'past-key': openModal(answerKeyHtml().replace('data-act="daily-result">Back', 'data-act="past-back">Back')); break;
     case 'past-back': showPastResult(); break;
     case 'coach-x': store.set('tipClassic', true); track('Tip dismissed'); renderPlay(); break;
+    case 'near': S.near = v === 'on'; track('Setting changed', { setting: 'near misses', value: v }); renderSetup(); break;
+    case 'mclues': showMatchClues(); break;
     case 'diff': S.easy = v === 'easy'; S.hard = v === 'hard'; track('Setting changed', { setting: 'difficulty', value: v }); renderSetup(); break;
     case 'choose': throwDart(v); break;
     case 'install': installApp(); break;
@@ -3077,6 +3133,7 @@ document.addEventListener('keydown', e => {
       leagueId: saved.leagueId || '',
       easy: !!saved.easy,
       hard: !!saved.hard,
+      near: !!saved.near,
     });
     if (Array.isArray(saved.names)) S.names = [0, 1, 2, 3].map(i => saved.names[i] || '');
     if (Array.isArray(saved.members)) S.members = [0, 1, 2, 3].map(i => {

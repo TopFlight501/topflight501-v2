@@ -192,3 +192,40 @@ export function seasonLabel(s) {
   // '2016-17' -> '2016/17'
   return s.replace('-', '/');
 }
+
+// ---------- 🔍 Match clues: what was known before kick-off (never what happened in the match) ----------
+// The table and form going into the match, which game of the season it was, and the last time they met.
+export async function matchContext(m) {
+  const D = await loadSeason(m.season);
+  const clubs = (await getClubs())[m.season] || [];
+  const before = D.matches.filter(x => x.d < m.date).sort((x, y) => (x.d < y.d ? -1 : x.d > y.d ? 1 : 0));
+  const rows = new Map(clubs.map(c => [c, { club: c, pts: 0, gd: 0, gf: 0, pl: 0, form: [] }]));
+  for (const x of before) {
+    const [hg, ag] = x.s;
+    for (const [club, f, a] of [[x.h, hg, ag], [x.a, ag, hg]]) {
+      const r = rows.get(club); if (!r) continue;
+      r.pl += 1; r.gf += f; r.gd += f - a;
+      r.pts += f > a ? 3 : f === a ? 1 : 0;
+      r.form.push(f > a ? 'W' : f === a ? 'D' : 'L');
+    }
+  }
+  const table = [...rows.values()].sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.club.localeCompare(b.club));
+  const side = club => {
+    const i = table.findIndex(r => r.club === club), r = table[i] || { pts: 0, pl: 0, form: [] };
+    return { pos: i + 1, pts: r.pts, pl: r.pl, form: r.form.slice(-5) };
+  };
+  const home = side(m.home), away = side(m.away);
+  // last league meeting: earlier this season, or failing that the season before
+  const meets = list => list.filter(x => (x.h === m.home && x.a === m.away) || (x.h === m.away && x.a === m.home));
+  let last = meets(before).pop() || null;
+  if (!last) {
+    const seasons = await getSeasons(), i = seasons.indexOf(m.season);
+    if (i > 0) { try { last = meets((await loadSeason(seasons[i - 1])).matches).sort((x, y) => (x.d < y.d ? -1 : 1)).pop() || null; } catch { /* offline: skip it */ } }
+  }
+  return {
+    home, away, teams: clubs.length,
+    opening: home.pl === 0 && away.pl === 0,
+    finalDay: home.pl === 37 && away.pl === 37,
+    last: last && { date: last.d, home: last.h, away: last.a, score: last.s },
+  };
+}

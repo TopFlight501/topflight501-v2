@@ -8,6 +8,8 @@ export const CATEGORIES = {
   booked:    { label: 'Booked Player',   short: 'Booked',    points: 25, redPoints: 50, icon: '🟨' },
 };
 export const MANAGER_BONUS = 20;
+// Near misses (optional, The Classic only): close calls take a few points off instead of nothing
+export const NEAR = { oneOff: 25, result: 10, scorer: 10, assist: 15 };
 
 export function norm(s) {
   return String(s || '')
@@ -165,7 +167,7 @@ export function shortName(p) {
  * A player can be claimed as many times as they did it: two goals means two Scorer darts, two assists means two Assist darts.
  * Returns { correct, points, message, key }
  */
-export function checkDart(match, category, answer, claimed) {
+export function checkDart(match, category, answer, claimed, opts = {}) {
   const cat = CATEGORIES[category];
   if (!cat) return { correct: false, points: 0, message: 'Pick a category first.' };
 
@@ -174,9 +176,15 @@ export function checkDart(match, category, answer, claimed) {
     if (h === '' || a === '' || h == null || a == null) return { correct: false, points: 0, message: 'Enter both scores.', invalid: true };
     if (claimed.has('scoreline')) return { correct: false, points: 0, message: 'You already hit the scoreline on this match.', invalid: true };
     const ok = Number(h) === match.score[0] && Number(a) === match.score[1];
-    return ok
-      ? { correct: true, points: cat.points, key: 'scoreline', message: `Spot on, it finished ${match.score[0]}-${match.score[1]}.` }
-      : { correct: false, points: 0, message: `Not the scoreline.` };
+    if (ok) return { correct: true, points: cat.points, key: 'scoreline', message: `Spot on, it finished ${match.score[0]}-${match.score[1]}.` };
+    // one near miss on the scoreline per match, and it doesn't give the score away
+    if (opts.near && !claimed.has('near:scoreline')) {
+      const off = Math.abs(Number(h) - match.score[0]) + Math.abs(Number(a) - match.score[1]);
+      const sameResult = Math.sign(Number(h) - Number(a)) === Math.sign(match.score[0] - match.score[1]);
+      if (off === 1) return { correct: true, near: true, points: NEAR.oneOff, key: 'near:scoreline', message: 'So close! Just one goal out.' };
+      if (sameResult) return { correct: true, near: true, points: NEAR.result, key: 'near:scoreline', message: 'Right result, wrong score.' };
+    }
+    return { correct: false, points: 0, message: `Not the scoreline.` };
   }
 
   let guess = String(answer || '').trim();
@@ -192,7 +200,8 @@ export function checkDart(match, category, answer, claimed) {
   };
   const hit = bestPlayer(guess, pools[category]);
   if (!hit) {
-    return { correct: false, points: 0, message: missMessage(category) };
+    const near = opts.near && nearMiss(category, guess, pools, match, claimed);
+    return near || { correct: false, points: 0, message: missMessage(category) };
   }
   const key = `${category}:${hit.id}`;
   const allowed = timesAllowed(category, hit);
@@ -229,6 +238,18 @@ export function timesAllowed(category, p) {
   if (category === 'scorer') return (p.goals || 0) + (p.og || 0);
   if (category === 'assist') return p.assists || 0;
   return 1;
+}
+
+// A scorer who played but didn't score, or an assist guess who scored instead. Once per player per match.
+function nearMiss(category, guess, pools, match, claimed) {
+  const pool = category === 'scorer' ? match.players : category === 'assist' ? pools.scorer : null;
+  if (!pool) return null;
+  const p = bestPlayer(guess, pool);
+  const key = p && `near:${category}:${p.id}`;
+  if (!p || claimed.has(key)) return null;
+  return category === 'scorer'
+    ? { correct: true, near: true, points: NEAR.scorer, key, player: p, message: `So close! ${shortName(p)} played but didn’t score.` }
+    : { correct: true, near: true, points: NEAR.assist, key, player: p, message: `So close! ${shortName(p)} scored but didn’t set one up.` };
 }
 
 function missMessage(category) {

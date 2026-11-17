@@ -9,6 +9,7 @@
   --teal: #1E4B57;
   --teal-deep: #143640;
   --green: #12B886;
+  --near: #A87A00;
   --green-deep: #0C8F68;
   --red: #E03131;
   --yellow: #F5C518;
@@ -28,6 +29,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    --near: #F5C518;
     --teal: #7FC4D2;
     --teal-deep: #0E2328;
     --green: #2BD09E;
@@ -47,6 +49,7 @@
   }
 }
 :root[data-theme="dark"] {
+    --near: #F5C518;
     --teal: #7FC4D2;
     --teal-deep: #0E2328;
     --green: #2BD09E;
@@ -938,3 +941,31 @@ a.game-card { text-decoration: none; color: inherit; }
 .ltable.lg-table tbody tr.me:first-child td { background: color-mix(in srgb, var(--green) 9%, transparent); }
 .fx .nick-chip, .lg-status .fx .nick-chip, .fx-who .nick-chip { display: inline-flex; background: none; padding: 2px 0; }
 .lg-members .nick-chip, .vs-saved .nick-chip, .me-row .nick-chip { background: var(--soft); }
+
+/* near misses */
+.dart.hit.near { background: color-mix(in srgb, var(--near) 14%, transparent); border-color: color-mix(in srgb, var(--near) 70%, transparent); }
+.dart.hit.near .dart-v { color: var(--near); }
+.result.near { background: color-mix(in srgb, var(--near) 13%, transparent); color: var(--near); }
+
+/* 🔍 match clues */
+.mc-btn { display: inline-flex; align-items: center; gap: 4px; margin: 8px auto 0; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg, transparent); color: var(--teal); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; transition: border-color .15s, transform .1s; }
+.mc-btn:hover { border-color: var(--teal); }
+.mc-btn:active { transform: scale(.97); }
+.mc-title { margin-bottom: .2rem; }
+.mc-title span { color: var(--muted); font-weight: 600; font-size: .8em; }
+.mc-when { margin: 0 0 14px; }
+.mc-cap { font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.mc-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.mc-team { background: var(--soft); border: 1px solid var(--line); border-radius: 14px; padding: 12px 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.mc-name { font-weight: 800; color: var(--teal); line-height: 1.15; font-size: .95rem; }
+.mc-pos { font-size: 1.7rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.mc-pts { font-size: .8rem; color: var(--muted); }
+.mc-form { display: inline-flex; gap: 3px; margin-top: 5px; }
+.mc-form i { font-style: normal; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-size: .68rem; font-weight: 800; color: #fff; }
+.mc-form .f-W { background: var(--green-deep); }
+.mc-form .f-D { background: #8A9A9E; }
+.mc-form .f-L { background: var(--red); }
+.mc-none { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+.mc-list { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 6px; }
+.mc-list li { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); font-size: .92rem; line-height: 1.35; }
+.mc-sub { display: block; color: var(--muted); font-size: .8rem; margin-top: 2px; }
