@@ -986,3 +986,4 @@ a.game-card { text-decoration: none; color: inherit; }
 .mc-actions { text-align: center; margin: 2px 0 10px; }
 .mc-actions .btn.link { font-size: .85rem; }
 @media (prefers-reduced-motion: reduce) { .mc-inner { transition: none; } }
+.mc-two .mc-tag { white-space: nowrap; }
