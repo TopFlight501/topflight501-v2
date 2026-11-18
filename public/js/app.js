@@ -440,7 +440,7 @@ function renderSetup() {
     <div class="field">
       <span class="label">Near misses</span>
       <div class="seg">${[['off', 'Off'], ['on', '🤏 On']].map(([v, l]) => `<button class="seg-btn ${(v === 'on') === !!S.near ? 'on' : ''}" data-act="near" data-v="${v}">${l}</button>`).join('')}</div>
-      <p class="hint">${S.near ? `Close calls take a little off: scoreline one goal out −${NEAR.oneOff}, right result −${NEAR.result}, a scorer who played −${NEAR.scorer}, an assist who scored −${NEAR.assist}.` : 'Only right answers count. Turn on to score a little for close calls.'}</p>
+      <p class="hint">${S.near ? `Close calls take a little off: scoreline one goal out −${NEAR.oneOff}, right result −${NEAR.result}, a scorer who played −${NEAR.scorer}, an assist who scored −${NEAR.assist}.${S.easy ? ' In Easy mode, just the scoreline.' : ''}` : 'Only right answers count. Turn on to score a little for close calls.'}</p>
     </div>` : ''}
 
     <div class="field f-half">
@@ -557,7 +557,7 @@ function scoreboard() {
 
 function matchCard(cls = '') {
   const m = S.match;
-  const cluesBtn = cls === 'match-side' ? '' : '<button type="button" class="mc-btn" data-act="mclues">🔍 Match clues</button>';
+  const cluesBtn = '<button type="button" class="mc-btn" data-act="mclues">🔍 Match clues</button>';
   // your club's colours as an outline on the match card (not in the Daily Match, which is the same for everyone)
   const club = S.game !== 'daily' && S.clubs[0] && CLUB_COLOURS[S.clubs[0]] ? S.clubs[0] : '';
   return `<div class="match ${cls} ${club ? 'club-theme' : ''}" ${club ? `style="${clubVars(club)}"` : ''}>
@@ -783,6 +783,7 @@ function easyDart(cat, id, claimed) {
     return hit ? { correct: true, points: 0, key: 'manager', message: hit } : { correct: false, points: 0, message: 'Not either manager.' };
   }
   const p = id.startsWith('p:') ? categoryPool(cat).find(x => String(x.id) === id.slice(2)) : null;
+  // Easy mode's wrong picks are mostly players from the match, so player near misses stay off here (the scoreline still counts)
   if (!p) return { correct: false, points: 0, message: miss[cat] };
   return checkDart(S.match, cat, p.full, claimed);
 }
