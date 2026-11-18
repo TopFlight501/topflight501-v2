@@ -11,7 +11,7 @@
   <script>
     try { var s = JSON.parse(localStorage.getItem('tf501:settings') || '{}'); if (s.theme === 'light' || s.theme === 'dark') document.documentElement.setAttribute('data-theme', s.theme); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="styles.css?v=62">
+  <link rel="stylesheet" href="styles.css?v=74">
   <style>
     body { max-width: 520px; margin: 0 auto; padding: 12px 16px 40px; }
     #spin-app .card { padding: 18px; }
@@ -63,7 +63,7 @@
     .q-form { display: flex; gap: 8px; } .q-form .text { flex: 1; min-width: 0; }
     .sl { flex: 1; display: flex; align-items: center; gap: 8px; } .sl .text { width: 64px; text-align: center; font-size: 1.2rem; } .sl span { font-weight: 800; color: var(--muted); }
     .err { color: var(--red); font-size: .9rem; margin: 8px 0 0; }
-    .res { font-size: 1.6rem; font-weight: 900; margin: 0 0 4px; } .res.ok { color: var(--green); } .res.bad { color: var(--muted); }
+    .res { font-size: 1.6rem; font-weight: 900; margin: 0 0 4px; } .res.ok { color: var(--green); } .res.bad { color: var(--muted); } .res.near { color: var(--near); }
     .club-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }
     .club-b { border: 0; border-radius: 10px; padding: 10px 0; background: var(--c1); color: #fff; font-weight: 800; cursor: pointer; }
     .final { display: grid; gap: 6px; margin: 12px 0; } .final div { display: flex; justify-content: space-between; padding: 10px 14px; border-radius: 12px; background: var(--soft); font-weight: 600; }
@@ -74,6 +74,6 @@
 <body>
   <main id="spin-app"></main>
   <footer class="foot"><p class="disclaimer">A free fan-made game. Not affiliated with or endorsed by the Premier League.<br>Match data from Fantasy Premier League records.</p></footer>
-  <script type="module" src="js/spin.js?v=10"></script>
+  <script type="module" src="js/spin.js?v=11"></script>
 </body>
 </html>

@@ -194,25 +194,78 @@ export function seasonLabel(s) {
 }
 
 // ---------- 🔍 Match clues: what was known before kick-off (never what happened in the match) ----------
-// The table and form going into the match, which game of the season it was, and the last time they met.
+// The table and form going into the match, each side's top scorer so far, the occasion, and the last time they met.
+const LONDON = new Set(['Arsenal', 'Chelsea', 'Tottenham Hotspur', 'West Ham United', 'Crystal Palace', 'Fulham', 'Brentford']);
+const DERBIES = [
+  [['Arsenal', 'Tottenham Hotspur'], 'North London derby'], [['Liverpool', 'Everton'], 'Merseyside derby'],
+  [['Manchester City', 'Manchester United'], 'Manchester derby'], [['Newcastle United', 'Sunderland'], 'Tyne–Wear derby'],
+  [['Aston Villa', 'Wolverhampton Wanderers'], 'Midlands derby'], [['Aston Villa', 'West Bromwich Albion'], 'Midlands derby'],
+  [['Wolverhampton Wanderers', 'West Bromwich Albion'], 'Black Country derby'], [['Nottingham Forest', 'Leicester City'], 'East Midlands derby'],
+  [['Southampton', 'Bournemouth'], 'South Coast derby'], [['Brighton & Hove Albion', 'Crystal Palace'], 'M23 derby'],
+  [['Leeds United', 'Manchester United'], 'Roses rivalry'], [['Sheffield United', 'Leeds United'], 'Yorkshire derby'],
+];
+function runOf(form) {
+  // the current run: wins in a row, unbeaten, defeats in a row, or games without a win
+  let wins = 0, unbeaten = 0, losses = 0, winless = 0;
+  for (let i = form.length - 1; i >= 0 && form[i] === 'W'; i--) wins++;
+  for (let i = form.length - 1; i >= 0 && form[i] !== 'L'; i--) unbeaten++;
+  for (let i = form.length - 1; i >= 0 && form[i] === 'L'; i--) losses++;
+  for (let i = form.length - 1; i >= 0 && form[i] !== 'W'; i--) winless++;
+  if (wins >= 3) return `🔥 ${wins} wins in a row`;
+  if (unbeaten >= 5) return `🛡️ Unbeaten in ${unbeaten}`;
+  if (losses >= 3) return `📉 ${losses} defeats in a row`;
+  if (winless >= 5) return `😬 ${winless} without a win`;
+  return null;
+}
+function moodOf(pos, teams, pl) {
+  if (pl < 3) return null;
+  if (pos === 1) return '👑 Top';
+  if (pos <= 4) return '⭐ Top four';
+  if (pos === teams) return '🥶 Bottom';
+  if (pos > teams - 3) return '😰 Drop zone';
+  return null;
+}
+function occasionOf(m, opening, finalDay) {
+  const tags = [];
+  const pair = [m.home, m.away];
+  const derby = DERBIES.find(([d]) => d.every(c => pair.includes(c)));
+  if (derby) tags.push(`⚔️ ${derby[1]}`);
+  else if (pair.every(c => LONDON.has(c))) tags.push('⚔️ London derby');
+  const md = m.date.slice(5);
+  if (opening) tags.push('🏁 Opening weekend');
+  if (finalDay) tags.push('🏁 Final day of the season');
+  if (md === '12-26') tags.push('🎄 Boxing Day');
+  else if (md === '01-01') tags.push('🎆 New Year’s Day');
+  else if (md >= '12-20' || md <= '01-03') tags.push('🎄 Festive fixtures');
+  if (m.date >= '2020-06-17' && m.date <= '2021-05-17') tags.push('🔇 Lockdown, no crowd');
+  const day = new Date(m.date + 'T12:00:00Z').getUTCDay();
+  if (day >= 2 && day <= 4) tags.push('🌙 Midweek game');
+  else if (day === 1) tags.push('📺 Monday night');
+  else if (day === 5) tags.push('📺 Friday night');
+  return tags;
+}
 export async function matchContext(m) {
   const D = await loadSeason(m.season);
   const clubs = (await getClubs())[m.season] || [];
   const before = D.matches.filter(x => x.d < m.date).sort((x, y) => (x.d < y.d ? -1 : x.d > y.d ? 1 : 0));
-  const rows = new Map(clubs.map(c => [c, { club: c, pts: 0, gd: 0, gf: 0, pl: 0, form: [] }]));
+  const rows = new Map(clubs.map(c => [c, { club: c, pts: 0, gd: 0, gf: 0, pl: 0, form: [], goals: new Map() }]));
   for (const x of before) {
     const [hg, ag] = x.s;
-    for (const [club, f, a] of [[x.h, hg, ag], [x.a, ag, hg]]) {
-      const r = rows.get(club); if (!r) continue;
+    [[x.h, hg, ag], [x.a, ag, hg]].forEach(([club, f, a], side) => {
+      const r = rows.get(club); if (!r) return;
       r.pl += 1; r.gf += f; r.gd += f - a;
       r.pts += f > a ? 3 : f === a ? 1 : 0;
       r.form.push(f > a ? 'W' : f === a ? 'D' : 'L');
-    }
+      for (const [id, s, g] of x.p) if (s === side && g > 0) r.goals.set(id, (r.goals.get(id) || 0) + g);
+    });
   }
   const table = [...rows.values()].sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.club.localeCompare(b.club));
   const side = club => {
-    const i = table.findIndex(r => r.club === club), r = table[i] || { pts: 0, pl: 0, form: [] };
-    return { pos: i + 1, pts: r.pts, pl: r.pl, form: r.form.slice(-5) };
+    const i = table.findIndex(r => r.club === club), r = table[i] || { pts: 0, pl: 0, form: [], goals: new Map() };
+    let hot = null;
+    for (const [id, g] of r.goals) if (!hot || g > hot.goals) hot = { id, goals: g };
+    if (hot) { const [full, web] = D.players[hot.id] || []; hot = { name: web || full, goals: hot.goals }; }
+    return { pos: i + 1, pts: r.pts, pl: r.pl, form: r.form.slice(-5), run: runOf(r.form), mood: moodOf(i + 1, clubs.length, r.pl), hot };
   };
   const home = side(m.home), away = side(m.away);
   // last league meeting: earlier this season, or failing that the season before
@@ -222,10 +275,12 @@ export async function matchContext(m) {
     const seasons = await getSeasons(), i = seasons.indexOf(m.season);
     if (i > 0) { try { last = meets((await loadSeason(seasons[i - 1])).matches).sort((x, y) => (x.d < y.d ? -1 : 1)).pop() || null; } catch { /* offline: skip it */ } }
   }
+  const opening = home.pl === 0 && away.pl === 0;
+  const finalDay = home.pl === clubs.length * 2 - 3 && away.pl === clubs.length * 2 - 3;
   return {
-    home, away, teams: clubs.length,
-    opening: home.pl === 0 && away.pl === 0,
-    finalDay: home.pl === 37 && away.pl === 37,
+    home, away, teams: clubs.length, opening, finalDay,
+    occasion: occasionOf(m, opening, finalDay),
+    gameNo: home.pl + 1,
     last: last && { date: last.d, home: last.h, away: last.a, score: last.s },
   };
 }

@@ -1,7 +1,7 @@
 // Spin the Board (preview): a spinning dartboard of Premier League clubs.
 // Tap the board to throw; where the dart lands picks the club and the question.
 import { getSeasons, getClubs, randomMatch, seasonLabel } from './data.js?v=78';
-import { checkDart } from './answers.js?v=79';
+import { checkDart, NEAR } from './answers.js?v=80';
 const nm = p => p.web || p.full;
 import { sfx } from './sound.js?v=75';
 import { initAnalytics, track } from './analytics.js?v=75';
@@ -39,7 +39,7 @@ const ROUNDS = 5, DARTS = 3;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const app = $('#spin-app');
-const G = { clubs: [], seasons: [], clubSeasons: {}, players: [], round: 1, dart: 0, turn: 0, speed: 'normal', names: ['', '', '', ''], n: 1,
+const G = { clubs: [], seasons: [], clubSeasons: {}, players: [], round: 1, dart: 0, turn: 0, speed: 'normal', near: false, names: ['', '', '', ''], n: 1,
   angle: 0, vel: 0, target: 0, busy: false, q: null, stuck: [] };
 
 // ---------- board ----------
@@ -181,11 +181,12 @@ function answerQ(form) {
   if (info.cat === 'scoreline') ans = [form.querySelector('[data-sl="0"]').value, form.querySelector('[data-sl="1"]').value];
   else ans = form.querySelector('[data-answer]').value;
   const match = { ...q.m, players: q.mine };
-  const res = checkDart(match, info.cat, ans, q.claimed);
+  const res = checkDart(match, info.cat, ans, q.claimed, { near: G.near });
   if (res.invalid) { q.err = res.message; return renderPlay(); }
   const p = G.players[G.turn];
-  if (res.correct) { p.pts += info.pts; sfx.hit(); buzz([40, 30, 40]); } else sfx.miss();
-  settle({ correct: res.correct, pts: res.correct ? info.pts : 0, msg: res.message, reveal: reveal(q) });
+  const pts = res.near ? res.points : res.correct ? info.pts : 0;
+  if (res.correct) { p.pts += pts; sfx.hit(); buzz(res.near ? 30 : [40, 30, 40]); } else sfx.miss();
+  settle({ correct: res.correct, near: res.near, pts, msg: res.message, reveal: reveal(q) });
 }
 function reveal(q) {
   const info = RINGS[q.ring], m = q.m;
@@ -236,6 +237,9 @@ function renderSetup() {
     <p class="hint small">The board fills with that season’s 20 clubs, and every question comes from that season.</p>
     <p class="label">Spin speed</p>
     <div class="seg">${[['normal', 'Normal'], ['hard', '🌪️ Fast']].map(([v, l]) => `<button class="seg-btn ${G.speed === v ? 'on' : ''}" data-act="speed" data-v="${v}">${l}</button>`).join('')}</div>
+    <p class="label">Near misses</p>
+    <div class="seg">${[['off', 'Off'], ['on', '🤏 On']].map(([v, l]) => `<button class="seg-btn ${(v === 'on') === G.near ? 'on' : ''}" data-act="near" data-v="${v}">${l}</button>`).join('')}</div>
+    <p class="hint small">${G.near ? `Close calls still score: scoreline one goal out +${NEAR.oneOff}, right result +${NEAR.result}, a scorer who played +${NEAR.scorer}.` : 'Only right answers score. Turn on to score a little for close calls.'}</p>
     <p class="hint small">${ROUNDS} rounds, ${DARTS} darts each. Most points wins.</p>
     <button class="btn primary big" data-act="start">Game on</button>
   </section>`;
@@ -269,7 +273,7 @@ function renderPlay() {
       <button class="btn link" data-act="pass">No idea, pass</button>
     </div>`;
   } else if (l) {
-    panel = `<div class="panel center"><p class="res ${l.correct ? 'ok' : 'bad'}">${l.correct ? `🎯 +${l.pts}` : l.miss ? '💨 Missed' : '❌ Not this time'}</p>
+    panel = `<div class="panel center"><p class="res ${l.near ? 'near' : l.correct ? 'ok' : 'bad'}">${l.near ? `🤏 +${l.pts}` : l.correct ? `🎯 +${l.pts}` : l.miss ? '💨 Missed' : '❌ Not this time'}</p>
       <p class="hint">${esc(l.msg || '')}${l.reveal ? `<br>${l.reveal}` : ''}</p>
       <button class="btn primary big" data-act="next">${G.dart >= DARTS ? (G.players.length > 1 ? 'Next player' : 'Next round') : 'Next dart'}</button></div>`;
   } else {
@@ -304,12 +308,13 @@ app.addEventListener('click', async e => {
   switch (b.dataset.act) {
     case 'n': G.n = +v; renderSetup(); break;
     case 'speed': G.speed = v; renderSetup(); break;
+    case 'near': G.near = v === 'on'; track('Setting changed', { setting: 'near misses', value: v, game: 'Spin the Board' }); renderSetup(); break;
     case 'watch': G.watch = !G.watch; if (G.watch) track('Tutorial watched', { game: 'Spin the Board' }); renderSetup(); break;
     case 'start': case 'again':
       if (b.dataset.act === 'start') document.querySelectorAll('[data-name]').forEach(i => { G.names[+i.dataset.name] = i.value.trim(); });
       G.players = Array.from({ length: G.n }, (_, i) => ({ name: G.n === 1 ? 'You' : (G.names[i] || `Player ${i + 1}`), pts: 0 }));
       Object.assign(G, { round: 1, dart: 0, turn: 0, q: null, last: null, handover: G.n > 1 });
-      track('Game started', { game: 'Spin the Board', players: G.n, season: G.season, speed: G.speed });
+      track('Game started', { game: 'Spin the Board', players: G.n, season: G.season, speed: G.speed, ...(G.near ? { nearMisses: 'On' } : {}) });
       app.innerHTML = ''; G.target = spinSpeed(); renderPlay(); break;
     case 'ready': G.handover = false; renderPlay(); break;
     case 'next': nextDart(); break;

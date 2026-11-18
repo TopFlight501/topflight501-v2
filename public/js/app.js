@@ -1,5 +1,5 @@
 import { getSeasons, getPeople, randomMatch, matchById, seasonLabel, clubsIn, dailyMatch, clubDailyMatch, dailyNumber, dailyKey, matchContext } from './data.js?v=78';
-import { CATEGORIES, NEAR, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=79';
+import { CATEGORIES, NEAR, checkDart, checkManager, displayName, shortName, timesAllowed } from './answers.js?v=80';
 import { sfx, setSoundEnabled } from './sound.js?v=74';
 import * as L from './leagues.js?v=75';
 import { initAnalytics, track } from './analytics.js?v=74';
@@ -65,7 +65,18 @@ const easyOn = () => S.easy && S.game !== 'daily' && S.game !== 'sentoff';
 const hardOn = () => S.hard && ['x01', 'killer', 'clock', 'sudden'].includes(S.game);
 const HARD_SECS = 60;
 // Near misses: optional in The Classic, off unless the player turns it on
-const nearOn = () => S.near && S.game === 'x01';
+const nearOn = () => S.near && ['x01', 'sudden'].includes(S.game);
+function nearField() {
+  const list = `scoreline one goal out, right result, a scorer who played, an assist who scored`;
+  const hint = S.game === 'sudden'
+    ? (S.near ? `🛟 One lifeline per run: a close call (${list}) keeps you in but scores nothing.` : 'One wrong answer and it’s over. Turn on for one lifeline per run.')
+    : (S.near ? `Close calls take a little off: scoreline one goal out −${NEAR.oneOff}, right result −${NEAR.result}, a scorer who played −${NEAR.scorer}, an assist who scored −${NEAR.assist}.` : 'Only right answers count. Turn on to score a little for close calls.');
+  return `<div class="field">
+      <span class="label">Near misses</span>
+      <div class="seg">${[['off', 'Off'], ['on', '🤏 On']].map(([v, l]) => `<button class="seg-btn ${(v === 'on') === !!S.near ? 'on' : ''}" data-act="near" data-v="${v}">${l}</button>`).join('')}</div>
+      <p class="hint">${hint}${S.near && S.easy ? ' In Easy mode, just the scoreline.' : ''}</p>
+    </div>`;
+}
 // 180 rule: two Scorers in a row and the next dart is worth 60 whatever the category
 // First Classic game: a short tip on the first dart of round 1, until a round has been played
 const coachOn = () => S.game === 'x01' && S.round <= 1 && !S.visit.length && !store.get('tipClassic', false);
@@ -436,12 +447,9 @@ function renderSetup() {
         ${[501, 301, 101].map(n => `<button class="seg-btn num ${S.start === n ? 'on' : ''}" data-act="start" data-v="${n}">${n}</button>`).join('')}
       </div>
       <p class="hint">${S.start === 501 ? 'The full game. New to it? Try 301 for a quicker one.' : S.start === 301 ? 'Recommended for beginners: a quicker game, roughly half the length of 501.' : 'A quick-fire game, a few rounds each.'}</p>
-    </div>
-    <div class="field">
-      <span class="label">Near misses</span>
-      <div class="seg">${[['off', 'Off'], ['on', '🤏 On']].map(([v, l]) => `<button class="seg-btn ${(v === 'on') === !!S.near ? 'on' : ''}" data-act="near" data-v="${v}">${l}</button>`).join('')}</div>
-      <p class="hint">${S.near ? `Close calls take a little off: scoreline one goal out −${NEAR.oneOff}, right result −${NEAR.result}, a scorer who played −${NEAR.scorer}, an assist who scored −${NEAR.assist}.${S.easy ? ' In Easy mode, just the scoreline.' : ''}` : 'Only right answers count. Turn on to score a little for close calls.'}</p>
     </div>` : ''}
+
+    ${['x01', 'sudden'].includes(S.game) ? nearField() : ''}
 
     <div class="field f-half">
       <span class="label">Seasons</span>
@@ -525,7 +533,7 @@ function boardCell(p, i) {
         <div class="pl-sub">${p.darts} darts</div>`;
     }
     case 'sudden':
-      return `<div class="pl-score" data-score="${i}">${p.points}</div><div class="pl-sub">${p.streak} in a row</div>`;
+      return `<div class="pl-score" data-score="${i}">${p.points}</div><div class="pl-sub">${p.streak} in a row${nearOn() ? (p.lifelineUsed ? ' · 🛟 used' : ' · 🛟 lifeline') : ''}</div>`;
     case 'daily':
       return `<div class="pl-score" data-score="${i}">${p.points}</div><div class="pl-sub">${S.visit.length} of ${DAILY_DARTS} darts</div>`;
     case 'sentoff':
@@ -607,6 +615,7 @@ function handoverHint(p) {
 function dartValue(d) {
   if (!d.res.correct) return '✗';
   if (S.game === 'x01') return '−' + d.res.points;
+  if (d.res.lifeline) return '🛟';
   if (S.game === 'sudden' || S.game === 'daily') return '+' + d.res.points;
   return '✓';
 }
@@ -680,7 +689,7 @@ function renderPlay() {
 
   const dn = S.game === 'daily' ? `Dart ${S.visit.length + 1} of ${DAILY_DARTS}` : `Dart ${S.visit.length + 1}`;
   const label = cats.length === 1 ? `${dn}: your target` : `${dn}: pick a category`;
-  const resultPts = r => S.game === 'x01' ? ` <b>−${r.points}</b>` : (S.game === 'sudden' || S.game === 'daily') ? ` <b>+${r.points}</b>` : '';
+  const resultPts = r => r.lifeline ? '' : S.game === 'x01' ? ` <b>−${r.points}</b>` : (S.game === 'sudden' || S.game === 'daily') ? ` <b>+${r.points}</b>` : '';
 
   app.innerHTML = `
   <div class="stage">
@@ -964,7 +973,7 @@ function parseChallenge() {
   const m = (q.get('m') || '').split('.').filter(x => /^\d{4}-\d{1,3}$/.test(x)).slice(0, 80).map(longId);
   if (!VS_GAMES.includes(g) || !Number.isFinite(r) || !m.length || ![101, 301, 501].includes(s)) return null;
   const c = /^[2-9A-Z]{10}$/.test(q.get('c') || '') ? q.get('c') : null;
-  return { g, s, e: q.get('e') === '1', nm: g === 'x01' && q.get('nm') === '1', r, n: (q.get('n') || '').trim().slice(0, 20), m, c };
+  return { g, s, e: q.get('e') === '1', nm: ['x01', 'sudden'].includes(g) && q.get('nm') === '1', r, n: (q.get('n') || '').trim().slice(0, 20), m, c };
 }
 function vsWhat(c) {
   return c.g === 'x01' ? `${vsUnit(c.g, c.r)} to check out from ${c.s}` : c.g === 'clock' ? `${vsUnit(c.g, c.r)} to get round the grounds` : `${vsUnit(c.g, c.r)} in Sudden Death`;
@@ -2178,24 +2187,34 @@ function formChips(form) {
   if (!form.length) return '<span class="mc-none">No games yet</span>';
   return `<span class="mc-form" aria-label="Last ${form.length}: ${form.map(f => FORM_WORD[f]).join(', ')}">${form.map(f => `<i class="f-${f}">${f}</i>`).join('')}</span>`;
 }
-function matchCluesHtml(m, c) {
-  const team = (name, t) => `<div class="mc-team">
-    <span class="mc-name">${esc(name)}</span>
-    ${c.opening ? '' : `<span class="mc-pos">${ordinal(t.pos)}</span><span class="mc-pts">${t.pts} pts from ${t.pl}</span>`}
-    ${formChips(t.form)}
-  </div>`;
-  const when = c.opening ? '🏁 Opening weekend of the season'
-    : c.finalDay ? '🏁 Final day of the season'
-    : `📅 ${esc(m.home)}’s ${ordinal(c.home.pl + 1)} league game of the season`;
-  const last = c.last
-    ? `🔁 Last met <b>${esc(c.last.home)} ${c.last.score[0]}–${c.last.score[1]} ${esc(c.last.away)}</b> <span class="mc-sub">${fmtDate(c.last.date)}</span>`
-    : '🔁 No meeting in the season before';
+const SHORT_CLUB = { 'Wolverhampton Wanderers': 'Wolves', 'Brighton & Hove Albion': 'Brighton', 'Manchester City': 'Man City', 'Manchester United': 'Man Utd',
+  'Tottenham Hotspur': 'Spurs', 'West Ham United': 'West Ham', 'Newcastle United': 'Newcastle', 'Nottingham Forest': 'Nott’m Forest', 'West Bromwich Albion': 'West Brom',
+  'Sheffield United': 'Sheffield Utd', 'Huddersfield Town': 'Huddersfield', 'Leicester City': 'Leicester', 'Leeds United': 'Leeds', 'Norwich City': 'Norwich',
+  'Cardiff City': 'Cardiff', 'Swansea City': 'Swansea', 'Stoke City': 'Stoke', 'Hull City': 'Hull', 'Luton Town': 'Luton', 'Ipswich Town': 'Ipswich', 'Middlesbrough': 'Boro', 'Bournemouth': 'B’mouth' };
+const club = n => SHORT_CLUB[n] || n;
+// Five face-down cards; tap one to flip it. Nothing on them comes from the match itself.
+function matchCluesHtml(m, c, flipped) {
+  const both = fn => `<div class="mc-two">${[[m.home, c.home], [m.away, c.away]].map(([n, t]) => `<div class="mc-side"><span class="mc-club">${esc(club(n))}</span>${fn(t)}</div>`).join('')}</div>`;
+  const tag = t => t ? `<span class="mc-tag">${t}</span>` : '';
+  const none = text => `<span class="mc-none">${text}</span>`;
+  const cards = [
+    ['table', '📊', 'The table', c.opening ? none('Opening weekend, no table yet') : both(t => `<span class="mc-big">${ordinal(t.pos)}</span><span class="mc-sub">${t.pts} pts</span>${tag(t.mood)}`)],
+    ['hot', '🔥', 'Who’s hot', c.opening ? none('Nobody’s scored yet') : both(t => t.hot ? `<span class="mc-hot">${esc(t.hot.name)}</span><span class="mc-sub">${t.hot.goals} league goal${t.hot.goals === 1 ? '' : 's'} so far</span>` : none('No scorer yet'))],
+    ['form', '📈', 'Form', c.opening ? none('No games played yet') : both(t => `${formChips(t.form)}${tag(t.run)}`)],
+    ['occasion', '🗓️', 'The occasion', `<span class="mc-line">${new Date(m.date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' })}, ${club(m.home)}’s ${ordinal(c.gameNo)} league game</span>${c.occasion.map(tag).join('')}`],
+    ['last', '🔁', 'Last time they met', c.last ? `<span class="mc-line"><b>${esc(club(c.last.home))} ${c.last.score[0]}–${c.last.score[1]} ${esc(club(c.last.away))}</b></span><span class="mc-sub">${fmtDate(c.last.date)}</span>` : none('Not in the season before')],
+  ];
   return `<p class="eyebrow">🔍 Match clues</p>
     <h2 class="mc-title">${esc(m.home)} <span>v</span> ${esc(m.away)}</h2>
-    <p class="hint mc-when">${fmtDate(m.date)} · ${seasonLabel(m.season)}</p>
-    ${c.opening ? '' : '<p class="mc-cap">Going into the game</p>'}
-    <div class="mc-teams">${team(m.home, c.home)}${team(m.away, c.away)}</div>
-    <ul class="mc-list"><li>${when}</li><li>${last}</li></ul>
+    <p class="hint mc-when">${fmtDate(m.date)} · ${seasonLabel(m.season)}. Tap a card to flip it.</p>
+    <div class="mc-cards">${cards.map(([k, icon, label, back]) => `
+      <button type="button" class="mc-card ${k === 'form' ? 'wide' : ''} ${flipped.has(k) ? 'flipped' : ''}" data-act="flip" data-v="${k}" aria-label="${label}">
+        <span class="mc-inner">
+          <span class="mc-front"><span class="mc-icon">${icon}</span><span class="mc-label">${label}</span><span class="mc-tap">Tap to flip</span></span>
+          <span class="mc-back"><span class="mc-label">${icon} ${label}</span>${back}</span>
+        </span>
+      </button>`).join('')}</div>
+    <div class="mc-actions"><button type="button" class="btn link" data-act="flip-all">Flip them all</button></div>
     <button class="btn primary big" data-act="close">Back to the match</button>`;
 }
 async function showMatchClues() {
@@ -2205,7 +2224,8 @@ async function showMatchClues() {
   try {
     const c = await matchContext(m);
     if (S.match !== m) return;
-    openModal(matchCluesHtml(m, c));
+    if (!S.mcFlips || S.mcFlips.m !== m) S.mcFlips = { m, set: new Set() };   // flipped cards stay flipped for this match
+    openModal(matchCluesHtml(m, c, S.mcFlips.set));
     track('Match clues', gameInfo());
   } catch { toast('Couldn’t load the clues. Check your connection.'); }
   finally { S.mcBusy = false; }
@@ -2292,7 +2312,8 @@ function gameRules(game) {
       <li><b>Solo survival.</b> Answer three darts per match, match after match.</li>
       <li><b>Score as you go.</b> Each correct answer adds its points. ${TIERS}</li>
       <li><b>Risk it?</b> A scorer is worth three times a lineup player, but it’s harder to get right.</li>
-      <li><b>One miss and it’s over.</b> Beat your highest score.</li>`,
+      <li><b>One miss and it’s over.</b> Beat your highest score.</li>
+      <li><b>🛟 Lifeline.</b> With Near misses on, your first close call keeps you in, but scores nothing. One per run.</li>`,
   }[game];
 }
 
@@ -2462,6 +2483,12 @@ function throwDart(choiceId) {
     return;
   }
   if (res.invalid) { S.error = res.message; render(); return; }
+  if (res.near && S.game === 'sudden') {
+    // Sudden Death: a near miss is a once-per-run lifeline, worth nothing
+    res = p.lifelineUsed
+      ? { correct: false, points: 0, message: `${res.message} Lifeline already used.` }
+      : { ...res, points: 0, lifeline: true, message: `${res.message} 🛟 Lifeline used, you’re still in!` };
+  }
   applyThrow(answer, res);
 }
 
@@ -2506,7 +2533,8 @@ function applyThrow(answer, res) {
       }
       break;
     case 'sudden':
-      if (res.correct) { p.points += res.points; p.streak += 1; }
+      if (res.lifeline) p.lifelineUsed = true;
+      else if (res.correct) { p.points += res.points; p.streak += 1; }
       else after.over = true;
       break;
     case 'daily':
@@ -2672,7 +2700,7 @@ function suddenOver() {
   unlock('first');
   store.set('finishedOnce', true); track('Game finished', gameInfo({ result: 'Sudden death over', points: p.points, streak: p.streak }));
   const best = store.get('best:sudden', null);
-  const isBest = !easyOn() && p.points > 0 && (!best || p.points > best.points);
+  const isBest = !easyOn() && !nearOn() && p.points > 0 && (!best || p.points > best.points);
   if (isBest) store.set('best:sudden', { points: p.points, streak: p.streak });
   const last = S.visit[S.visit.length - 1];
   L.recordGame({ game: 'sudden', players: [p.name], winner: null, solo: true, league: null, detail: `${p.points} pts, ${p.streak} in a row` });
@@ -2810,6 +2838,8 @@ document.addEventListener('click', async e => {
     case 'coach-x': store.set('tipClassic', true); track('Tip dismissed'); renderPlay(); break;
     case 'near': S.near = v === 'on'; track('Setting changed', { setting: 'near misses', value: v }); renderSetup(); break;
     case 'mclues': showMatchClues(); break;
+    case 'flip': if (!b.classList.contains('flipped')) { b.classList.add('flipped'); S.mcFlips && S.mcFlips.set.add(v); sfx.click && sfx.click(); track('Match clue flipped', gameInfo({ clue: v })); } break;
+    case 'flip-all': document.querySelectorAll('.mc-card:not(.flipped)').forEach((c, i) => setTimeout(() => { c.classList.add('flipped'); S.mcFlips && S.mcFlips.set.add(c.dataset.v); }, i * 90)); track('Match clues flipped all', gameInfo()); break;
     case 'diff': S.easy = v === 'easy'; S.hard = v === 'hard'; track('Setting changed', { setting: 'difficulty', value: v }); renderSetup(); break;
     case 'choose': throwDart(v); break;
     case 'install': installApp(); break;
